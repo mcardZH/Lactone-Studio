@@ -35,6 +35,19 @@ export interface CoordinateTrace {
   kind: 'B' | 'A' | 'D'; atomIndices: number[]; unit: 'angstrom' | 'degree';
   points: { frameIndex: number; value: number | null }[];
 }
+/** Only one explicit, valid native scan definition can supply a 1D axis. */
+export function trajectoryScanDefinition(result:TrajectoryResult):{kind:CoordinateTrace['kind'];atomIndices:number[]}|null {
+  const stage=result.stages?.length===1?result.stages[0]:undefined;
+  const scan=stage?stage.kind==='scan-points':result.role==='scan-point-set'||result.scientific?.tasks.includes('scan');
+  if(!scan||result.scientific?.scanCoordinates?.length!==1)return null;
+  const definition=result.scientific.scanCoordinates[0];
+  const kind=({bond:'B',angle:'A',dihedral:'D'} as const)[definition.kind];
+  const count=kind==='B'?2:kind==='A'?3:4;
+  if(definition.atomIndices.length!==count||new Set(definition.atomIndices).size!==count||
+    definition.atomIndices.some(index=>!Number.isSafeInteger(index)||index<0||index>=result.initialStructure.atoms.length)||
+    definition.unit!==(kind==='B'?'angstrom':'degree'))return null;
+  return {kind,atomIndices:[...definition.atomIndices]};
+}
 /** Last printed geometry per contiguous native node. This is not a convergence claim. */
 export function pathNodeFrames(frames: readonly ResultFrameSummary[]): ResultFrameSummary[] {
   const selected: ResultFrameSummary[] = [];

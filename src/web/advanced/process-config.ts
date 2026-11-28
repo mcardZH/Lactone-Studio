@@ -101,8 +101,8 @@ export const NATIVE_MD_CORE_UNAVAILABLE='此原生MD／MTD核心保护组合尚�
 export function compileSampling(d:SamplingDraft,source:AdvancedFrameSource):AdvancedSamplingTaskOptions{
  if((d.operation as string)==='anneal')throw Error('退火已停用，可查看已有结果或重新选择采样方式。');
  if(d.solvationModel==='gbsa')throw Error('GBSA 为历史设置。新运行请选择气相或 ALPB。');
- const periodic=isPeriodic(source.structure),net=isPesNetMethod(d.method);
- if(net)throw Error('此版本提供 xTB 计算，请重新选择采样方法。');
+ const periodic=isPeriodic(source.structure);
+ if(isPesNetMethod(d.method))throw Error('此版本提供 xTB 计算，请重新选择采样方法。');
  if(periodic&&d.operation!=='md')throw Error('固定晶胞采样仅支持高温 MD。');
  if(!supportsXtbOperation(d.method,d.operation==='metadynamics'?'metadynamics':'md',periodic))throw Error('请选择适用于当前体系的 xTB 采样级别。');
  const capability=getConformerSamplingCapability({...d,periodic}),native=capability.driver==='native-xtb-md';
@@ -142,14 +142,14 @@ export function compileSampling(d:SamplingDraft,source:AdvancedFrameSource):Adva
   nativeProtection.sphere={kind:'polynomial',centerAngstrom:[...d.sphere.centerAngstrom],radiusAngstrom:d.sphere.radiusAngstrom,exponent:30};
  }
  const protection=native?(nativeProtection.core||nativeProtection.sphere?{nativeProtection}:{}):{...(sphereEnabled?{sphere:structuredClone(d.sphere)}:{}),...(activeCoreIds.length?{coreProtection:{atomIds:[...activeCoreIds],forceConstantEVPerAngstrom2:d.coreForce}}:{})};
- const explicitIntegrator=d.integrator!==undefined||periodic||net;
+ const explicitIntegrator=d.integrator!==undefined||periodic;
  const shakeHydrogenBonds=d.method!=='gfnff'&&capability.shakeSupported&&d.shakeHydrogenBonds;
  const mass=explicitIntegrator?(shakeHydrogenBonds?1:4):d.hydrogenMassAmu;
  const schedule=conformerSamplingSchedule({operation:d.operation,dtFs:d.dtFs,reportEvery:d.reportEvery,
   molecularMD:{durationFs:d.molecularDurationFs,sampleEveryFs:d.molecularSampleEveryFs},metadynamics:{durationFs:d.durationFs,sampleEveryFs:d.sampleEveryFs},sphericalMD:{durationFs:d.durationFs,sampleEveryFs:d.sampleEveryFs}});
  if(!schedule||!Number.isSafeInteger(schedule.totalSteps*2+1))throw Error('采样总时间和抽帧间隔须对应可精确表示的完整积分步。');
  const base={threads:d.threads,maxSteps:schedule.totalSteps,maxEvaluations:native?schedule.totalSteps+2:schedule.totalSteps*2+1,method:d.method,
-  ...(explicitIntegrator?{integrator:capability.integrator,driver:capability.driver}:{}),...(net?{device:d.device??'gpu' as const}:{}),
+  ...(explicitIntegrator?{integrator:capability.integrator,driver:capability.driver}:{}),
   ...(usesSeed?{seed:d.seed}:{}),seedMode,...(Number.isFinite(d.seed)?{seedDraft:d.seed}:{}),dtFs:d.dtFs,reportEvery:d.reportEvery,maxFrames:schedule.recordCount,shakeHydrogenBonds,...(mass===undefined?{}:{hydrogenMassAmu:mass as 1|4}),...(d.memoryBudgetBytes===undefined?{}:{memoryBudgetBytes:d.memoryBudgetBytes}),...protection,...(usesSolvation?{solvation:{model:d.solvationModel as 'alpb'|'gbsa',solvent:d.solvent}}:{})};
  if(d.operation==='md')return{...base,operation:'md',molecularMD:{temperatureK:d.molecularTemperatureK,durationFs:d.molecularDurationFs,sampleEveryFs:d.molecularSampleEveryFs}};
  if(d.operation==='metadynamics'){

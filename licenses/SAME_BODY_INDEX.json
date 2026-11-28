@@ -1,6 +1,6 @@
 {
   "schema": "ester-original-material-identity/v2",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "scope": "Only byte-identical copied originals; generated notices and attribution corrections are not asserted unchanged",
   "files": [
     {

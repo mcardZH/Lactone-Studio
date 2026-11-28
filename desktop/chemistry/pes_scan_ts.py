@@ -265,7 +265,7 @@ def run_scan(request, ctx):
     require(coordinate_system in ('xyz', 'ric'), 'Unsupported Sella coordinate system')
     definitions = parameters.get('axes', ())
     require(len(definitions) in (1, 2), 'SCAN requires one or two axes')
-    steps = positive(parameters, 'maxSteps', 200, integer=True)
+    steps = positive(parameters, 'maxSteps', 200 if algorithm == 'slsqp' else 500, integer=True)
     threshold = atom_force_threshold(parameters, 'loose')
     previous = ctx.constraints.project(ctx.initial)
     expressions = [coordinate_parameter(axis, ctx.coordinates, previous) for axis in definitions]
@@ -861,7 +861,7 @@ def run_ts(request, ctx):
     require(strategy in ('auto', 'calcfc', 'recalcfc'), 'Unsupported iterative Hessian strategy')
     require(is_sella or strategy == 'auto', 'This TS algorithm consumes automatic curvature estimates only')
     recalc = positive(parameters, 'recalcInterval', 5, integer=True) if strategy == 'recalcfc' else None
-    max_steps = positive(parameters, 'maxSteps', 200, integer=True)
+    max_steps = positive(parameters, 'maxSteps', 500, integer=True)
     maximum = positive(parameters, 'maxStepAngstrom', .10)
     threshold = atom_force_threshold(parameters, 'normal')
     positions = ctx.constraints.project(ctx.initial)

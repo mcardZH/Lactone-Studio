@@ -268,7 +268,7 @@ export async function readXyzTrajectory(file: ResultInputFile, options: ResultRe
           if (remaining === 0) await close();
         },
       });
-      registerPackedTrajectorySource(result, segment.packed.get, {read:segment.packed.read,paged:segment.packed.paged});
+      registerPackedTrajectorySource(result, segment.packed.get, {read:segment.packed.read,paged:segment.packed.paged,canonical:true});
       results.push(result);
     }
     return results;

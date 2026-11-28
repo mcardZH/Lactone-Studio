@@ -1,7 +1,7 @@
 {
   "name": "sciyue-input-studio",
-  "version": "2.1.3",
-  "displayVersion": "2.1.3",
+  "version": "2.1.4",
+  "displayVersion": "2.1.4",
   "releaseChannel": "release",
   "private": true,
   "type": "module",
@@ -77,11 +77,11 @@
     "unofficialLabel": "非官方修改版",
     "productName": "Lactone Studio",
     "shortName": "LS",
-    "modifiedVersion": "2.1.3-lactone.1",
+    "modifiedVersion": "2.1.4-lactone.1",
     "modifier": "mcardZH",
     "sourceRepository": "https://github.com/mcardZH/Lactone-Studio",
     "upstreamName": "Ester Studio (ES)",
-    "upstreamVersion": "2.1.3",
+    "upstreamVersion": "2.1.4",
     "upstreamAuthor": "Zixuan Zhang",
     "upstreamRepository": "https://github.com/Ahey1/Ester-Studio"
   }

@@ -1,4 +1,5 @@
 import {useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode} from 'react';
+import {createPortal} from 'react-dom';
 import NumericInput from '../NumericInput';
 import {DismissibleNotice} from '../DismissibleNotice';
 import {
@@ -438,11 +439,19 @@ export function PlotQuickPopover({title, anchor, onClose, endEdit, actions, remo
   remove?(): void; children: ReactNode;
 }) {
   const id = useId(), node = useRef<HTMLDivElement>(null);
+  const marker = useRef<HTMLSpanElement>(null);
+  const [layer, setLayer] = useState<HTMLElement|null>(null);
   const drag = useRef<{id: number; x: number; y: number; startX:number; startY:number} | null>(null);
   const moved = useRef(false);
   const current = useRef({onClose,hasPlotPointAt});
   current.current = {onClose,hasPlotPointAt};
   const [position, setPosition] = useState<PlotPosition>({x: 4, y: 4});
+
+  useLayoutEffect(() => {
+    const anchor = marker.current;
+    // Keep viewport positioning outside the Settings backdrop-filter and overflow.
+    setLayer(anchor?.closest('.sy-settings-panel') ? anchor.ownerDocument.body : null);
+  }, []);
 
   function fit(wanted: PlotPosition): PlotPosition {
     const panel = node.current;
@@ -455,7 +464,7 @@ export function PlotQuickPopover({title, anchor, onClose, endEdit, actions, remo
   }
 
   useLayoutEffect(() => {
-    const panel = node.current, stage = panel?.parentElement;
+    const panel = node.current, stage = marker.current?.parentElement;
     if (!panel || !stage) return;
     moved.current = false;
     drag.current = null;
@@ -472,7 +481,7 @@ export function PlotQuickPopover({title, anchor, onClose, endEdit, actions, remo
     observer?.observe(viewport);
     observer?.observe(panel);
     return () => observer?.disconnect();
-  }, [anchor]);
+  }, [anchor, layer]);
 
   useEffect(() => {
     const panel = node.current;
@@ -500,7 +509,7 @@ export function PlotQuickPopover({title, anchor, onClose, endEdit, actions, remo
       owner.removeEventListener('pointerdown',down,true);
       owner.removeEventListener('pointerup',up,true);
     };
-  }, [anchor]);
+  }, [anchor, layer]);
 
   function start(event: PointerEvent<HTMLElement>) {
     const panel = node.current;
@@ -521,7 +530,7 @@ export function PlotQuickPopover({title, anchor, onClose, endEdit, actions, remo
     if (drag.current?.id === event.pointerId) drag.current = null;
   }
 
-  return <div ref={node} className="plot-edit-popover ui-control-surface" role="dialog" tabIndex={-1}
+  const popover = <div ref={node} className="plot-edit-popover ui-control-surface" data-settings-layer={layer ? true : undefined} role="dialog" tabIndex={-1}
     aria-labelledby={id} style={{left: position.x, top: position.y}}
     onBlur={event => {
       if (event.target.matches('input, select')) endEdit?.();
@@ -539,6 +548,7 @@ export function PlotQuickPopover({title, anchor, onClose, endEdit, actions, remo
     {(actions || remove) && <footer className="plot-edit-popover-actions">{actions}
       {remove && <Trash label={`删除${title}`} onClick={remove}/>}</footer>}
   </div>;
+  return <><span ref={marker} hidden />{layer ? createPortal(popover, layer) : popover}</>;
 }
 
 export function PlotQuickControls({target, context, anchor, onClose, onSetZero, onAnnotate, inset, remove, editText, hasPlotPointAt}: {

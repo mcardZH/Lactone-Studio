@@ -1,3 +1,17 @@
+import type {RamanStokesParameters} from '../../results/spectroscopy';
+
+export interface RamanViewSnapshot {
+  defaults?:Partial<RamanStokesParameters>;
+  parameters:RamanStokesParameters|null;
+  activityModeCount:number;
+  usableStokesModeCount:number;
+}
+
+export interface RamanViewPort {
+  read():RamanViewSnapshot;
+  apply(parameters:RamanStokesParameters):void;
+}
+
 export interface VibrationViewPatch {
   setIndex?:number;
   mode?:number;
@@ -24,6 +38,7 @@ export interface VibrationViewSnapshot {
   mode:number;
   hasDisplacements:boolean;
   amplitudeAngstrom:number;
+  raman?:RamanViewSnapshot;
   periodMs:number;
   playing:boolean;
   manualDisplacementAngstrom:number;
@@ -33,6 +48,7 @@ export interface VibrationViewSnapshot {
 export interface VibrationViewPort {
   read():VibrationViewSnapshot;
   configure(patch:VibrationViewPatch):void;
+  applyRaman?(parameters:RamanStokesParameters):void;
 }
 
 const workspaces=new WeakMap<object,Map<string,VibrationViewPort>>();

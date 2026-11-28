@@ -1,6 +1,8 @@
 import type { BaseElectronicStateValues } from '../../core/base-electronic-state';
 import type { ModelCoordinateObject, SharedModelConstraints } from '../../core/modeling/contracts';
 import type { Structure, Vector3 } from '../../core/types';
+import type { BondOrderObservation } from '../../core/modeling/contracts';
+import type { ComputeResourceEvidence, NetGpuBatchLimit, XtbResourceOverrides } from '../resource-preferences';
 
 export const PES_SCHEMA = 'es-pes/v1' as const;
 /** Execution semantics are versioned independently from the event envelope. */
@@ -40,6 +42,7 @@ export interface PesOptimizationInput {
   frozenAtomIds: string[];
   coordinates?: PesRequestBase['constraints']['coordinates'];
   parameters: Record<string, unknown>;
+  resourceOverrides?: Pick<XtbResourceOverrides,'xtbSingleTaskThreads'>;
   retainTrajectory?: boolean;
   device?: 'gpu' | 'cpu';
   solvation?: { model: 'alpb'; solvent: string };
@@ -69,6 +72,8 @@ export interface PesGeometry {
   label?: string;
   /** Card-owned immutable input, never a workspace document or persistent draft. */
   inputSnapshotId?: string;
+  /** PES group whose tab picker supplied this immutable card input. */
+  groupTabReference?: string;
   /** Imported/read-only scientific frame from which this editable geometry was created. */
   originFrame?: Readonly<import('../advanced/frame-source').AdvancedFrameRef>;
   /** The fixed force-field model of a selected scientific frame, independent of its coordinates. */
@@ -112,6 +117,7 @@ export interface PesRequestBase {
   parameters: Record<string, unknown> & { periodicPath?: PesPeriodicPath };
   threads?: number;
   memoryBudgetBytes?: number;
+  resourceOverrides?: XtbResourceOverrides;
   ffModel?: PesFfModel;
 }
 export type PesRequest = PesRequestBase & (
@@ -211,8 +217,9 @@ export type PesRunStatus = 'starting' | 'running' | 'stopping' | 'completed' | '
 export interface PesTerminalNumericAsset { id: string; bytesLength: number; sha256: string; shape: number[] }
 export interface PesTerminalNumericAssets { hessianMatrix?: PesTerminalNumericAsset; modeDisplacements?: PesTerminalNumericAsset }
 export type PesEvent = { schema: typeof PES_SCHEMA; runIdentity: PesRunIdentity; seq: number } & (
-  | { event: 'started' }
+  | { event: 'started'; resourceGrant?: ComputeResourceEvidence }
   | ({ event: 'evaluation-started' } & PesEvaluationStart)
+  | { event: 'net-batch'; size: number }
   | { event: 'optimization-timing'; timing: PesOptimizationTiming }
   | ({ event: 'progress' } & PesProgress)
   | { event: 'frame'; frame: PesFrame }
@@ -220,6 +227,25 @@ export type PesEvent = { schema: typeof PES_SCHEMA; runIdentity: PesRunIdentity;
   | { event: 'scan-point'; point: PesScanPoint }
   | { event: 'terminal'; workerSettled: true; status: 'completed' | 'stopped' | 'failed'; result?: PesResult; resultFrameIds?: string[]; resultNumericAssets?: PesTerminalNumericAssets; error?: PesRunError }
 );
+export interface PesRecoveryItem {
+  id: string;
+  runIdentity: PesRunIdentity;
+  operation: PesRequest['operation'];
+  method: PesRequest['method'];
+  status: 'completed';
+  frameCount: number;
+  pathRecordCount: number;
+  finishedAt: number;
+}
+export interface PesRecoveryCatalog {
+  recoveries: PesRecoveryItem[];
+  issues: { id: string; message: string }[];
+}
+export interface PesRecoveryClaim {
+  id: string;
+  request: PesRequest;
+  terminal: Extract<PesEvent, { event: 'terminal' }>;
+}
 export interface PesBridge {
   preparePes?(request: PesRequest): Promise<{ state: 'ready' | 'deferred'; provider?: string }>;
   startPes(request: PesRequest): Promise<void>;
@@ -229,6 +255,9 @@ export interface PesBridge {
   releasePesPathRecords?(runIdentity: PesRunIdentity): Promise<void>;
   readPesTerminalFrames?(request: { runIdentity: PesRunIdentity; offset: number; limit: number }): Promise<{ frames: PesFrame[]; offset: number; total: number; done: boolean }>;
   releasePesTerminalFrames?(runIdentity: PesRunIdentity): Promise<boolean>;
+  listPesRecovery?(): Promise<PesRecoveryCatalog>;
+  claimPesRecovery?(id: string): Promise<PesRecoveryClaim>;
+  closePesRecovery?(id: string): Promise<void>;
   readBinaryAsset?(id: string, offset: number, length: number): Promise<ArrayBuffer>;
   releaseBinaryAsset?(id: string): Promise<void>;
 }
@@ -240,6 +269,9 @@ export interface PesRun {
   status: PesRunStatus;
   nativeStarted?: true;
   nativeBackend?: string;
+  resourceGrant?: ComputeResourceEvidence;
+  /** Width of the latest real GPU gradient batch observed by this run. */
+  actualGpuBatchWidth?: number;
   workerSettled?: true;
   lastSeq: number;
   /** Preserve this ordinary optimization's native frame collection after adoption. */
@@ -261,6 +293,7 @@ export interface PesOptimizationGeometryCommit {
   runId:string;
   source:PesGeometry;
   geometry:PesGeometry;
+  bondOrderObservation?:BondOrderObservation;
 }
 export interface PesFrameSelection { runId: string; seriesId: string; frameId: string; recordId?: string }
 export interface PesNode {
@@ -276,7 +309,7 @@ export interface PesNode {
   /** Explicit same-page OPT/TS/Freq semantics, protected from older writers. */
   calcProfile?: typeof PES_CALC_PROFILE;
 }
-export interface PesMethodDraft { method: PesMethod; solvationModel: 'none' | 'alpb' | 'gbsa'; solvent: string; device?: 'gpu' | 'cpu' }
+export interface PesMethodDraft { method: PesMethod | 'gxtb'; solvationModel: 'none' | 'alpb' | 'gbsa'; solvent: string; device?: 'gpu' | 'cpu' }
 export interface PesExpressionDraft { coordinates: (PesCoordinate & { nameDraft?: string })[]; expression: string }
 export interface PesAxis {
   id: string;
@@ -320,6 +353,8 @@ export interface PesCard {
   scanCoordinateDrafts?: { id: string; name: string; atomText: string; automaticName?: boolean }[];
   scanCoordinateOrder?: string[];
   scanConvergencePreset?: 'loose' | 'medium' | 'tight' | 'custom';
+  resourceOverrides?: XtbResourceOverrides;
+  netGpuBatchLimit?: NetGpuBatchLimit;
   parametersByAlgorithm: Record<string, PesParameters>;
   eventsByAlgorithm: Record<string, PesEventDraft>;
   runIds: string[];
@@ -330,6 +365,7 @@ export interface PesTsDraft {
   method: PesMethodDraft;
   reaction: PesExpressionDraft;
   parametersByAlgorithm: Record<string, PesParameters>;
+  resourceOverrides?: Pick<XtbResourceOverrides,'xtbSingleTaskThreads'>;
   /** Shared only by Sella P-RFO/RFO/QN; other algorithms keep their own coordinates. */
   sellaCoordinateSystem?: PesSellaCoordinateSystem;
 }
@@ -343,6 +379,8 @@ export interface PesGroup {
   id: string;
   name: string;
   initialNodeId: string;
+  /** Atom numbering at group creation, used for adding ordinary tab candidates. */
+  initialElementSequence?: readonly string[];
   activeNodeId: string;
   nodes: PesNode[];
   cards: PesCard[];
@@ -350,6 +388,8 @@ export interface PesGroup {
   cardDrafts?: Record<string, PesCard>;
   runs: Record<string, PesRun>;
   electronic: { charge: string; multiplicity: string; confirmed?: BaseElectronicStateValues; sourceKey?: string;
+    drafts?: Record<string, { charge: string; multiplicity: string }>;
+    pendingUnscopedEdit?: boolean;
     confirmationHistory?: Record<string, BaseElectronicStateValues> };
   submittedComposition?: Record<string, number>;
   constraints: SharedModelConstraints;
@@ -363,6 +403,14 @@ export function pesCardParameterDraft(card: PesCard): PesCard {
   return { ...card, slots: {}, mappings: {}, requiredSlots: [...new Set([
     ...(card.requiredSlots ?? []), ...Object.keys(card.slots).filter(key => card.slots[key] !== undefined),
   ])] };
+}
+
+/** Active cards can reopen their explicit group selections. Other transient
+ * picks and inactive method drafts retain the existing recapture behavior. */
+export function persistedPesCard(groupId: string, card: PesCard): PesCard {
+  return { ...pesCardParameterDraft(card), slots: Object.fromEntries(
+    Object.entries(card.slots).filter(([, source]) => source?.groupTabReference === groupId),
+  ) };
 }
 
 /** Used by project persistence to protect drafts and immutable new-method runs. */

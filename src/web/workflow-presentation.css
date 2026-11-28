@@ -1,18 +1,12 @@
-/* One presentation for both input workflows; engine state stays in its caller. */
+/* One presentation for both input workflows; derives cleanly from all 6 light themes. */
 .workflow-choice-picker,.workflow-content-card[data-workflow-content=choice] {
   --workflow-choice-heading-ink:var(--ui-section-ink);--workflow-choice-group-ink:var(--ui-section-ink);
   --workflow-choice-item-ink:var(--ui-section-ink);--workflow-choice-code-ink:var(--ui-note-ink);--workflow-choice-icon-ink:var(--ui-section-ink);
-  --workflow-choice-active-ink:#147d75;--workflow-choice-selected-bg:#e8f9ee;
-  --workflow-choice-mark:#226d4c;--workflow-choice-border:#c5d8cd;
-  --workflow-choice-selected-secondary-border:var(--workflow-choice-mark);
-  --workflow-choice-badge-bg:var(--ui-control-selected-bg);
-  --workflow-choice-disabled-ink:#467672;--workflow-choice-disabled-bg:#f0f3f2;
-}
-:root[data-interface-theme=clear] :is(.workflow-choice-picker,.workflow-content-card[data-workflow-content=choice]) { --workflow-choice-selected-bg:#effaf6;--workflow-choice-mark:#176956;--workflow-choice-border:#c1d7ce; }
-/* Mint roles follow the selected soft preview; clear keeps its existing palette. */
-:root[data-interface-theme=mint] :is(.workflow-choice-picker,.workflow-content-card[data-workflow-content=choice]) {
-  --workflow-choice-selected-bg:#eff5f2;--workflow-choice-mark:#91ac9d;
-  --workflow-choice-selected-secondary-border:#b5c8bd;--workflow-choice-badge-bg:#fbfdfb;
+  --workflow-choice-active-ink:var(--ui-control-selected-ink);--workflow-choice-selected-bg:var(--ui-control-selected-bg);
+  --workflow-choice-mark:var(--ui-control-accent);--workflow-choice-border:var(--ui-surface-border);
+  --workflow-choice-selected-secondary-border:var(--ui-tool-selected-border);
+  --workflow-choice-badge-bg:var(--ui-action-tonal-bg);
+  --workflow-choice-disabled-ink:var(--ui-action-disabled-ink);--workflow-choice-disabled-bg:var(--ui-action-disabled-bg);
 }
 .input-task-picker .task-card.shared-task-choice.selected:enabled,
 .input-task-picker .task-card.shared-task-choice.selected:disabled,
@@ -58,15 +52,10 @@
 .workflow-header,.workflow-steps,.workflow-content-card,.workflow-session-bar{--workflow-font-size:var(--ui-primary-size,16px);--workflow-caption-size:var(--ui-control-font);--workflow-small-size:var(--ui-small-size,13px);--workflow-control-height:var(--ui-control-height);--workflow-control-radius:var(--ui-control-radius);--workflow-border:var(--ui-control-border);--workflow-color:var(--ui-control-ink);--workflow-muted:var(--ui-control-muted)}
 .workflow-header,.workflow-steps{font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family);color:var(--workflow-color)}
 .workflow-content-card{min-width:0;min-height:0;display:flex;flex-direction:column;color:var(--workflow-color);font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family)}
-.workflow-content-card.form-card { background:var(--ui-page-bg); border-color:var(--ui-surface-border); border-radius:var(--ui-window-radius); }
-:root[data-interface-theme=mixed] .workflow-content-card.form-card { background:var(--ui-surface-bg); }
-:root[data-interface-theme=mixed] :is(.workflow-choice-picker,.workflow-content-card[data-workflow-content=choice]) {
-  --workflow-choice-active-ink:var(--ui-section-ink);--workflow-choice-selected-bg:var(--ui-control-selected-bg);
-  --workflow-choice-mark:var(--ui-control-accent);--workflow-choice-border:var(--ui-surface-border);
-}
-.workflow-content-card.form-card:has(.generated-input-editor) { background:#fff; }
-.workflow-content-card:has(.generated-input-editor) .engine-input-preview.native-input-preview { background:#fff; }
-.workflow-content-card.form-card:has(.software-chooser) { border-radius:14px; }
+.workflow-content-card.form-card { background:var(--ui-surface-bg); border-color:var(--ui-surface-border); border-radius:var(--ui-window-radius); box-shadow:var(--ui-card-shadow); }
+.workflow-content-card.form-card:has(.generated-input-editor) { background:var(--ui-surface-bg); }
+.workflow-content-card:has(.generated-input-editor) .engine-input-preview.native-input-preview { background:var(--ui-surface-bg); }
+.workflow-content-card.form-card:has(.software-chooser) { border-radius:var(--ui-window-radius); }
 .workflow-content-card>.engine-parameter-scroll{min-width:0;min-height:0;flex:1;overflow:auto}
 .app-shell .unified-workbench-grid>.workflow-content-card[data-workflow-content=choice],
 .workspace-workflow-panel .workflow-content-card[data-workflow-content=choice],
@@ -74,14 +63,14 @@
   align-self:start; flex:0 1 auto; height:auto;
 }
 .workflow-content-card[data-workflow-content=choice]>.engine-parameter-scroll { flex:0 1 auto; }
-.workflow-content-card>.engine-parameter-scroll>.card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-bottom:1px solid #eff2f4}
+.workflow-content-card>.engine-parameter-scroll>.card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-bottom:1px solid var(--ui-surface-border)}
 .workflow-content-card .heading-with-number{display:flex;align-items:flex-start;min-width:0;gap:12px}
-.workflow-content-card .heading-with-number h2{margin:0;color:#26364b;font-size:var(--workflow-font-size);font-weight:600;line-height:1.5}
+.workflow-content-card .heading-with-number h2{margin:0;color:var(--ui-section-ink);font-size:var(--workflow-font-size);font-weight:600;line-height:1.5}
 .workflow-content-card .heading-with-number p,.workflow-description{margin:4px 0 0;color:var(--workflow-muted);font-size:var(--ui-control-font);line-height:var(--ui-control-line)}
-.workflow-content-card .section-number{flex:none;color:#9cb2ac;font-size:var(--workflow-small-size);font-weight:400;line-height:22px;letter-spacing:1px}
-.workflow-content-card .small-step{flex:none;white-space:nowrap;color:#b6c0c9;font:var(--workflow-small-size)/22px monospace}
+.workflow-content-card .section-number{flex:none;color:var(--ui-note-ink);font-size:var(--workflow-small-size);font-weight:500;line-height:22px;letter-spacing:1px}
+.workflow-content-card .small-step{flex:none;white-space:nowrap;color:var(--ui-note-ink);font:var(--workflow-small-size)/22px monospace}
 .workflow-card-actions{display:flex;align-items:center;gap:6px}
-.workflow-session-bar,.workspace-workflow-panel .workflow-session-bar{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex:none;min-height:round(up,calc(44px * var(--ui-font-scale,1)),1px);padding:6px 8px;border-bottom:1px solid var(--ui-surface-border);min-width:0;font:600 var(--ui-primary-size,16px)/var(--ui-title-line) var(--ui-font-family)}
+.workflow-session-bar,.workspace-workflow-panel .workflow-session-bar{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex:none;min-height:round(up,calc(44px * var(--ui-font-scale,1)),1px);padding:6px 10px;border-bottom:1px solid var(--ui-surface-border);min-width:0;font:600 var(--ui-primary-size,16px)/var(--ui-title-line) var(--ui-font-family)}
 .workflow-session-bar>span{min-width:0;overflow-wrap:anywhere}
 /* Active advanced-task headings use the same interface title role as inputs.
    Scope to navigation titles so scientific plot text keeps its own palette. */
@@ -89,18 +78,19 @@
   color:var(--ui-section-ink);
 }
 .workflow-session-actions{display:flex;gap:8px;flex-wrap:wrap;font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family)}
-.input-workflow-header.topbar{height:auto;min-height:round(up,calc(44px * var(--ui-font-scale,1)),1px);flex-shrink:0;padding:6px 8px;gap:8px;background:#fff}
+.input-workflow-header.topbar{height:auto;min-height:round(up,calc(44px * var(--ui-font-scale,1)),1px);flex-shrink:0;padding:6px 10px;gap:8px;background:var(--ui-surface-bg);border-bottom:1px solid var(--ui-surface-border)}
 .input-workflow-header .breadcrumb>strong{font:600 var(--ui-primary-size,16px)/var(--ui-title-line) var(--ui-font-family)}
 .input-workflow-header .breadcrumb>span,.input-workflow-header .breadcrumb>svg,.input-workflow-header .avatar{display:none}
 .input-workflow-header .breadcrumb{min-width:0;gap:8px}
 .input-workflow-header .topbar-actions{gap:8px;flex-wrap:wrap}
-.input-workflow-header .engine-switch button{border:0;border-radius:var(--ui-control-radius);background:transparent;color:#284250;padding:var(--ui-control-padding);min-height:var(--ui-control-height);font-size:var(--ui-control-font)}
-.input-workflow-header .engine-switch button[aria-pressed=true]{background:var(--ui-control-selected-bg);color:#147d75}
+.input-workflow-header .engine-switch button{border:0;border-radius:var(--ui-control-radius);background:transparent;color:var(--ui-control-muted);padding:var(--ui-control-padding);min-height:var(--ui-control-height);font-size:var(--ui-control-font);transition:var(--ui-transition)}
+.input-workflow-header .engine-switch button:hover:not(:disabled){background:var(--ui-control-hover-bg);color:var(--ui-control-ink)}
+.input-workflow-header .engine-switch button[aria-pressed=true]{background:var(--ui-control-selected-bg);color:var(--ui-control-selected-ink);font-weight:600}
 .input-workflow-steps.stepper{padding:0;max-width:580px;min-height:30px;margin:3px 0 7px}
 .input-workflow-steps .step{display:flex;align-items:center;flex:1;flex-direction:row;gap:6px;border:0;border-radius:0;background:transparent;padding:0;min-height:var(--ui-control-height);color:var(--ui-control-muted);font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family);white-space:normal}
 .input-workflow-steps .step-number{inline-size:calc(20px * var(--ui-font-scale,1));block-size:calc(20px * var(--ui-font-scale,1));flex:none}
 .input-workflow-steps .step:last-child{flex:0 0 auto}
-.input-workflow-steps .step.current{color:#147d75;font-weight:600}
+.input-workflow-steps .step.current{color:var(--ui-section-ink);font-weight:600}
 :root[data-interface-theme=mint] .workflow-steps {
   --workflow-current-step-bg:#e6f0ea;--workflow-current-step-ink:#304e40;--workflow-current-step-ring:#cbdad1;
   --workflow-current-step-halo:#f3f7f5;--workflow-current-step-outer-halo:#f5f8f6;

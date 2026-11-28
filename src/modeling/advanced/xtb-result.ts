@@ -49,6 +49,9 @@ export function validateAdvancedXtbResult(request: XtbRequest, coordinates: read
       : metadata.maxSteps === request.maxSteps))
     && (!request.optimizationPool || metadata.threads===1)
     && metadata.maxWallTimeSeconds === request.maxWallTimeSeconds, '高级任务完成方法、资源、单位或电子态回执不匹配。');
+  if(request.nativeOptimizationPreset!==undefined)requireValue(metadata.optimizer==='rf'&&
+    metadata.nativeOptimizationPreset===request.nativeOptimizationPreset&&metadata.electronicAccuracy===1,
+    '构象原生 RF 的优化器、收敛档或电子结构精度与提交请求不符。');
   if(request.method==='gxtb')requireValue(metadata.engineIdentity?.runtimeVariant==='gxtb'
     && (metadata.engineIdentity.version===metadata.version||metadata.engineIdentity.kind==='external-user-program'&&metadata.engineIdentity.version===null)
     && (typeof metadata.engineIdentity.gxtbRelease==='string'||metadata.engineIdentity.kind==='external-user-program'&&metadata.engineIdentity.gxtbRelease===null)

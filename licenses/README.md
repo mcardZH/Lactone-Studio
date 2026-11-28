@@ -1,4 +1,4 @@
-# Ester Studio 2.1.3 第三方许可与来源材料
+# Ester Studio 2.1.4 第三方许可与来源材料
 
 本目录提供本版本的许可和署名材料。`publicDistributionApproved` 仍为 false；发布身份及对应源码须由最终候选复核。
 
@@ -16,4 +16,4 @@
 `SOURCE_INDEX.json` 对本目录逐成员给出字节数和 SHA-256，自身不列入。`SAME_BODY_INDEX.json` 只对确实原字节复制的许可材料声明原文未改。
 配套源码准备见 `../third-party/corresponding-sources/pes/SOURCE-MATERIALS.json`；该相对路径对应同版源码附件。有限体系成键加速器的 C 源码及构建控制见 desktop/chemistry/finite_empirical_accel.c 与 scripts/native/finite_empirical_extension.py。
 
-源码、构建和替换材料见同版本配套附件 `Ester-Studio-v2.1.3-source-code.zip`。文中 `../third-party/` 与 `../scripts/` 路径相对于该源码附件，不表示它们已嵌入便携目录。
+源码、构建和替换材料见同版本配套附件 `Ester-Studio-v2.1.4-source-code.zip`。文中 `../third-party/` 与 `../scripts/` 路径相对于该源码附件，不表示它们已嵌入便携目录。

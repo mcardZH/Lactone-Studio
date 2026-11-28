@@ -60,6 +60,19 @@ public static class ESProcessOwner {
     string command=Command(process); int count; IntPtr argv=CommandLineToArgvW(command,out count); if(argv==IntPtr.Zero) throw Error("CommandLineToArgvW"); var arguments=new string[count]; try { for(int i=0;i<count;i++) arguments[i]=Marshal.PtrToStringUni(Marshal.ReadIntPtr(argv,i*IntPtr.Size)); } finally { LocalFree(argv); }
     return new Dictionary<string,object> { {"pid",pid},{"startedAt",DateTime.FromFileTimeUtc(created).ToString("o")},{"creationFileTime",created.ToString()},{"userId",sid},{"executableIdentity",name.ToString()},{"commandLine",command},{"argv",arguments},{"bootId",BootId()} };
   }
+  public static Dictionary<string,object> InspectWriter(uint pid) {
+    const uint querySynchronize=0x101000,signaled=0,timeout=258;
+    IntPtr process=OpenProcess(querySynchronize,false,pid);
+    if(process==IntPtr.Zero) return new Dictionary<string,object>{{"pid",pid},{"status",Marshal.GetLastWin32Error()==87 ? "dead":"unknown"}};
+    try {
+      long created,exited,kernel,user;
+      bool read=GetProcessTimes(process,out created,out exited,out kernel,out user);
+      uint state=WaitForSingleObject(process,0);
+      if(state==signaled) return new Dictionary<string,object>{{"pid",pid},{"status","dead"}};
+      if(!read || state!=timeout) return new Dictionary<string,object>{{"pid",pid},{"status","unknown"}};
+      return new Dictionary<string,object>{{"pid",pid},{"status","alive"},{"creationFileTime",created.ToString()}};
+    } finally { CloseHandle(process); }
+  }
   public static Dictionary<string,object> Inspect(uint pid) {
     const uint queryReadSynchronize=0x101010,signaled=0,timeout=258;
     IntPtr process=OpenProcess(queryReadSynchronize,false,pid); if(process==IntPtr.Zero) { int error=Marshal.GetLastWin32Error(); return new Dictionary<string,object>{{"status",error==87 ? "dead":"unknown"},{"pid",pid},{"win32Error",error}}; }

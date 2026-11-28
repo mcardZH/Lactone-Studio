@@ -817,6 +817,11 @@ export function assembleMacAppBundle(options = {}) {
   const licensesDir = path.join(repoRoot, 'licenses');
   if (fs.existsSync(licensesDir)) copyTreePreservingSymlinks(licensesDir, path.join(appResourcesPath, 'licenses'));
 
+  const assistantSkillsDir = path.join(repoRoot, 'skills', 'ester-studio');
+  if (fs.existsSync(assistantSkillsDir)) {
+    copyTreePreservingSymlinks(assistantSkillsDir, path.join(resourcesPath, 'skills', 'ester-studio'));
+  }
+
   for (const relOcrDir of ['runtime/ocr-components', 'ocr-components']) {
     const srcOcrDir = path.join(repoRoot, relOcrDir);
     if (fs.existsSync(srcOcrDir)) copyTreePreservingSymlinks(srcOcrDir, path.join(appResourcesPath, relOcrDir));

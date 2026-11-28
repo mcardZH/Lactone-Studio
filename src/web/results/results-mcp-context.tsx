@@ -1,12 +1,13 @@
-import {createContext,useContext,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
+import {createContext,useContext,useLayoutEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import type {TrajectoryResult} from '../../results/contracts';
-import type {PlotFigureEdits,PlotFontStyle,PlotPointStyle,PlotSeriesStyle,PlotStyle} from '../../results/scientific-plot-editing';
+import type {PlotFigureEdits,PlotFontStyle,PlotPointStyle,PlotPosition,PlotSeriesStyle,PlotStroke,PlotStyle} from '../../results/scientific-plot-editing';
 import type {ScientificPlotViewport} from '../../results/scientific-plot';
 import type {AnalysisPage} from './PostprocessDisplayPanel';
 import type {AnalysisWorkspaceState} from './analysis-workspace';
 import type {ViewportImageExportOptions} from './export-image';
 import type {AnalysisAsset} from './analysis-mcp-assets';
 import type {ViewportRenderIdentity} from '../modeling/render/render-completion';
+import {VibronicSha256} from '../../core/gaussian-vibronic/sha256-stream';
 
 export interface ResultStageIdentity {sourceId:string;jobIndex:number;stageId:string;sourceResultId:string}
 
@@ -22,6 +23,8 @@ export interface ResultViewPort {
   analysisKey:string;
   stage?:ResultStageIdentity;
   revealPlotStage?(plot:{resultId:string;source?:TrajectoryResult['source'];jobIndex?:number|null}):boolean;
+  seekFrame?(index:number):void;
+  camera?:import('../mcp/result-camera').NativeResultCameraPort;
   scene?():ViewportRenderIdentity|undefined;
   workspaceCapture?:boolean;
   capture?(options:ViewportImageExportOptions,signal:AbortSignal):Promise<Blob>;
@@ -33,6 +36,7 @@ export interface AnalysisViewPort {
   stageFor?(page:AnalysisPage):ResultStageIdentity|undefined;
   unavailableReason?(page:AnalysisPage):string|undefined;
   control?(action:AnalysisPanelAction):void|Promise<void>;
+  captureBounds?(panelId:string):{x:number;y:number;width:number;height:number}|undefined;
 }
 
 export type AnalysisPanelAction = {action:'close'|'detach'|'dock'|'activate';panelId:string} | {action:'layout';mode:AnalysisWorkspaceState['mode']};
@@ -60,6 +64,10 @@ export interface AnalysisRunPort {
 
 export type PlotExportFormat='svg'|'png'|'txt'|'raw';
 export type PlotEdit = {operation:'undo'|'redo'} | {operation:'text';role:'title'|'x'|'y';text:string}
+  | {operation:'insert-text';text:string;position?:PlotPosition}
+  | {operation:'edit-text';textId:string;text?:string;position?:PlotPosition|null}
+  | {operation:'remove-text';textId:string}
+  | {operation:'move-figure';position:PlotPosition|null}
   | {operation:'axis-range';axis:'x'|'y';bounds:[number,number]|null}
   | {operation:'axis-step';axis:'x'|'y';step:number|null}
   | {operation:'axes-style';patch:Partial<PlotStyle['axis']>}
@@ -67,11 +75,13 @@ export type PlotEdit = {operation:'undo'|'redo'} | {operation:'text';role:'title
   | {operation:'point-style';seriesId:string;pointIndex?:number;patch:Partial<PlotPointStyle>}
   | {operation:'font';textId:string;patch:Partial<PlotFontStyle>}
   | {operation:'legend';visible:boolean}
-  | {operation:'add-guide';axis:'x'|'y';value:number;label?:string}
+  | {operation:'add-guide';axis:'x'|'y';value:number;label?:string;stroke?:Partial<PlotStroke>}
+  | {operation:'edit-guide';guideId:string;patch:Partial<PlotStroke>&{value?:number;label?:string|null}}
   | {operation:'remove-guide';guideId:string};
 export interface PlotPartCapabilities {
   editOperations:PlotEdit['operation'][];
   textIds:string[];
+  removableTextIds?:string[];
   series:{id:string;label?:string;pointCount:number;lineStyle:boolean;pointStyle:boolean}[];
   guideIds?:string[];
 }
@@ -92,17 +102,21 @@ export interface PlotPort {
   savePreset?(label:string):string;
   defaultPreset?(id:string):void;
   configuration?:Record<string,NativeMcpSettings>;
+  point?(seriesId:string,pointIndex:number,action:'read'|'select'):unknown;
+  canSelectPoint?:boolean;
   export(format:PlotExportFormat,signal:AbortSignal):Promise<{blob:Blob;filename:string}>;
   isVisible?():boolean;
 }
 
 interface PlotScope {
-  id:string;source?:TrajectoryResult['source'];ownerId?:string;resultId?:string;rootResultId?:string;jobId?:string;jobIndex?:number|null;frameIndex?:number;inline?:boolean;
+  id:string;source?:TrajectoryResult['source'];ownerId?:string;resultId?:string;rootResultId?:string;jobId?:string;jobIndex?:number|null;
+  frameIndex?:number;sourceFrameIndex?:number;inline?:boolean;
   kind?:string; reference?:string; analysisSourceKey?:string; analysisId?:string;
   collectionId?:string;runId?:string;stageId?:string;
   display?:{eligible:boolean;visible:boolean;active:boolean;activate():void;minimize?():void;close?():void;
     layout?:'free'|'tiled';setLayout?(mode:'free'|'tiled',arrange:boolean):void};
 }
+type PlotRecoverySource=Omit<PlotScope,'display'>;
 const PlotScopeContext=createContext<PlotScope|null>(null);
 interface AnalysisFamily {current:string;available:string[];choose(value:string):void}
 const AnalysisFamilyContext=createContext<AnalysisFamily|null>(null);
@@ -130,14 +144,17 @@ export function ResultsMcpPlotScope({scope,children}:{scope:PlotScope;children:R
   return <PlotScopeContext.Provider value={scope}>{children}</PlotScopeContext.Provider>;
 }
 
-export function ResultsMcpInlinePlotDisplay({display,children}:{display:NonNullable<PlotScope['display']>;children:ReactNode}) {
+export function ResultsMcpInlinePlotDisplay({display,analysisId,children}:{display:NonNullable<PlotScope['display']>;analysisId?:string;children:ReactNode}) {
   const scope=useContext(PlotScopeContext);
-  return scope?.inline?<PlotScopeContext.Provider value={{...scope,display}}>{children}</PlotScopeContext.Provider>:children;
+  return scope?.inline?<PlotScopeContext.Provider value={{...scope,display,analysisId:analysisId??scope.analysisId}}>{children}</PlotScopeContext.Provider>:children;
 }
 
-export function ResultsMcpInlinePlotSource({kind,analysisId,children}:{kind:string;analysisId?:string;children:ReactNode}) {
+export function ResultsMcpInlinePlotSource({kind,analysisId,collectionId,runId,children}:{
+  kind:string;analysisId?:string;collectionId?:string;runId?:string;children:ReactNode;
+}) {
   const scope=useContext(PlotScopeContext);
-  return scope?.inline?<PlotScopeContext.Provider value={{...scope,kind,analysisId}}>{children}</PlotScopeContext.Provider>:children;
+  return scope?.inline?<PlotScopeContext.Provider value={{...scope,kind,analysisId:analysisId??scope.analysisId,
+    collectionId:collectionId??scope.collectionId,runId:runId??scope.runId}}>{children}</PlotScopeContext.Provider>:children;
 }
 
 export interface NativePlotSource {
@@ -152,12 +169,13 @@ export function createResultsMcpRegistry() {
   const analysisViews=new Map<string,AnalysisViewPort>();
   const runs=new Map<string,AnalysisRunPort>();
   const plots=new Map<string,PlotEntry>();
+  const retiredPlots=new Map<string,PlotRecoverySource>();
   const plotSources=new Map<string,NativePlotSource>();
   const listeners=new Set<(id:string,revision?:number)=>void>();
   const viewListeners=new Set<()=>void>();
   let revision=0;
   return {
-    resultViews,analysisViews,runs,plots,plotSources,
+    resultViews,analysisViews,runs,plots,retiredPlots,plotSources,
     watchViews(listener:()=>void){viewListeners.add(listener);return ()=>{viewListeners.delete(listener);};},
     updateViews(){for(const listener of viewListeners)listener();},
     watchPlots(listener:(id:string,revision?:number)=>void){listeners.add(listener);return ()=>{listeners.delete(listener);};},
@@ -167,16 +185,23 @@ export function createResultsMcpRegistry() {
       const changed=!previous||existing?.figureIdentity!==figureIdentity||previous.figure!==next.figure||previous.title!==next.title||previous.xLabel!==next.xLabel||previous.yLabel!==next.yLabel
         ||existing?.source?.id!==scope.source?.id||existing?.source?.sha256!==scope.source?.sha256||existing?.resultId!==scope.resultId||existing?.jobIndex!==scope.jobIndex||existing?.frameIndex!==scope.frameIndex
         ||existing?.kind!==scope.kind||existing?.reference!==scope.reference||existing?.analysisSourceKey!==scope.analysisSourceKey
+        ||existing?.analysisId!==scope.analysisId||existing?.collectionId!==scope.collectionId||existing?.runId!==scope.runId
         ||existing?.configurationIdentity!==configurationIdentity
         ||previous.range?.x[0]!==next.range?.x[0]||previous.range?.x[1]!==next.range?.x[1]||previous.range?.y[0]!==next.range?.y[0]||previous.range?.y[1]!==next.range?.y[1];
       const entry={...scope,port,figureIdentity,configurationIdentity,revision:changed?++revision:existing!.revision};
+      retiredPlots.delete(scope.id);
       plots.set(scope.id,entry);
       if(changed)for(const listener of listeners)listener(scope.id,entry.revision);
       if(changed||existing?.display?.eligible!==scope.display?.eligible||existing?.display?.visible!==scope.display?.visible||existing?.display?.active!==scope.display?.active)for(const listener of viewListeners)listener();
       return entry;
     },
     removePlot(id:string,port:PlotPort){
-      if(plots.get(id)?.port!==port)return;
+      const entry=plots.get(id);
+      if(entry?.port!==port)return;
+      if(entry.inline&&entry.ownerId&&entry.source&&['uv-vis','scan-energy','pes-path-energy'].includes(entry.kind??'')){
+        const {port:_port,display:_display,revision:_revision,figureIdentity:_figure,configurationIdentity:_configuration,...scope}=entry;
+        retiredPlots.set(id,scope);
+      }
       plots.delete(id);
       for(const listener of listeners)listener(id);
       for(const listener of viewListeners)listener();
@@ -217,8 +242,16 @@ export function ResultsMcpPortRegistration<K extends 'resultViews'|'analysisView
   return null;
 }
 
-export function ResultsMcpPlotRegistration({port,chartId,figureIdentity}:{port:PlotPort;chartId:string;figureIdentity?:string|number}) {
-  const registry=useResultsMcp(),scope=useContext(PlotScopeContext),id=scope?.inline?`${scope.id}:${chartId}`:scope?.id;
+export function ResultsMcpPlotRegistration({port,chartId,figureIdentity,chartKey}:{port:PlotPort;chartId:string;figureIdentity?:string|number;chartKey?:string}) {
+  const registry=useResultsMcp(),scope=useContext(PlotScopeContext);
+  const stableId=useMemo(()=>{
+    if(!scope?.inline||scope.kind!=='uv-vis'||!scope.ownerId||!scope.source||!chartKey)return;
+    const hash=new VibronicSha256();
+    hash.update(new TextEncoder().encode(JSON.stringify([scope.ownerId,scope.resultId,scope.source.id,scope.source.sha256,
+      scope.jobIndex,scope.frameIndex,chartKey])));
+    return 'uv-vis-'+hash.digest().slice(0,32);
+  },[scope?.inline,scope?.kind,scope?.ownerId,scope?.resultId,scope?.source?.id,scope?.source?.sha256,scope?.jobIndex,scope?.frameIndex,chartKey]);
+  const id=stableId??(scope?.inline?`${scope.id}:${chartId}`:scope?.id);
   const published=useRef(port);
   useLayoutEffect(()=>{published.current=port;if(id&&scope)registry?.publishPlot({...scope,id},port,figureIdentity);});
   useLayoutEffect(()=>()=>{if(id)registry?.removePlot(id,published.current);},[registry,id]);

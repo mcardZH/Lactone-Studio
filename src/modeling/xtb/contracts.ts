@@ -43,6 +43,8 @@ export interface XtbRequest {
   threads?: number;
   maxSteps?: number;
   optimizationStepPolicy?: 'native-default';
+  /** Trusted adapter setting for an explicit molecular RF stage. */
+  nativeOptimizationPreset?: 'loose'|'normal'|'tight';
   maxSccIterations?: number;
   maxWallTimeSeconds?: number;
   empiricalBondParameters?: EmpiricalBondPerceptionParameters;
@@ -94,6 +96,8 @@ export interface XtbMetadata {
   energyUnit: 'hartree'; coordinateUnit: 'angstrom';
   engine: 'xtb' | 'tblite'; version: string; method: XtbMethod;
   optimizer?: 'rf'|'inertial';
+  nativeOptimizationPreset?: XtbRequest['nativeOptimizationPreset'];
+  electronicAccuracy?: number;
   engineIdentity?: Record<string,unknown>;
   ffModelRuntime?: Record<string,unknown>;
   charge: number; uhf: number | null; spinTreatment: string;

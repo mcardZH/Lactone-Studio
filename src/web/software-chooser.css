@@ -5,20 +5,21 @@
 .software-chooser-heading p:empty{display:none}
 .software-chooser-heading h2{margin:0 0 8px;font:600 var(--ui-primary-size,16px)/var(--ui-title-line) var(--ui-font-family);color:var(--workflow-choice-group-ink,#293f4c)}
 .software-chooser-heading p{margin:0 0 12px;color:var(--ui-control-muted);line-height:var(--ui-control-line);font-size:var(--ui-control-font)}
-.software-choice-card{appearance:none;display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:8px;padding:12px;border:1px solid var(--workflow-choice-border,#c5d8cd);border-radius:12px;background:#fff;color:var(--ui-control-ink);text-align:left;font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family);transition:border-color .15s,background .15s}
+.software-choice-card{appearance:none;display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:8px;padding:13px;border:1px solid var(--workflow-choice-border,var(--ui-surface-border));border-radius:var(--ui-surface-radius);background:var(--ui-surface-bg);color:var(--ui-control-ink);text-align:left;font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family);transition:var(--ui-transition)}
 button.software-choice-card{cursor:pointer}
-button.software-choice-card:enabled{color:var(--workflow-choice-item-ink,#284250)}
-button.software-choice-card:hover:not(:disabled){border-color:var(--ui-control-accent);background:var(--ui-control-hover-bg)}
+button.software-choice-card:enabled{color:var(--workflow-choice-item-ink,var(--ui-section-ink))}
+button.software-choice-card:hover:not(:disabled){border-color:var(--ui-control-accent);background:var(--ui-control-hover-bg);box-shadow:var(--ui-card-hover-shadow);transform:translateY(-1px)}
+:root[data-interface-surface=flat] button.software-choice-card:hover:not(:disabled){transform:none}
 button.software-choice-card:focus-visible{outline:2px solid var(--ui-control-focus);outline-offset:2px}
-.software-choice-card:disabled,.software-chooser.workflow-choice-picker button.software-choice-card:disabled{color:var(--workflow-choice-disabled-ink,#467672);background:var(--workflow-choice-disabled-bg,#f0f3f2);border-color:var(--workflow-choice-border,#c5d8cd);border-style:dashed;opacity:1;cursor:not-allowed}
-.software-choice-symbol{display:grid;place-items:center;width:calc(38px * var(--ui-font-scale,1));height:calc(38px * var(--ui-font-scale,1));background:#e8f3ec;color:var(--ui-control-selected-ink);border-radius:10px;font-size:calc(24px * var(--ui-font-scale,1));font-weight:700}
-button.software-choice-card:enabled .software-choice-symbol{background:var(--workflow-choice-badge-bg,var(--ui-control-selected-bg));color:var(--ui-section-ink)}
+.software-choice-card:disabled,.software-chooser.workflow-choice-picker button.software-choice-card:disabled{color:var(--workflow-choice-disabled-ink,var(--ui-action-disabled-ink));background:var(--workflow-choice-disabled-bg,var(--ui-action-disabled-bg));border-color:var(--ui-action-disabled-border);border-style:dashed;opacity:1;cursor:not-allowed;box-shadow:none}
+.software-choice-symbol{display:grid;place-items:center;width:calc(38px * var(--ui-font-scale,1));height:calc(38px * var(--ui-font-scale,1));background:var(--ui-action-tonal-bg);color:var(--ui-control-selected-ink);border-radius:var(--ui-subcard-radius);font-size:calc(24px * var(--ui-font-scale,1));font-weight:700}
+button.software-choice-card:enabled .software-choice-symbol{background:var(--workflow-choice-badge-bg,var(--ui-action-tonal-bg));color:var(--ui-section-ink)}
 .software-choice-card strong{font-size:var(--ui-primary-size,16px);line-height:var(--ui-title-line);font-weight:600;overflow-wrap:anywhere}
 .software-choice-card p{font-size:var(--ui-control-font);line-height:var(--ui-control-line);color:var(--ui-control-muted);margin:0}
-.software-choice-action{margin-top:auto;font-size:var(--ui-control-font);line-height:var(--ui-control-line);font-weight:600;color:var(--workflow-choice-active-ink,#147d75)}
-.software-choice-pending{background:var(--workflow-choice-disabled-bg,#f0f3f2);color:var(--workflow-choice-disabled-ink,#467672);border-style:dashed}
-.software-choice-card:is(:disabled,.software-choice-pending) :is(strong,p,.software-choice-symbol,.software-choice-action){color:var(--workflow-choice-disabled-ink,#467672)}
-.software-choice-card:is(:disabled,.software-choice-pending) .software-choice-symbol{background:#e5eae8}
+.software-choice-action{margin-top:auto;font-size:var(--ui-control-font);line-height:var(--ui-control-line);font-weight:600;color:var(--workflow-choice-active-ink,var(--ui-action-primary-bg))}
+.software-choice-pending{background:var(--workflow-choice-disabled-bg,var(--ui-action-disabled-bg));color:var(--workflow-choice-disabled-ink,var(--ui-action-disabled-ink));border-style:dashed}
+.software-choice-card:is(:disabled,.software-choice-pending) :is(strong,p,.software-choice-symbol,.software-choice-action){color:var(--workflow-choice-disabled-ink,var(--ui-action-disabled-ink))}
+.software-choice-card:is(:disabled,.software-choice-pending) .software-choice-symbol{background:var(--ui-action-disabled-bg)}
 @container workflow-choices (width < calc(23em + 8px)) {
   .software-chooser[data-choice-kind=software] .software-choice-card{display:grid;grid-template-columns:calc(38px * var(--ui-font-scale,1)) minmax(0,1fr);gap:.2em .6em;align-items:center}
   .software-chooser[data-choice-kind=software] .software-choice-symbol{grid-column:1;grid-row:1/3;align-self:start}

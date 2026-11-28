@@ -7,6 +7,7 @@ import {createPortal} from 'react-dom';
 import type { TrajectoryRange } from '../../results/contracts';
 import { playbackRange, type PlaybackDirection, type PlaybackMode } from '../../results/playback';
 import type { PreparationSnapshot } from '../../results/prepared-trajectory';
+import {createLatestMoveScheduler} from '../modeling/viewport-move-scheduler';
 
 interface PopoverPlacement {left:number;top:number;maxWidth:number;maxHeight:number}
 /** Coordinates belong to the summary's document, including independent windows. */
@@ -53,6 +54,9 @@ function TrajectoryDetails({className,title,children}:{className:string;title:st
 }
 
 export interface TrajectoryControlsProps {
+  seekOwner?:object;
+  resultId?:string;
+  projectionKey?:string;
   loadingHost?:HTMLElement|null;
   afterDetails?: ReactNode;
   detailsContent?:ReactNode;
@@ -68,6 +72,41 @@ export interface TrajectoryControlsProps {
   onPlay(): void; onPause(): void; onSeek(index: number): void; onStep(direction: PlaybackDirection): void;
   onFps(value: number): void; onDirection(value: PlaybackDirection): void; onMode(value: PlaybackMode): void; onRange(value: TrajectoryRange): void;
 }
+
+export function TrajectorySlider({owner,projection,count,value,disabled,onSeek}:{owner?:object|string;projection?:string;count:number;value:number;disabled:boolean;onSeek(index:number):void}){
+  const seek=useRef(onSeek);seek.current=onSeek;
+  const [queued,setQueued]=useState<number>();
+  const drag=useRef<{scheduler:ReturnType<typeof createLatestMoveScheduler<number>>;close():void;started:boolean}|undefined>(undefined);
+  const finish=()=>{
+    const current=drag.current;if(!current)return;
+    drag.current=undefined;current.close();current.scheduler.flush();
+  };
+  useLayoutEffect(()=>{
+    setQueued(undefined);
+    return()=>{drag.current?.close();drag.current?.scheduler.cancel();drag.current=undefined;};
+  },[owner,projection,count,disabled]);
+  return <input className={`trajectory-slider${count<2?' trajectory-slider-single':''}`} aria-label="轨迹帧滑条" type="range" min={1} max={Math.max(1,count)} value={queued??value} disabled={disabled}
+    onPointerDown={event=>{
+      if(!event.isPrimary||event.button!==0)return;
+      const view=event.currentTarget.ownerDocument.defaultView;if(!view?.requestAnimationFrame)return;
+      finish();
+      const pointerId=event.pointerId;
+      const end=(released:PointerEvent)=>{if(released.pointerId===pointerId)finish();};
+      const scheduler=createLatestMoveScheduler<number>(view.requestAnimationFrame.bind(view),view.cancelAnimationFrame.bind(view),sample=>{
+        setQueued(undefined);seek.current(sample-1);
+      });
+      const close=()=>{view.removeEventListener('pointerup',end,true);view.removeEventListener('pointercancel',end,true);};
+      drag.current={scheduler,close,started:false};
+      view.addEventListener('pointerup',end,true);view.addEventListener('pointercancel',end,true);
+    }} onBlur={finish}
+    onChange={event=>{
+      const next=Number(event.currentTarget.value),current=drag.current;
+      if(current?.started){setQueued(next);current.scheduler.schedule(next);return;}
+      if(current)current.started=true;
+      seek.current(next-1);
+    }}/>;
+}
+
 export default function TrajectoryControls(p: TrajectoryControlsProps) {
   const bounds = p.count?playbackRange(p.range, p.count):{first:0,last:0,length:0};
   const effectiveFps=p.previewing&&p.previewFrameDelayMs?1000/p.previewFrameDelayMs:p.frameDelayMs?1000/p.frameDelayMs:p.fps;
@@ -97,7 +136,7 @@ export default function TrajectoryControls(p: TrajectoryControlsProps) {
     <button className="trajectory-play" aria-label={p.playing ? '暂停' : '播放'} disabled={!p.playing&&(p.disabled || bounds.length < 2||fpsInvalid)} onClick={p.playing ? p.onPause : p.onPlay}>{p.playing ? 'Ⅱ' : '▶'}</button>
     <button title="下一帧（按步距）" aria-label="下一帧" disabled={seekDisabled} onClick={() => p.onStep(1)}>›</button>
     <button title={p.compact ? '跳到最后一帧' : '范围末帧'} aria-label={p.compact ? '跳到最后一帧' : '范围末帧'} disabled={seekDisabled} onClick={() => p.onSeek(p.compact ? p.count - 1 : bounds.last)}>⏭</button>
-    <input className={`trajectory-slider${p.count < 2 ? ' trajectory-slider-single' : ''}`} aria-label="轨迹帧滑条" type="range" min={1} max={sliderCount} value={sliderValue} disabled={seekDisabled || p.count < 2} onChange={e => p.onSeek(Number(e.target.value) - 1)}/>
+    <TrajectorySlider owner={p.seekOwner??p.resultId} projection={p.projectionKey} count={p.count} value={sliderValue} disabled={!!seekDisabled||p.count<2} onSeek={p.onSeek}/>
     <label className="trajectory-frame-field"><NumericInput aria-label="跳到帧" stepper min={1} max={p.count} value={sliderValue} disabled={seekDisabled} onChange={e => { if (integer(e.target.value, p.count)) p.onSeek(Number(e.target.value) - 1); }}/><span>/ {p.count}</span></label>
     <TrajectoryDetails className="trajectory-playback-options" title="播放详情">
     {p.preparation?.paged&&completed===total&&<small>全部帧已准备，可按序播放或直接跳帧。</small>}

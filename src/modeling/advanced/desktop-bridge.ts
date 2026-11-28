@@ -2,6 +2,7 @@ import type { AdvancedPathBridge } from './path-contracts';
 import type { AissBridge } from './docking-contracts';
 import type { ConformerSamplingBridge } from './sampling-contracts';
 import { bindNativeSourceStamp } from '../platform/native-source-stamp';
+import { markDetachedSamplingPageFrame } from './route-data';
 
 type Binding = ReturnType<typeof bindNativeSourceStamp>;
 const terminal = new Set(['completed', 'stopped', 'error', 'search-checkpoint']);
@@ -67,7 +68,10 @@ export function bindConformerSamplingDesktopBridge(bridge: ConformerSamplingBrid
         if (!binding) return page;
         const frames = page.frames.map(frame => {
           const stamp = binding.restore(frame.stamp);
-          return stamp ? { ...frame, stamp } : frame;
+          if (!stamp) return frame;
+          const restored = { ...frame, stamp };
+          markDetachedSamplingPageFrame(restored);
+          return restored;
         });
         return { ...page, frames };
       },

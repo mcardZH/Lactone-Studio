@@ -1,6 +1,7 @@
 import { useEffect,useMemo } from 'react';
 import type { Structure } from '../../core/types';
 import { createChemistryPort } from '../../modeling/chemistry';
+import { desktopBridge } from '../../modeling/platform/desktop';
 import type { TrajectoryResult } from '../../results/contracts';
 import { EmpiricalFrameBonds, empiricalFrameBondDisplayWarnings, empiricalFrameBondDisplayStructure } from '../../results/empirical-frame-bonds';
 import { PreparationBudgetError, existingPreparedTrajectoryView, preparedTrajectoryView, type PreparedTrajectorySource, type PreparedTrajectoryView } from '../../results/prepared-trajectory';
@@ -36,7 +37,7 @@ export function prepareTrajectoryView(result: TrajectoryResult, mode: Trajectory
             const port = createChemistryPort();
             return port.startEmpiricalFrame?.(request) ?? port.start(request);
           },
-        }, sourceId: source.id, retainCache: false,
+        }, sourceId: source.id, retainCache: false, capabilityIdentity:desktopBridge,
           operationContext: { sourceId: source.source.id, resultId: source.id, jobIndex: source.jobIndex } });
         return {
           reuseContract:geometryContracts[mode],

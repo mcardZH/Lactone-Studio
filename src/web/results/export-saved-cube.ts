@@ -75,11 +75,11 @@ async function* encodedPages(rows: Iterable<string>, signal?: AbortSignal): Asyn
   if(pending) yield utf8.encode(pending);
 }
 
-async function* originalPages(source: AnalysisOriginalCubeSource, signal?: AbortSignal): AsyncGenerator<Uint8Array> {
+async function* originalPages(source: Pick<AnalysisOriginalCubeSource,'bytes'|'readRange'>, signal?: AbortSignal): AsyncGenerator<Uint8Array> {
   for(let offset=0;offset<source.bytes;offset+=CUBE_PAGE_BYTES){
     assertResultNotAborted(signal);
     const length=Math.min(CUBE_PAGE_BYTES,source.bytes-offset),page=await source.readRange(offset,length);
-    if(page.byteLength!==length)throw new Error('Cube 原件分页长度与来源不符。');
+    if(page.byteLength!==length)throw new Error('原件分页长度与来源不符。');
     yield page.byteOffset===0&&page.byteLength===page.buffer.byteLength?page:page.slice();
   }
 }
@@ -95,7 +95,7 @@ async function download(pages: AsyncGenerator<Uint8Array>, mediaType: string, ha
 interface StagedGridFile {id:string;size:number;sha256:string}
 function createAnalysisExportStaging(desktop:CubeAssetDesktop,signal?:AbortSignal) {
   const {beginBinaryAsset:begin,appendBinaryAsset:append,sealBinaryAsset:seal,releaseBinaryAsset:release}=desktop;
-  if(!begin||!append||!seal||!release)throw new Error('当前环境没有可分段暂存的科学格点导出入口。');
+  if(!begin||!append||!seal||!release)throw new Error('当前环境没有可分段暂存的科学文件导出入口。');
   const ids:string[]=[];
   async function dispose(){
     const settled=await Promise.allSettled(ids.map(async id=>release!(id)));
@@ -108,13 +108,22 @@ function createAnalysisExportStaging(desktop:CubeAssetDesktop,signal?:AbortSigna
     const {id}=await begin!(bytes);ids.push(id);let size=0;
     for await(const page of pages){
       assertResultNotAborted(signal);size+=page.byteLength;
-      if((await append!(id,page)).size!==size)throw new Error('Cube 保存暂存长度不一致。');
+      if((await append!(id,page)).size!==size)throw new Error('保存暂存长度不一致。');
     }
     const result=await seal!(id);
-    if(result.size!==size||!result.sha256)throw new Error('Cube 保存缺少确切文件身份。');
+    if(result.size!==size||!result.sha256)throw new Error('保存缺少确切文件身份。');
     return {id,size,sha256:result.sha256};
   }
   return {stage,dispose};
+}
+
+export async function stageOriginalAnalysisFile(original:Pick<AnalysisOriginalCubeSource,'bytes'|'readRange'|'sourceRevision'>,desktop:CubeAssetDesktop,signal?:AbortSignal) {
+  const {stage,dispose}=createAnalysisExportStaging(desktop,signal);
+  try{
+    const file=await stage(originalPages(original,signal),original.bytes);
+    if(file.size!==original.bytes||file.sha256!==original.sourceRevision)throw new Error('科学原件的大小或 SHA-256 与已绑定来源不符。');
+    return {file,dispose};
+  }catch(error){await dispose();throw error;}
 }
 
 export async function stageScientificText(text:string,desktop:CubeAssetDesktop,signal?:AbortSignal){

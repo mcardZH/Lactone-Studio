@@ -60,9 +60,9 @@ def finite_number(value):
         raise PeriodicError('Nonfinite or overflowed native energy/gradient value','XTB_PERIODIC_NONFINITE_RESULT')
     return result
 
-def validate(request):
+def validate(request, *, calculation='optimize'):
     require(isinstance(request,dict) and request.get('method') in ('gfnff','gfn0','gfn1','gfn2'),'Unknown periodic method')
-    require(request.get('calculation','optimize')=='optimize' and not request.get('constraints'),'Only Cartesian fixed-cell optimization is verified')
+    require(request.get('calculation','optimize')==calculation and not request.get('constraints'),'Only Cartesian fixed-cell operations are verified')
     atoms=request['structure']['atoms']; cell=request['structure']['cell']
     require(request['structure'].get('periodicSource',{}).get('completeness')!='partial','Partial translation vectors are not a complete run cell')
     require(isinstance(atoms,list) and 0<len(atoms),'Invalid source atoms')
@@ -77,7 +77,7 @@ def validate(request):
     frozen=request.get('frozenAtomIds',[])
     require(isinstance(frozen,list) and len(set(frozen))==len(frozen) and all(i in ids for i in frozen),'Invalid fixed atom identities')
     movable=np.asarray([i for i,a in enumerate(atoms) if a['id'] not in frozen],dtype=int)
-    require(len(movable)>0,'No movable atoms')
+    require(calculation!='optimize' or len(movable)>0,'No movable atoms')
     charge=request.get('charge'); uhf=request.get('uhf',0 if request['method']=='gfnff' else None)
     require(type(charge) is int and abs(charge)<=100,'Explicit integer charge required')
     electrons=sum(ELEMENTS.index(a['element'])+1 for a in atoms)-charge
@@ -86,7 +86,7 @@ def validate(request):
     require(type(request.get('maxSccIterations',250)) is int and 1<=request.get('maxSccIterations',250)<=9007199254740991,'Invalid SCC iteration limit')
     thread_limit=max(1,os.cpu_count() or 1)
     require(type(request.get('threads')) is int and 1<=request['threads']<=thread_limit,'Invalid thread limit')
-    require(type(request.get('maxSteps')) is int and 1<=request['maxSteps']<=9007199254740991,'Invalid iteration limit')
+    require(calculation!='optimize' or type(request.get('maxSteps')) is int and 1<=request['maxSteps']<=9007199254740991,'Invalid iteration limit')
     require('maxWallTimeSeconds' not in request or type(request['maxWallTimeSeconds']) in (int,float) and math.isfinite(request['maxWallTimeSeconds']) and 0<request['maxWallTimeSeconds'],'Invalid wall limit')
     return positions,vectors,movable
 

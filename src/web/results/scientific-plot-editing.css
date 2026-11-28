@@ -50,6 +50,7 @@
   background: var(--ui-control-bg, white); color: var(--ui-control-ink, #29474b);
   border: 1px solid var(--ui-surface-border, #cbdbd4); border-radius: 7px; box-shadow: 0 8px 20px #18362b26;
 }
+.plot-edit-popover[data-settings-layer] { z-index: 501; }
 .plot-edit-popover > header, .plot-preset-dialog-header {
   display:flex; align-items:center; justify-content:space-between; gap:9px; margin-bottom:7px;
 }

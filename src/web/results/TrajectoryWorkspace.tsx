@@ -44,6 +44,7 @@ import {captureViewportLegend} from './viewport-legend-export';
 import {applyFrameBondOverride,type FrameBondIdentity} from '../../core/modeling/frame-bond-overrides';
 import {trajectoryFrameBondIdentity} from '../../results/frame-bond-identity';
 import {scientificFrameForModel} from '../modeling/scientific-frame-source';
+import {emitTrajectoryRenderCompletion,observePreparedTrajectory,useTrajectoryObservationEnabled} from './trajectory-observation';
 
 export type TrajectoryExportFormat = 'xyz' | 'extxyz' | 'txt' | 'txt-json' | 'png' | 'gif' | 'png-sequence';
 export interface TrajectoryExportRequest {
@@ -115,7 +116,7 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   const persisted=useRef<TrajectoryUiSnapshot|undefined>(undefined);
   const saved=useProjectUiSnapshot(`trajectory.${result.id}`,()=>persisted.current);
   const restored=saved?.resultId===result.id?saved:undefined;
-  const orderKey=props.frameOrder?.join(',')??'';
+  const orderKey=useMemo(()=>props.frameOrder?.join(',')??'',[props.frameOrder]);
   const frameOrder=useMemo(()=>trajectoryFrameOrder(result.frames.length,props.frameOrder),[result.frames.length,orderKey]);
   const uiScope=useProjectUiScope();
   const proposedCollection=useMemo(()=>props.playbackCollection??createPlaybackCollection(result,{ownerId:playbackScopeIdentity(uiScope?.store??result,props.modelDocument?.id??result.id),revision:JSON.stringify([result.id,result.source.sha256??result.source.size,orderKey]),frames:frameOrder.map(index=>({frameId:(result as Partial<ConformerTrajectoryResult>).frameIds?.[index]??JSON.stringify([result.source.id,result.jobIndex,result.frames[index].sourceFrameIndex??index]),sourceFrameIndex:index,sourceResultId:result.id}))}),[props.playbackCollection,result,uiScope?.store,props.modelDocument?.id,orderKey]);
@@ -326,6 +327,13 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
     requestId:snapshot.sceneRequest?.requestId??(navigation?.status==='selected'&&navigation.index===frame.index?navigation.id:undefined),
     onPlaybackSubmitted:session.acknowledgeSceneSubmission,
   });
+  const observingConformer=useTrajectoryObservationEnabled()&&!!props.canvasOnly;
+  const onRenderComplete=useMemo<AnalysisCanvas['viewport']['onRenderComplete']>(()=>observingConformer?
+    event=>emitTrajectoryRenderCompletion(event,{playing,previewing:snapshot.previewing,prepared:!!props.prepared.get(event.identity.frameIndex)}):undefined,
+  [observingConformer,playing,snapshot.previewing,props.prepared]);
+  useEffect(()=>{
+    if(observingConformer&&renderIdentity)observePreparedTrajectory(props.prepared,{...renderIdentity,documentId:viewDocument.id});
+  },[observingConformer,props.prepared,viewDocument.id,renderIdentity?.sourceRevision]);
   const frameListener=useRef(props.onScientificFrame);frameListener.current=props.onScientificFrame;
   const notifiedFrame=useRef<{result:TrajectoryResult;index:number}|undefined>(undefined);
   useEffect(()=>{
@@ -385,14 +393,14 @@ function TrajectorySession(props: TrajectoryWorkspaceProps & {prepared:PreparedT
   };
   const dispatchPlayback=useCallback((command:TrajectoryPlaybackCommand)=>playbackCommand.current(command),[]);
   const trajectoryPlayback=useMemo<TrajectoryPlaybackBridge>(()=>({state:{resultId:result.id,projectionKey,collectionIdentity:collection.identity,frameId:playbackMembers.get(frame.index)?.frameId,targets:collection.targets,overlay:playbackOverlayPresentation({...multiframe,disabled}),count:collection.frames.length,index:playbackIndex,sourceOrder:frameOrder,requestedIndex,playing,busy,disabled,seekDisabled,fps,direction,mode,range,endpointPauseMs,preparation:snapshot.preparation,loading:snapshot.loading,loadCancelled:snapshot.loadCancelled,loadFailed:snapshot.loadFailed,silentLoading:snapshot.silentLoading},dispatch:dispatchPlayback,readScene,readNavigation:session.readNavigation}),[result.id,collection,overlayKey,projectionKey,playbackIndex,playbackMembers,frame.index,frameOrder,requestedIndex,playing,busy,disabled,seekDisabled,fps,direction,mode,range,endpointPauseMs,snapshot.preparation,snapshot.loading,snapshot.loadCancelled,snapshot.loadFailed,snapshot.silentLoading,dispatchPlayback,readScene,session]);
-  const playbackControls=useMemo(()=><div className="trajectory-player-row" data-testid="trajectory-top-playback"><TrajectoryControls {...trajectoryPlayback.state} {...trajectoryControlCallbacks(dispatchPlayback)} detailsContent={overlayControls}/>{bondWarningControl}{playbackDisplay.restored&&<small role="status">显示已恢复运行快照核心；能量来自原始MD。</small>}{playbackDisplay.restriction&&<small role="status">{playbackDisplay.restriction}</small>}</div>,[trajectoryPlayback,dispatchPlayback,overlayControls,bondWarningControl,playbackDisplay.restored,playbackDisplay.restriction]);
+  const playbackControls=useMemo(()=><div className="trajectory-player-row" data-testid="trajectory-top-playback"><TrajectoryControls {...trajectoryPlayback.state} {...trajectoryControlCallbacks(dispatchPlayback)} seekOwner={session} detailsContent={overlayControls}/>{bondWarningControl}{playbackDisplay.restored&&<small role="status">显示已恢复运行快照核心；能量来自原始MD。</small>}{playbackDisplay.restriction&&<small role="status">{playbackDisplay.restriction}</small>}</div>,[trajectoryPlayback,dispatchPlayback,session,overlayControls,bondWarningControl,playbackDisplay.restored,playbackDisplay.restriction]);
   const exportOwner=useRef(exportResult);exportOwner.current=exportResult;
   const exportCanvas=useCallback(()=>void exportOwner.current(),[]);
   const modelEditingBlocked=!scientificFrameReady||playing||snapshot.previewing&&!snapshot.loading||Boolean(vibration?.playing)||Boolean(vibrationProjection?.playing);
   const cipDocument=useMemo(()=>cipStructure&&{...viewDocument,draft:{...viewDocument.draft,structure:cipStructure}},[viewDocument,cipStructure]);
   const onCipLabelsUsed=useCurrentCipUsage(cipDocument??undefined,active&&initialFrameResolved,props.onCipLabelsUsed);
   const exportStructure=scientificFrameReady?(vibrationProjection?.sourceId===result.source.id&&vibrationProjection.frameIndex===frame.index||vibration?.frameIndex===frame.index?displacement.structure:frame.structure):undefined;
-  const canvas=useMemo<AnalysisCanvas>(()=>({document:viewDocument,staticDocument,scientificDocument,exportStructure,prepareModelEdit,readSubmittedScientificFrame,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,bondEditingBlocked:modelEditingBlocked,result,frameIndex:frame.index,controls:playbackControls,...(props.canvasOnly||props.onPlaybackCanvas?{trajectoryPlayback}:{}),measurementOwnerKey:`${result.id}:${frame.index}`,viewport:{...(playbackDisplay.aligned?{viewTransform:DISPLAY_IDENTITY}:{}),displayAtoms:displacement.structure.atoms,cipStructure,vibrationVectors:displacement.vectors,atomScalarValues,multiframeDisplay:multiframe.plan,fixedCellView,renderIdentity,onSceneSubmitted},onViewReady,onExport:exportCanvas,useWorkspaceImageExport:true,exportAvailable:active&&scientificFrameReady,exporting}),[viewDocument,staticDocument,scientificDocument,exportStructure,prepareModelEdit,readSubmittedScientificFrame,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,result,frame.index,playbackControls,props.canvasOnly,props.onPlaybackCanvas,trajectoryPlayback,displacement.structure.atoms,cipStructure,displacement.vectors,atomScalarValues,multiframe.plan,fixedCellView,renderIdentity,onSceneSubmitted,playbackDisplay.aligned,onViewReady,exportCanvas,active,exporting]);
+  const canvas=useMemo<AnalysisCanvas>(()=>({document:viewDocument,staticDocument,scientificDocument,exportStructure,prepareModelEdit,readSubmittedScientificFrame,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,bondEditingBlocked:modelEditingBlocked,result,frameIndex:frame.index,controls:playbackControls,...(props.canvasOnly||props.onPlaybackCanvas?{trajectoryPlayback}:{}),measurementOwnerKey:`${result.id}:${frame.index}`,viewport:{...(playbackDisplay.aligned?{viewTransform:DISPLAY_IDENTITY}:{}),displayAtoms:displacement.structure.atoms,cipStructure,vibrationVectors:displacement.vectors,atomScalarValues,multiframeDisplay:multiframe.plan,fixedCellView,renderIdentity,onSceneSubmitted,onRenderComplete},onViewReady,onExport:exportCanvas,useWorkspaceImageExport:true,exportAvailable:active&&scientificFrameReady,exporting}),[viewDocument,staticDocument,scientificDocument,exportStructure,prepareModelEdit,readSubmittedScientificFrame,sourceRevision,scientificFrameReady,modelEditingBlocked,frameBondIdentity,result,frame.index,playbackControls,props.canvasOnly,props.onPlaybackCanvas,trajectoryPlayback,displacement.structure.atoms,cipStructure,displacement.vectors,atomScalarValues,multiframe.plan,fixedCellView,renderIdentity,onSceneSubmitted,onRenderComplete,playbackDisplay.aligned,onViewReady,exportCanvas,active,exporting]);
   useLayoutEffect(()=>{props.onCanvas?.(active&&initialFrameResolved?canvas:null);},[props.onCanvas,active,initialFrameResolved,canvas]);
   useLayoutEffect(()=>{props.onPlaybackCanvas?.(active?canvas:null);},[props.onPlaybackCanvas,active,canvas]);
   const canvasOwner=useRef({canvas:props.onCanvas,player:props.onPlaybackCanvas});

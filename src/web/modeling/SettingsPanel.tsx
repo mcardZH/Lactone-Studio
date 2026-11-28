@@ -11,7 +11,11 @@ import {InputSettingsLayout} from '../InputSettingsLayout';
 import {InputSettingsStack} from '../InputSettingsFields';
 import {useInterfaceFontSize} from '../interface-font-preferences';
 import {applicationVersion} from '../../application-version';
+import {useInterfaceParadigm,useViewportBackdrop} from '../interface-paradigm-preferences';
+import {useInterfaceSurface} from '../interface-surface-preferences';
 import {useInterfaceTheme} from '../interface-theme-preferences';
+import InterfaceParadigmControl from '../InterfaceParadigmControl';
+import InterfaceSurfaceControl from '../InterfaceSurfaceControl';
 import InterfaceThemeControl from '../InterfaceThemeControl';
 import WorkspaceDisplay from './WorkspaceDisplay';
 import {workspaceDefaultBackgroundColor,observeCanvasBackground} from './render/viewport-background';
@@ -75,6 +79,9 @@ export default function SettingsPanel(p:SettingsPanelProps){
   const current=useRef<PlotSettingsConnection|undefined>(undefined);
   const slot=useRef<HTMLDivElement>(null);
   const [theme,setTheme]=useInterfaceTheme(owner);
+  const [surface,setSurface]=useInterfaceSurface(owner);
+  const [paradigm,setParadigm]=useInterfaceParadigm(owner);
+  const [viewportBackdrop,setViewportBackdrop]=useViewportBackdrop(owner);
   const [canvasBackground,setCanvasBackground]=useState(()=>workspaceDefaultBackgroundColor(owner));
   useEffect(()=>{const refresh=()=>setCanvasBackground(workspaceDefaultBackgroundColor(owner));refresh();return observeCanvasBackground(owner,refresh);},[owner]);
   const [rect,setRect]=useState(()=>fit(memory.get(owner)?.rect??
@@ -152,7 +159,9 @@ export default function SettingsPanel(p:SettingsPanelProps){
         {id==='plots'&&<PlotSettingsPage connectionKey={session} ownerDocument={owner} model={model}
           category={linked?.category} editing={!!linked} slot={<div ref={slot}>{p.plotEditor?.content}</div>}/>}
         {id==='interface'&&<div className="sy-settings-card settings-interface">
+          <div className="settings-interface-paradigm"><h3>昼夜外观</h3><InterfaceParadigmControl value={paradigm} onChange={setParadigm} backdrop={viewportBackdrop} onBackdropChange={setViewportBackdrop}/></div>
           <div className="settings-interface-theme"><h3>界面配色</h3><InterfaceThemeControl value={theme} onChange={setTheme}/></div>
+          <div className="settings-interface-surface"><h3>界面质感</h3><InterfaceSurfaceControl value={surface} onChange={setSurface}/></div>
           <FontSizeControl value={font} onChange={setFont}/>
         </div>}
         {id==='resources'&&<ComputeResourceSettings/>}

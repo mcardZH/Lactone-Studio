@@ -19,6 +19,8 @@ export function waitForScatterFrame(win: Pick<Window, 'requestAnimationFrame' | 
 }
 
 /** Captures the actual axes/metadata and the complete current point layer. No download. */
+export const SCATTER_PAPER_FILL = 'white';
+
 export function scatterSvgSnapshot(source: SVGSVGElement, pixels: HTMLCanvasElement, options: {
   data: ScientificScatterData; range: ScientificPlotViewport; layout: ScatterPlotBounds & {width:number;height:number};
   colorForX(value: number): string; colorForPoint?(index: number, x: number, y: number): string;
@@ -28,7 +30,7 @@ export function scatterSvgSnapshot(source: SVGSVGElement, pixels: HTMLCanvasElem
   const { data, range, layout, colorForX, colorForPoint, size, alpha, raster } = options;
   const copy = source.cloneNode(true) as SVGSVGElement, doc = source.ownerDocument;
   const background = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  background.setAttribute('width', String(layout.width)); background.setAttribute('height', String(layout.height)); background.setAttribute('fill', 'white');
+  background.setAttribute('width', String(layout.width)); background.setAttribute('height', String(layout.height)); background.setAttribute('fill', SCATTER_PAPER_FILL);
   copy.insertBefore(background, copy.firstChild);
   if (!raster) {
     const clipId = `scatter-export-clip-${++nextSnapshotId}`;

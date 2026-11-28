@@ -25,10 +25,11 @@ export interface PostprocessSidebarProps {
   engine: PostprocessEngine; task: PostprocessTask; stage: 'software' | 'tasks' | 'files';
   showTitle?: boolean;
   slots: readonly PostprocessFileSlot[]; result: TrajectoryResult | null; currentIndex: number; busy?: boolean;
-  fileDocument?:PostprocessScientificFileDocument|null;onFileJob?(id:string):void;
+  fileDocument?:PostprocessScientificFileDocument|null;onFileJob?(id:string):void;pendingFileJobId?:string;
   message?: string; sourceDifferences?: PostprocessNumericBookProps['sourceDifferences']; metadata?: PostprocessMetadata;
   onEngine(engine: PostprocessEngine): void; onTask(task: PostprocessTask): void; onStage(stage: PostprocessSidebarProps['stage']): void;
   onFiles(role: PostprocessFileRole, files: File[], explicitReplace?:boolean, slotKey?:PostprocessSlotKey,sourceId?:string): void; onRemove(role: PostprocessFileRole,slotKey?:PostprocessSlotKey,sourceId?:string): void;
+  onDropFiles?(files: File[]): void;
   onClose?(): void; onExtract?(): void; onPrepareInput?(): void; onPrepareIrc?(): void; onOpenLegacy?(): void;
 }
 const resultTasks: readonly { id:PostprocessTask; group:string }[] = [
@@ -126,15 +127,16 @@ export function postprocessFileDescription(engine: PostprocessEngine, role: Post
 }
 function FileSlot({ engine, slot, busy, onFiles, onRemove }: { engine: PostprocessEngine; slot: PostprocessFileSlot; busy?: boolean; onFiles(files: File[],explicitReplace?:boolean): void; onRemove(): void }) {
   const input = useRef<HTMLInputElement>(null), [over, setOver] = useState(false);
-  const info = postprocessFileDescription(slot.role==='wavefunction'&&slot.format==='molden'?slot.software??engine:engine, slot.role,slot.format,slot.slotKey);
+  const info = postprocessFileDescription(slot.role==='output'||slot.role==='wavefunction'&&slot.format==='molden'?slot.software??engine:engine, slot.role,slot.format,slot.slotKey);
   const evidence=slot.status==='ready'?slot.fieldEvidence:undefined;
   const warnings=useMemo(()=>scientificReadWarningFields(evidence?.fields),[evidence?.fields]);
+  const load=(files:File[])=>{if(!busy&&files.length)onFiles(files,Boolean(slot.name));};
   return <PostprocessSourceCard title={info.label} status={slot.status} availability={warnings.length?'partial':undefined} statusLabel={slot.status === 'ready' ? warnings.length?'部分可用':slot.role==='companions'?'已配对':'已读取' : slot.status === 'reading' ? '读取中' : slot.status === 'error' ? '未接入' : slot.name ? '待核对' : slot.role==='output'?'待补入':'可选 · 待补入'} dragover={over}
     onDragOver={event => { event.preventDefault(); if (!busy) { event.dataTransfer.dropEffect = 'copy'; setOver(true); } }}
     onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(false); }}
-    onDrop={event => { event.preventDefault(); event.stopPropagation(); setOver(false); if (!busy && event.dataTransfer.files.length) onFiles(Array.from(event.dataTransfer.files)); }}>
+    onDrop={event => { if(!event.dataTransfer.files.length)return;event.preventDefault();event.stopPropagation();setOver(false);load(Array.from(event.dataTransfer.files)); }}>
     <p className="postprocess-note">{info.extensions}</p>{slot.name ? <div className="postprocess-source-name">{slot.name}{evidence&&<PostprocessReadWarning key={evidence.jobId} fields={warnings} hasStructure={evidence.hasStructure}/>} {!!slot.diagnostics?.length&&<PostprocessSourceFeedback key={slot.sourceId} label="辅助字段警告" message={slot.diagnostics.map(item=>item.message).join('；')+' 结构、基组与轨道字段已通过读取校验。'}/>}</div> : <p className="postprocess-note postprocess-source-drop-hint"><span>拖入文件，</span><span>或选择文件</span></p>}
-    <input ref={input} type="file" hidden aria-label={`选择${info.label}`} accept={info.accept} multiple disabled={busy} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; if (!busy && files.length) onFiles(files,Boolean(slot.name)); }}/>
+    <input ref={input} type="file" hidden aria-label={`选择${info.label}`} accept={info.accept} multiple disabled={busy} onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; load(files); }}/>
     <div className="postprocess-actions"><button type="button" disabled={busy} onClick={() => input.current?.click()}>{slot.name ? '替换文件' : '选择文件'}</button>{slot.name && <button type="button" disabled={busy} onClick={onRemove}>移除</button>}</div>
     {slot.message && (slot.name||slot.status==='error'?<PostprocessSourceFeedback key={`${slot.sourceId??slot.slotKey}:${slot.message}`} message={slot.message} error={slot.status==='error'}/>:<p className="postprocess-note">{slot.message}</p>)}
   </PostprocessSourceCard>;
@@ -142,13 +144,18 @@ function FileSlot({ engine, slot, busy, onFiles, onRemove }: { engine: Postproce
 export default function PostprocessSidebar(p: PostprocessSidebarProps) {
   const engineName = p.engine === 'gaussian' ? 'Gaussian' : p.engine === 'orca' ? 'ORCA' : p.engine==='cp2k'?'CP2K':p.engine==='xtb'?'GFN2-xTB':'生产软件未确认';
   const waveOnly=p.slots.some(slot=>slot.role==='wavefunction'&&slot.name)&&!p.slots.some(slot=>slot.role==='output'&&slot.name);
-  const scientific=p.fileDocument?postprocessFileJob(p.fileDocument.output.source)?.scientific:p.result?.scientific;
+  const attachedSlots=p.slots.some(slot=>slot.name);
+  const scientific=p.fileDocument?(attachedSlots?postprocessFileJob(p.fileDocument.output.source)?.scientific:undefined):p.result?.scientific;
   const fileSlots=postprocessVisibleFileSlots(p.engine,p.task,p.slots,scientific?.tasks);
-  const hasSource = Boolean(p.fileDocument||p.result || p.slots.some(slot => slot.name));
+  const hasSource = attachedSlots||Boolean(!p.fileDocument&&p.result);
   const step = stages.indexOf(p.stage), selectedTask = POSTPROCESS_TASK_CHOICES.find(task => task.id === p.task);
   const tasks = scientific?.tasks.filter(id=>id!=='unknown').map(id => {const choice=POSTPROCESS_TASK_CHOICES.find(task=>task.id===id);return choice?`${choice.label} ${choice.code}`:id==='md'?'分子动力学 MD':id.toUpperCase();});
   const sourceDescription = waveOnly && p.engine!=='xtb' ? `${p.engine==='unknown'?'Molden（生产软件未确认）':engineName} / 已保存波函数` : `${engineName} / ${tasks?.length ? tasks.join(' + ') : '任务未确认'}`;
-  return <aside className="postprocess-sidebar workflow-panel-content" aria-label="后处理文件与数值" data-testid="postprocess-sidebar">
+  return <aside className="postprocess-sidebar workflow-panel-content" aria-label="后处理文件与数值" data-testid="postprocess-sidebar"
+    data-postprocess-file-drop={p.onDropFiles?'true':undefined} onDrop={event=>{
+      if(!p.onDropFiles||!event.dataTransfer.files.length)return;
+      event.preventDefault();event.stopPropagation();if(!p.busy)p.onDropFiles(Array.from(event.dataTransfer.files));
+    }}>
     <WorkflowHeader title="后处理" showTitle={p.showTitle} engine={p.engine === 'gaussian' || p.engine === 'orca' ? p.engine : null} disabled={p.busy} onEngine={p.onEngine}>{p.onClose && <button type="button" className="icon-button" onClick={p.onClose} aria-label="收起后处理侧栏">×</button>}</WorkflowHeader>
     <WorkflowSteps label="后处理步骤" steps={steps} step={step} disabled={p.busy} onStep={index => p.onStage(stages[index])}/>
     <WorkflowContentCard fitContent={p.stage!=='files'} title={p.stage === 'software' ? '选择软件' : p.stage === 'tasks' ? `${engineName} · 选择任务` : '计算文件'} description={p.stage === 'files' ? hasSource ? sourceDescription : `${engineName} / ${selectedTask?.label ?? ''} ${selectedTask?.code ?? ''}` : undefined} step={step} total={steps.length}>
@@ -168,7 +175,7 @@ export default function PostprocessSidebar(p: PostprocessSidebarProps) {
       })}</div>
       {p.engine === 'orca' && <details className="postprocess-guide"><summary>只有 GBW？</summary><p>请用 ORCA 自带工具转换为 Molden 后补入。</p><code>orca_2mkl basename -molden</code></details>}
       {p.message && <PostprocessSourceFeedback key={p.message} message={p.message}/>}
-      {hasSource && <PostprocessSourceInformation result={p.result} fileDocument={p.fileDocument} onFileJob={p.onFileJob} currentIndex={p.currentIndex} metadata={p.metadata} sourceDifferences={p.sourceDifferences} busy={p.busy} onExtract={p.onExtract} onPrepareInput={p.onPrepareInput}/>}
+      {(hasSource||p.fileDocument) && <PostprocessSourceInformation result={p.result} fileDocument={p.fileDocument} onFileJob={p.onFileJob} pendingFileJobId={p.pendingFileJobId} currentIndex={p.currentIndex} metadata={p.metadata} sourceDifferences={p.sourceDifferences} busy={p.busy} onExtract={p.onExtract} onPrepareInput={p.onPrepareInput}/>}
     </div>}
     </WorkflowContentCard>
   </aside>;

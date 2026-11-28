@@ -17,9 +17,13 @@ import { readNebOutputContext, type NebOutputContext } from './neb-companion-ass
 import { readMdAuxiliary, type MdAuxiliarySource } from './md-aux-reader';
 import { readIrcOutputContext, type IrcOutputContext } from './irc-companion-association';
 
-export type WorkspaceImportItem = { kind: 'model'; fragment: FragmentSnapshot; restoredModel?: RestoredWorkspaceModel } | { kind: 'result'; result: TrajectoryResult } | { kind: 'diagnostic'; diagnostic: ResultDiagnostic };
+export type WorkspaceImportItem = { kind: 'model'; fragment: FragmentSnapshot; restoredModel?: RestoredWorkspaceModel } | { kind: 'result'; result: TrajectoryResult; xyzSource?: ScientificSourceFile } | { kind: 'diagnostic'; diagnostic: ResultDiagnostic };
 /** Route complete result files without stealing explicitly paired input dependencies. */
-export async function importWorkspaceItems(files: ScientificSourceFile[], options: ResultReadOptions & { onSourceError?(file: ScientificSourceFile, error: unknown): void } = {}): Promise<WorkspaceImportItem[]> {
+export async function importWorkspaceItems(files: ScientificSourceFile[], options: ResultReadOptions & {
+  onSourceError?(file: ScientificSourceFile, error: unknown): void;
+  /** True transfers the exact parsed source to an existing postprocess owner. */
+  adoptXyz?(input: ReturnType<typeof resultFile>, result: TrajectoryResult): Promise<boolean>;
+} = {}): Promise<WorkspaceImportItem[]> {
   const items: WorkspaceImportItem[] = [], fallback: ScientificSourceFile[] = [];
   const protectedFiles = new Set<ScientificSourceFile>(), xyzDependencyNames = new Set<string>();
   const fallbackNotes = new Map<ScientificSourceFile,string>();
@@ -27,6 +31,8 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
   const nebAuxiliaries: NebAuxiliarySource[] = [], nebContexts: NebOutputContext[] = [];
   const mdAuxiliaries: MdAuxiliarySource[] = [];
   const ircContexts: IrcOutputContext[] = [];
+  const adoptableXyz = new Map<TrajectoryResult,ReturnType<typeof resultFile>>();
+  let selectedPrimaryOutput = false;
   let retainedAuxiliaryBytes = 0;
   const sourceFailures: unknown[] = [];
   const failedFiles = new Set<ScientificSourceFile>();
@@ -117,6 +123,7 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
       let results: TrajectoryResult[];
       try {
         if (isOutput) {
+          selectedPrimaryOutput = true;
           const read = await readScientificFileResults(source, options);
           const imported = [
             ...read.results.map(result => ({ kind: 'result' as const, result })),
@@ -136,10 +143,12 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
       catch (cause) { await source.close?.(); if (cause instanceof UnsupportedResultKindError) { fallback.push(file); fallbackNotes.set(file,`以已有结构入口打开；该文件尚未取得完整结果能力。${cause.message}`); continue; } throw cause; }
       if (!results.length) { await source.close?.(); fallback.push(file); continue; }
       if (options.signal?.aborted) { items.push(...results.map(result => ({ kind: 'result' as const, result }))); return items; }
+      if (isXyz && results.length === 1 && results[0].frames.length > 1 && options.adoptXyz)
+        adoptableXyz.set(results[0],source);
       if (!isOutput && !isFchk && !isHess && results.length === 1 && results[0].frames.length === 1 && results[0].status !== 'failed' && results[0].status !== 'incomplete') {
         try { items.push(...modelFragmentsFromStructures([await results[0].getFrame(0,options.signal)]).map(fragment => ({kind:'model' as const,fragment}))); }
         finally { await results[0].dispose(); }
-      } else items.push(...results.map(result => ({kind:'result' as const,result})));
+      } else items.push(...results.map(result => ({kind:'result' as const,result,...(isXyz?{xyzSource:file}:{})})));
       } catch (error) { failed(file, error); }
     }
     // A declared auxiliary with an unrecognisable damaged header is still a
@@ -161,7 +170,19 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
       for (const group of groups) {
         try {
           const note = group.length === 1 ? fallbackNotes.get(group[0]) : undefined;
-          items.push(...(await importWorkspaceSources(group,undefined,options.signal,restoredModels,{onSourceError(file,error){failed(file as ScientificSourceFile,error);}})).map(fragment=>{if(note)fragment.structure.notes.push(note);const restoredModel=restoredModels.get(fragment);return {kind:'model' as const,fragment,...(restoredModel?{restoredModel}:{})};}));
+          items.push(...(await importWorkspaceSources(group,undefined,options.signal,restoredModels,{
+            onSourceError(file,error){failed(file as ScientificSourceFile,error);},
+            ...(group===dependencies?{async readIndependent(candidate) {
+              const file=candidate as ScientificSourceFile;
+              const preview=resultFile(file);
+              try { if ((await recognizeResultSource(preview,options)).format!=='xyz') return false; }
+              finally { await preview.close?.(); }
+              // The input planner has excluded this file from all dependencies.
+              // Use the same paged XYZ reader as an independent selection.
+              items.push(...await importWorkspaceItems([file],{...options,adoptXyz:undefined,onSourceError:undefined}));
+              return true;
+            }}:{}),
+          })).map(fragment=>{if(note)fragment.structure.notes.push(note);const restoredModel=restoredModels.get(fragment);return {kind:'model' as const,fragment,...(restoredModel?{restoredModel}:{})};}));
         } catch (error) { failed(group[0], error); }
       }
     }
@@ -171,7 +192,15 @@ export async function importWorkspaceItems(files: ScientificSourceFile[], option
       if (file) options.onSourceError?.(file, error);
     } });
     let resultIndex = 0;
-    for (let index = 0; index < items.length; index++) if (items[index].kind === 'result') items[index] = { kind: 'result', result: grouped[resultIndex++] };
+    for (let index = 0; index < items.length; index++) {
+      const item=items[index];
+      if (item.kind !== 'result') continue;
+      const result=grouped[resultIndex++];
+      const source=selectedPrimaryOutput?undefined:adoptableXyz.get(result);
+      if(source && await options.adoptXyz!(source,result)){
+        items.splice(index--,1);
+      }else items[index] = { ...item, result };
+    }
     assertResultNotAborted(options.signal); return items;
   } catch (cause) {
     await Promise.all(items.flatMap(item=>item.kind==='result'?[Promise.resolve(item.result.dispose())]:item.kind==='diagnostic'?[Promise.resolve(item.diagnostic.dispose())]:[])); throw cause;

@@ -38,8 +38,8 @@
     },
     {
       "path": "desktop/chemistry/pes_core.py",
-      "bytes": 41084,
-      "sha256": "7a5992146660f7306b90496c992f7ce82d9ecb4d96d4b06d5a6d53cdf61468cf"
+      "bytes": 43956,
+      "sha256": "fecdf5d005a7c77635ce6472f1db42e607ed5ef3ec4a916d3126ef9220a49b26"
     },
     {
       "path": "desktop/chemistry/pes_coordinates.py",
@@ -168,8 +168,8 @@
     },
     {
       "path": "desktop/chemistry/xtb_periodic.py",
-      "bytes": 40807,
-      "sha256": "cebbff909a96c3a674eedc9debb467b516e59c2534b5341e9a48f834e87bfef4"
+      "bytes": 40888,
+      "sha256": "f55be68e4af781bf535d88333d1066cebc5f4c7e9c120c389180b3856d6eda91"
     },
     {
       "path": "desktop/chemistry/crystal_modeling.py",
@@ -183,8 +183,8 @@
     },
     {
       "path": "desktop/chemistry/xtb_periodic_bonds.py",
-      "bytes": 7521,
-      "sha256": "5048fc305bf92a225e9e83eae12195d98431cad42f4be81b671df416410e11fb"
+      "bytes": 6988,
+      "sha256": "ae30274df87905bc2da90befc1a0038ef80b3979b95144b8f3e3b390a628068c"
     },
     {
       "path": "desktop/chemistry/advanced_path.py",
@@ -198,8 +198,8 @@
     },
     {
       "path": "desktop/chemistry/conformer_sampling.py",
-      "bytes": 32043,
-      "sha256": "9b67efc2b56127381bab76f83ed2e1322808d0dee954712714f501e49fdc55f8"
+      "bytes": 32034,
+      "sha256": "0bbd44cfe338d4f8d92144a29c62e5cdfaf3eaca0c896044db5ae0c56c77cd0b"
     },
     {
       "path": "desktop/chemistry/conformer_gfnff.py",
@@ -290,8 +290,8 @@
     },
     {
       "path": "scripts/native/finite_empirical_extension.py",
-      "bytes": 2972,
-      "sha256": "247b81eefbd706a886d895d207135b6c31c24dec0fcf21a8fae8a6c61e844eaf"
+      "bytes": 3645,
+      "sha256": "dacf81b6622d50ec5d593588e3b63a782d4fab4af25e321417a81ee8f56b4046"
     },
     {
       "path": "desktop/chemistry/finite_empirical_accel.c",

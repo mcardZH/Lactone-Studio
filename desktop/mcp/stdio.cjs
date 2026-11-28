@@ -17,6 +17,20 @@ const connectTool = {
   description: 'Connect to or select a Lactone Studio window. With no target, use the embedded terminal window or the only window of this installation. If this installation is closed, launch its application automatically. If multiple windows are available, specify instanceId and windowId from the response. The user approves the first actual connection in that window.',
   inputSchema: { type: 'object', properties: { instanceId: { type: 'string' }, windowId: { type: 'string' } }, additionalProperties: false },
 };
+const callToolByName = {
+  name: 'es_call',
+  description: 'Use an operation in the already connected Ester Studio window when your client has not refreshed its tool list. To discover operations, pass name="es_capabilities" and arguments={"query":"topic"}. For an exact input schema, pass name="es_capabilities" and arguments={"action":"es_import"} (or the operation you need). Then pass the operation name and its arguments here.',
+  inputSchema: {
+    type: 'object',
+    properties: { name: { type: 'string' }, arguments: { type: 'object', additionalProperties: true } },
+    required: ['name'],
+    additionalProperties: false,
+  },
+};
+const adapterTools = [connectTool, callToolByName];
+function withAdapterTools(workspaceTools) {
+  return { tools: [...adapterTools, ...workspaceTools.filter(tool => !adapterTools.some(adapter => adapter.name === tool.name))] };
+}
 const aborted = () => failure('cancelled', 'ES 操作等待已取消。');
 
 async function openBinding({ target, instance, dir, label, adapterId, signal, onTools, onClose, unseal = unprotect, getClientIdentity = clientIdentity, connectPath = pipeName }) {
@@ -210,6 +224,15 @@ function runStdio({ stdin, stdout, dir, options = {}, discoverInstances = discov
     const args = params.arguments ?? {};
     try {
       if (params.name === connectTool.name) return toolResult(await connect(args, signal));
+      let name = params.name, toolArgs = args;
+      if (name === callToolByName.name) {
+        if (!isToolName(args.name) || (args.arguments !== undefined && !isRecord(args.arguments)) ||
+            Object.keys(args).some(key => key !== 'name' && key !== 'arguments')) {
+          throw failure('invalid_arguments', 'es_call 需要原生操作名 name，以及可选的具名参数 arguments。');
+        }
+        name = args.name;
+        toolArgs = args.arguments ?? {};
+      }
       const target = params._meta?.['ester-studio/window'];
       if (target !== undefined && (!isRecord(target) || !isId(target.windowId) || (target.instanceId !== undefined && !isId(target.instanceId)))) {
         throw failure('invalid_target', '窗口路由需要有效的实例和窗口标识。');
@@ -217,17 +240,19 @@ function runStdio({ stdin, stdout, dir, options = {}, discoverInstances = discov
       if (!primary && !target) throw failure('connection_required', '请先调用 es_connect 连接到 ES 窗口。');
       const selected = target ? connections.get(bindingKey({ instanceId: target.instanceId ?? primary?.target.instanceId, windowId: target.windowId })) : primary;
       if (!selected) throw failure('target_not_granted', '目标 ES 窗口尚未通过 es_connect 授权。');
-      if (!selected.tools.some(tool => tool.name === params.name)) throw failure('unknown_tool', `目标 ES 窗口未开放操作 ${params.name}。`);
-      return toolResult(await selected.call(params.name, args, signal));
+      if (adapterTools.some(tool => tool.name === name) || !selected.tools.some(tool => tool.name === name)) {
+        throw failure('unknown_tool', `目标 ES 窗口未开放操作 ${name}。`);
+      }
+      return toolResult(await selected.call(name, toolArgs, signal));
     } catch (error) { return toolResult({ error: errorRecord(error) }, true); }
   }
   async function listTools() {
-    if (primary) return { tools: [connectTool, ...primary.tools] };
+    if (primary) return withAdapterTools(primary.tools);
     const candidates = (await discoverLocal().catch(() => [])).filter(instance =>
       instance.windows.some(row => !options.windowId || row.windowId === options.windowId) &&
       (!options.instanceId || instance.instanceId === options.instanceId));
     const published = new Map(candidates.flatMap(row => row.tools ?? []).map(tool => [tool.name, tool]));
-    return { tools: [connectTool, ...published.values()] };
+    return withAdapterTools([...published.values()]);
   }
   async function receive(message) {
     const id = validRpcId(message?.id) ? message.id : null;
@@ -247,7 +272,7 @@ function runStdio({ stdin, stdout, dir, options = {}, discoverInstances = discov
       negotiated = versions.includes(params.protocolVersion) ? params.protocolVersion : versions[0];
       clientLabel = String(options.client ?? params.clientInfo.name).slice(0, 160).trim() || 'MCP client';
       return result({ protocolVersion: negotiated, capabilities: { tools: { listChanged: true } }, serverInfo: { name: 'lactone-studio', version },
-        instructions: 'Call es_connect to bind or select a running Lactone Studio window, then refresh the tool list. To address another already bound window without selecting it, use tools/call params._meta["ester-studio/window"] with instanceId and windowId.' });
+        instructions: 'Call es_connect to bind or select a running Lactone Studio window, then refresh the tool list. If the list stays unchanged, use es_call to discover operations through es_capabilities and invoke native tools by name. To address another already bound window without selecting it, use tools/call params._meta["ester-studio/window"] with instanceId and windowId.' });
     }
     if (message.method === 'ping') return result({});
     if (!initialized) return rpcError(id, -32002, 'MCP initialization incomplete');

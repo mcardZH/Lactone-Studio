@@ -1,5 +1,5 @@
 /* Presentation tokens only. Scientific palettes and state remain with callers. */
-:root {
+:root, :root[data-interface-theme=mint], [data-interface-theme=mint] {
   --ui-control-font:var(--ui-secondary-size,14px);
   --ui-control-line:calc(20px * var(--ui-font-scale,1));
   --ui-title-line:calc(24px * var(--ui-font-scale,1));
@@ -7,141 +7,374 @@
   --ui-window-title-line:calc(26px * var(--ui-font-scale,1));
   --ui-metadata-line:calc(18px * var(--ui-font-scale,1));
   --ui-font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
-  --ui-section-ink:#13766e;
-  --ui-field-ink:#3c5763;
-  --ui-label-ink:#506b75;
-  --ui-note-ink:#5a707a;
+  --ui-section-ink:#166f53;
+  --ui-field-ink:#254139;
+  --ui-label-ink:#426259;
+  --ui-note-ink:#5a786e;
   --ui-control-caption-font:var(--ui-secondary-size,14px);
   --ui-control-small-font:var(--ui-small-size,13px);
-  --ui-control-ink:#233c33;
-  --ui-control-muted:#526c62;
-  --ui-control-border:#d5ded9;
+  --ui-control-ink:#254139;
+  --ui-control-muted:#5a786e;
+  --ui-control-border:#cbe0d5;
   --ui-control-bg:#fff;
   --ui-control-radius:7px;
   --ui-control-height:calc(30px + (var(--ui-font-scale,1) - 1) * 32px);
   --ui-control-compact-height:var(--ui-control-height);
   --ui-control-primary-height:36px;
   --ui-control-primary-width:64px;
-  --ui-control-padding:4px 8px;
+  --ui-control-padding:4px 9px;
   --ui-control-compact-padding:var(--ui-control-padding);
-  --ui-control-accent:#548f74;
-  --ui-control-hover-bg:#f8faf9;
-  --ui-control-selected-bg:#f1f6f3;
-  --ui-tool-selected-border:#9ab5a6;
-  --ui-control-selected-ink:#186846;
-  --ui-control-focus:#427e66;
+  --ui-control-accent:#2d8a68;
+  --ui-control-hover-bg:#edf8f2;
+  --ui-control-selected-bg:#e1f5ea;
+  --ui-tool-selected-border:#7cb59d;
+  --ui-control-selected-ink:#15644a;
+  --ui-control-focus:#23785a;
   --ui-control-invalid:#ad534b;
-  --ui-action-disabled-bg:#eff4f0;
-  --ui-action-disabled-ink:#5b7062;
-  --ui-action-disabled-border:#cadfd1;
-  --ui-action-primary-bg:#147d75;
-  --ui-action-primary-hover:#11645e;
-  --ui-surface-border:#e8ece9;
-  --ui-surface-bg:#fcfffd;
+  --ui-action-disabled-bg:#edf4f0;
+  --ui-action-disabled-ink:#6e8379;
+  --ui-action-disabled-border:#cde0d6;
+  --ui-action-primary-bg:#1f8062;
+  --ui-action-primary-hover:#18674e;
+  --ui-action-tonal-bg:#e4f5ec;
+  --ui-action-tonal-hover:#d4eee0;
+  --ui-action-tonal-ink:#17644b;
+  --ui-action-tonal-border:#afd6c2;
+  --ui-surface-border:#d8ebe0;
+  --ui-surface-bg:#fff;
   --ui-parameter-card-bg:var(--ui-surface-bg);
-  --ui-surface-radius:12px;
-  --ui-page-bg:#fefffe;
-  --ui-sidebar-bg:#feffff;
-  --ui-workspace-rail-bg:#fdfefd;
-  --ui-workspace-nav-selected:#edf4f0;
-  --ui-workspace-tabs-bg:#fdfffd;
-  --ui-workspace-group-bg:#fafdfc;
-  --ui-workspace-active-tab-bg:#eef5f1;
-  --ui-workspace-active-tab-line:#779b8b;
+  --ui-surface-radius:10px;
+  --ui-page-bg:#f6fbf8;
+  --ui-sidebar-bg:#f3f9f6;
+  --ui-workspace-rail-bg:#edf6f1;
+  --ui-workspace-nav-selected:#dcf2e6;
+  --ui-workspace-tabs-bg:#f0f8f3;
+  --ui-workspace-group-bg:#eaf6ef;
+  --ui-workspace-active-tab-bg:#fff;
+  --ui-workspace-active-tab-line:#2d8a68;
   --ui-workspace-collapsed-active-bg:var(--ui-workspace-active-tab-bg);
-  --ui-analysis-tools-bg:#fbfcfb;
+  --ui-analysis-tools-bg:#f6fbf8;
   --ui-workspace-tools-bg:var(--ui-sidebar-bg);
   --ui-workspace-canvas-bg:#fbfefb;
-  --ui-table-header-bg:#f8fbf9;
+  --ui-table-header-bg:#f2faf5;
   --ui-table-body-bg:#fff;
   --ui-table-row-alt-bg:var(--ui-table-body-bg);
-  --ui-table-line:#c8d6cd;
-  --ui-subcard-bg:#fff;
+  --ui-table-line:#d1e4d9;
+  --ui-subcard-bg:#fafdfb;
+  --ui-divider-line:#d8ebe0;
+  --ui-divider-active:var(--ui-control-accent);
+  --ui-shadow-tint:22 72 52;
   /* A 1 px native border plus the contiguous .2 px inset paints the approved
      1.2 px stroke without Chromium's native fractional-border rounding. */
   --ui-card-stroke-width:1.2px;
   --ui-card-stroke-inset:inset 0 0 0 calc(var(--ui-card-stroke-width) - 1px) var(--ui-surface-border);
-  --ui-theme-mixed-preview:#eef5ee;
-  --ui-theme-mint-preview:#edf4f0;
-  --ui-theme-clear-preview:#e2f7ef;
-  --ui-window-radius:16px;
-  --ui-subcard-radius:10px;
+  --ui-theme-mixed-preview:#e3f2ec;
+  --ui-theme-mint-preview:#dcf2e6;
+  --ui-theme-clear-preview:#d5f1ee;
+  --ui-theme-slate-preview:#dce7f7;
+  --ui-theme-ivory-preview:#efeae0;
+  --ui-theme-graphite-preview:#e6eaee;
+  --ui-window-radius:14px;
+  --ui-subcard-radius:8px;
+  --teal:var(--ui-action-primary-bg);
+  --teal-dark:var(--ui-action-primary-hover);
 }
 
-:root[data-interface-theme=clear] {
-  --ui-control-ink:#243643;
-  --ui-control-muted:#566a73;
-  --ui-control-border:#b9d6cb;
-  --ui-control-hover-bg:#edf7f1;
-  --ui-tool-selected-border:var(--ui-control-accent);
-  --ui-control-selected-bg:#e2f7ef;
-  --ui-control-selected-ink:#176956;
-  --ui-action-disabled-bg:#f1f4f3;
-  --ui-action-disabled-ink:#64716c;
-  --ui-surface-border:#d1e5de;
+/* 2. Clear (清透白青) */
+:root[data-interface-theme=clear], [data-interface-theme=clear] {
+  --ui-section-ink:#0e6f6a;
+  --ui-field-ink:#213744;
+  --ui-label-ink:#415b67;
+  --ui-note-ink:#58717c;
+  --ui-control-ink:#213744;
+  --ui-control-muted:#58717c;
+  --ui-control-border:#bfd9d7;
+  --ui-control-accent:#0f837c;
+  --ui-control-focus:#0d746e;
+  --ui-control-hover-bg:#ebf7f6;
+  --ui-tool-selected-border:#72b5b0;
+  --ui-control-selected-bg:#ddf3f1;
+  --ui-control-selected-ink:#0c625e;
+  --ui-action-primary-bg:#0f837c;
+  --ui-action-primary-hover:#0b6963;
+  --ui-action-tonal-bg:#e2f4f2;
+  --ui-action-tonal-hover:#d0ece9;
+  --ui-action-tonal-ink:#0d6560;
+  --ui-action-tonal-border:#a8d4d0;
+  --ui-action-disabled-bg:#edf4f4;
+  --ui-action-disabled-ink:#6b7d80;
+  --ui-action-disabled-border:#cde0df;
+  --ui-surface-border:#d3e7e5;
   --ui-surface-bg:#fff;
-  --ui-page-bg:#fcfefd;
-  --ui-parameter-card-bg:#f8fbfa;
-  --ui-sidebar-bg:#fbfdfc;
-  --ui-workspace-rail-bg:#f4fbf9;
-  --ui-workspace-nav-selected:#d7f4eb;
-  --ui-workspace-tabs-bg:#f5fbfa;
-  --ui-workspace-group-bg:#e1f5ef;
+  --ui-page-bg:#f5fbfb;
+  --ui-parameter-card-bg:#fff;
+  --ui-sidebar-bg:#f2f9f9;
+  --ui-workspace-rail-bg:#eaf6f5;
+  --ui-workspace-nav-selected:#d5f1ee;
+  --ui-workspace-tabs-bg:#eef8f7;
+  --ui-workspace-group-bg:#e4f5f3;
   --ui-workspace-active-tab-bg:var(--ui-control-bg);
   --ui-workspace-active-tab-line:var(--ui-action-primary-bg);
   --ui-workspace-collapsed-active-bg:initial;
-  --ui-analysis-tools-bg:#f9fcfa;
+  --ui-analysis-tools-bg:#f5fbfb;
   --ui-workspace-canvas-bg:#fff;
-  --ui-table-header-bg:#f8fbf9;
+  --ui-table-header-bg:#f1f9f9;
   --ui-table-row-alt-bg:var(--ui-table-body-bg);
-}
-
-/* The root also covers the first paint before the preference binding mounts. */
-:root:not([data-interface-theme]),:root[data-interface-theme=mixed] {
-  --ui-section-ink:#217465;
-  --ui-field-ink:#40585c;
-  --ui-label-ink:#40585c;
-  --ui-note-ink:#5d7274;
-  --ui-control-ink:#40585c;
-  --ui-control-muted:#5d7274;
-  --ui-control-border:#d5ded6;
-  --ui-control-accent:#237c6d;
-  --ui-control-focus:#237c6d;
-  --ui-control-hover-bg:#f6f9f6;
-  --ui-control-selected-bg:#eef5ee;
-  --ui-control-selected-ink:#217465;
-  --ui-tool-selected-border:#a9c1b3;
-  --ui-action-primary-bg:#237c6d;
-  --ui-action-primary-hover:#1c665a;
-  --ui-surface-border:#d5ded6;
-  --ui-surface-bg:#fefefe;
-  --ui-parameter-card-bg:var(--ui-surface-bg);
-  --ui-page-bg:#fbfdfc;
-  --ui-sidebar-bg:var(--ui-page-bg);
-  --ui-workspace-rail-bg:var(--ui-page-bg);
-  --ui-workspace-nav-selected:#eef5ee;
-  --ui-workspace-tabs-bg:var(--ui-page-bg);
-  --ui-workspace-group-bg:var(--ui-surface-bg);
-  --ui-workspace-active-tab-bg:#eef5ee;
-  --ui-workspace-active-tab-line:#237c6d;
-  --ui-analysis-tools-bg:var(--ui-page-bg);
-  --ui-workspace-canvas-bg:#fff;
-  --ui-table-header-bg:#fbfcfb;
+  --ui-table-line:#cce2e0;
+  --ui-subcard-bg:#f9fdfd;
+  --ui-divider-line:#d3e7e5;
+  --ui-shadow-tint:14 68 72;
   --teal:var(--ui-action-primary-bg);
   --teal-dark:var(--ui-action-primary-hover);
+}
+
+/* 1. Mixed (混合青绿 · 默认). Also covers first paint before preference mounts. */
+:root:not([data-interface-theme]),:root[data-interface-theme=mixed],[data-interface-theme=mixed] {
+  --ui-section-ink:#16685c;
+  --ui-field-ink:#2a3f46;
+  --ui-label-ink:#445d64;
+  --ui-note-ink:#5c7378;
+  --ui-control-ink:#2a3f46;
+  --ui-control-muted:#5c7378;
+  --ui-control-border:#cfdcd6;
+  --ui-control-accent:#1d7a6c;
+  --ui-control-focus:#1d7a6c;
+  --ui-control-hover-bg:#eef5f1;
+  --ui-control-selected-bg:#e3f2ec;
+  --ui-control-selected-ink:#145e52;
+  --ui-tool-selected-border:#8eb8a8;
+  --ui-action-primary-bg:#1d7a6c;
+  --ui-action-primary-hover:#166256;
+  --ui-action-tonal-bg:#e7f3ee;
+  --ui-action-tonal-hover:#d8ebe3;
+  --ui-action-tonal-ink:#165e53;
+  --ui-action-tonal-border:#b7d4c8;
+  --ui-action-disabled-bg:#eef2f0;
+  --ui-action-disabled-ink:#73857e;
+  --ui-action-disabled-border:#d4ded9;
+  --ui-surface-border:#dce6e1;
+  --ui-surface-bg:#fff;
+  --ui-parameter-card-bg:var(--ui-surface-bg);
+  --ui-page-bg:#f6f9f7;
+  --ui-sidebar-bg:#f4f8f6;
+  --ui-workspace-rail-bg:#eff4f2;
+  --ui-workspace-nav-selected:#dff0ea;
+  --ui-workspace-tabs-bg:#f2f6f4;
+  --ui-workspace-group-bg:#edf4f0;
+  --ui-workspace-active-tab-bg:#fff;
+  --ui-workspace-active-tab-line:#1d7a6c;
+  --ui-analysis-tools-bg:#f6f9f7;
+  --ui-workspace-canvas-bg:#fff;
+  --ui-table-header-bg:#f3f7f5;
+  --ui-table-line:#d6e2dc;
+  --ui-subcard-bg:#fafcfa;
+  --ui-divider-line:#dde6e1;
+  --ui-shadow-tint:20 62 54;
+  --teal:var(--ui-action-primary-bg);
+  --teal-dark:var(--ui-action-primary-hover);
+}
+
+/* 4. Slate (期刊冷瓷蓝灰) */
+:root[data-interface-theme=slate], [data-interface-theme=slate] {
+  --ui-section-ink:#1e4b87;
+  --ui-field-ink:#213044;
+  --ui-label-ink:#41536a;
+  --ui-note-ink:#5a6c82;
+  --ui-control-ink:#213044;
+  --ui-control-muted:#5a6c82;
+  --ui-control-border:#c8d4e3;
+  --ui-control-accent:#25589b;
+  --ui-control-focus:#204e8a;
+  --ui-control-hover-bg:#edf2f9;
+  --ui-control-selected-bg:#e1ebf8;
+  --ui-control-selected-ink:#1b467e;
+  --ui-tool-selected-border:#7fa3d4;
+  --ui-action-primary-bg:#25589b;
+  --ui-action-primary-hover:#1d467d;
+  --ui-action-tonal-bg:#e6effa;
+  --ui-action-tonal-hover:#d6e4f6;
+  --ui-action-tonal-ink:#1e4b87;
+  --ui-action-tonal-border:#b3c8e5;
+  --ui-action-disabled-bg:#edf1f6;
+  --ui-action-disabled-ink:#738193;
+  --ui-action-disabled-border:#d2dbe6;
+  --ui-surface-border:#d7e0ec;
+  --ui-surface-bg:#fff;
+  --ui-parameter-card-bg:#fff;
+  --ui-page-bg:#f4f7fb;
+  --ui-sidebar-bg:#f1f5fa;
+  --ui-workspace-rail-bg:#eaeff6;
+  --ui-workspace-nav-selected:#dce7f7;
+  --ui-workspace-tabs-bg:#eff3f8;
+  --ui-workspace-group-bg:#e7eef7;
+  --ui-workspace-active-tab-bg:#fff;
+  --ui-workspace-active-tab-line:#25589b;
+  --ui-analysis-tools-bg:#f4f7fb;
+  --ui-workspace-canvas-bg:#fff;
+  --ui-table-header-bg:#f0f4f9;
+  --ui-table-line:#ced9e7;
+  --ui-subcard-bg:#f9fbfe;
+  --ui-divider-line:#d7e0ec;
+  --ui-shadow-tint:22 44 76;
+  --teal:var(--ui-action-primary-bg);
+  --teal-dark:var(--ui-action-primary-hover);
+}
+
+/* 5. Ivory (暖纸护眼象牙) */
+:root[data-interface-theme=ivory], [data-interface-theme=ivory] {
+  --ui-section-ink:#1e5e4d;
+  --ui-field-ink:#2f3734;
+  --ui-label-ink:#505750;
+  --ui-note-ink:#6a7066;
+  --ui-control-ink:#2f3734;
+  --ui-control-muted:#6a7066;
+  --ui-control-border:#d7d0c2;
+  --ui-control-bg:#fffefb;
+  --ui-control-accent:#236b58;
+  --ui-control-focus:#1e5e4d;
+  --ui-control-hover-bg:#f2eee5;
+  --ui-control-selected-bg:#e6efe8;
+  --ui-control-selected-ink:#1c5747;
+  --ui-tool-selected-border:#8db6a7;
+  --ui-action-primary-bg:#236b58;
+  --ui-action-primary-hover:#1a5545;
+  --ui-action-tonal-bg:#e8f0ea;
+  --ui-action-tonal-hover:#dae7dd;
+  --ui-action-tonal-ink:#1d5a49;
+  --ui-action-tonal-border:#bccfc2;
+  --ui-action-disabled-bg:#f0ece3;
+  --ui-action-disabled-ink:#7f7d74;
+  --ui-action-disabled-border:#dbd5c8;
+  --ui-surface-border:#e3ddd0;
+  --ui-surface-bg:#fffefb;
+  --ui-parameter-card-bg:#fffefb;
+  --ui-page-bg:#f8f5ee;
+  --ui-sidebar-bg:#f5f1e9;
+  --ui-workspace-rail-bg:#efeae0;
+  --ui-workspace-nav-selected:#e3ece4;
+  --ui-workspace-tabs-bg:#f3efe6;
+  --ui-workspace-group-bg:#ece7dc;
+  --ui-workspace-active-tab-bg:#fffefb;
+  --ui-workspace-active-tab-line:#236b58;
+  --ui-analysis-tools-bg:#f8f5ee;
+  --ui-workspace-canvas-bg:#fff;
+  --ui-table-header-bg:#f4f0e7;
+  --ui-table-body-bg:#fffefb;
+  --ui-table-line:#dcd5c7;
+  --ui-subcard-bg:#faf7f1;
+  --ui-divider-line:#e3ddd0;
+  --ui-shadow-tint:62 52 34;
+  --teal:var(--ui-action-primary-bg);
+  --teal-dark:var(--ui-action-primary-hover);
+}
+
+/* 6. Graphite (极简中性银灰) */
+:root[data-interface-theme=graphite], [data-interface-theme=graphite] {
+  --ui-section-ink:#1e5250;
+  --ui-field-ink:#252c34;
+  --ui-label-ink:#47505a;
+  --ui-note-ink:#616b76;
+  --ui-control-ink:#252c34;
+  --ui-control-muted:#616b76;
+  --ui-control-border:#d0d5dc;
+  --ui-control-bg:#fff;
+  --ui-control-accent:#245e5b;
+  --ui-control-focus:#1e5250;
+  --ui-control-hover-bg:#eef0f3;
+  --ui-control-selected-bg:#e4eceb;
+  --ui-control-selected-ink:#1a4a48;
+  --ui-tool-selected-border:#8aaeae;
+  --ui-action-primary-bg:#245e5b;
+  --ui-action-primary-hover:#1b4a48;
+  --ui-action-tonal-bg:#e8efef;
+  --ui-action-tonal-hover:#dae5e5;
+  --ui-action-tonal-ink:#1c4d4a;
+  --ui-action-tonal-border:#bacaca;
+  --ui-action-disabled-bg:#eff1f4;
+  --ui-action-disabled-ink:#78808a;
+  --ui-action-disabled-border:#d6dbe0;
+  --ui-surface-border:#dfe3e8;
+  --ui-surface-bg:#fff;
+  --ui-parameter-card-bg:#fff;
+  --ui-page-bg:#f5f6f8;
+  --ui-sidebar-bg:#f2f4f6;
+  --ui-workspace-rail-bg:#eceef1;
+  --ui-workspace-nav-selected:#e1e8e8;
+  --ui-workspace-tabs-bg:#f0f2f4;
+  --ui-workspace-group-bg:#eaedf0;
+  --ui-workspace-active-tab-bg:#fff;
+  --ui-workspace-active-tab-line:#245e5b;
+  --ui-analysis-tools-bg:#f5f6f8;
+  --ui-workspace-canvas-bg:#fff;
+  --ui-table-header-bg:#f3f4f6;
+  --ui-table-line:#d6dbe0;
+  --ui-subcard-bg:#fafafa;
+  --ui-divider-line:#dfe3e8;
+  --ui-shadow-tint:30 38 48;
+  --teal:var(--ui-action-primary-bg);
+  --teal-dark:var(--ui-action-primary-hover);
+}
+
+/* Three live-switchable surface tiers (orthogonal to the 6 light themes). */
+:root:not([data-interface-surface]),:root[data-interface-surface=flagship],[data-interface-surface=flagship] {
+  --ui-surface-radius:10px;
+  --ui-subcard-radius:8px;
+  --ui-control-radius:7px;
+  --ui-window-radius:14px;
+  --ui-card-shadow:var(--ui-card-stroke-inset),0 1px 2px rgb(var(--ui-shadow-tint,20 62 54) / 0.05),0 4px 12px -4px rgb(var(--ui-shadow-tint,20 62 54) / 0.06);
+  --ui-card-hover-shadow:var(--ui-card-stroke-inset),0 2px 6px rgb(var(--ui-shadow-tint,20 62 54) / 0.08),0 8px 18px -6px rgb(var(--ui-shadow-tint,20 62 54) / 0.09);
+  --ui-popover-shadow:0 10px 30px -6px rgb(var(--ui-shadow-tint,20 62 54) / 0.16),0 2px 8px rgb(var(--ui-shadow-tint,20 62 54) / 0.08);
+  --ui-tab-active-shadow:0 -1px 4px rgb(var(--ui-shadow-tint,20 62 54) / 0.05);
+  --ui-popover-bg:var(--ui-control-bg);
+  --ui-popover-blur:none;
+  --ui-toolbar-btn-bg:transparent;
+  --ui-toolbar-btn-border:transparent;
+  --ui-transition:background-color 140ms ease,border-color 140ms ease,color 140ms ease,box-shadow 140ms ease,transform 120ms ease;
+}
+
+:root[data-interface-surface=flat], [data-interface-surface=flat] {
+  --ui-surface-radius:7px;
+  --ui-subcard-radius:6px;
+  --ui-control-radius:5px;
+  --ui-window-radius:10px;
+  --ui-card-shadow:var(--ui-card-stroke-inset);
+  --ui-card-hover-shadow:var(--ui-card-stroke-inset);
+  --ui-popover-shadow:0 4px 14px rgb(var(--ui-shadow-tint,20 62 54) / 0.10);
+  --ui-tab-active-shadow:none;
+  --ui-popover-bg:var(--ui-control-bg);
+  --ui-popover-blur:none;
+  --ui-toolbar-btn-bg:transparent;
+  --ui-toolbar-btn-border:transparent;
+  --ui-transition:background-color 100ms ease,border-color 100ms ease,color 100ms ease;
+}
+
+:root[data-interface-surface=glass], [data-interface-surface=glass] {
+  --ui-surface-radius:12px;
+  --ui-subcard-radius:9px;
+  --ui-control-radius:8px;
+  --ui-window-radius:16px;
+  --ui-card-shadow:var(--ui-card-stroke-inset),0 2px 6px rgb(var(--ui-shadow-tint,20 62 54) / 0.07),0 10px 24px -8px rgb(var(--ui-shadow-tint,20 62 54) / 0.11);
+  --ui-card-hover-shadow:var(--ui-card-stroke-inset),0 4px 10px rgb(var(--ui-shadow-tint,20 62 54) / 0.10),0 14px 28px -8px rgb(var(--ui-shadow-tint,20 62 54) / 0.14);
+  --ui-popover-shadow:0 18px 46px -8px rgb(var(--ui-shadow-tint,20 62 54) / 0.22),0 4px 12px rgb(var(--ui-shadow-tint,20 62 54) / 0.10);
+  --ui-tab-active-shadow:0 2px 8px rgb(var(--ui-shadow-tint,20 62 54) / 0.08);
+  --ui-popover-bg:color-mix(in srgb,var(--ui-control-bg) 84%,transparent);
+  --ui-popover-blur:blur(14px) saturate(1.18);
+  --ui-toolbar-btn-bg:transparent;
+  --ui-toolbar-btn-border:transparent;
+  --ui-transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 180ms ease,transform 140ms ease;
 }
 
 /* Reserve a visible arrow inside every native single-choice control. */
 select:not([multiple]):is(:not([size]),[size="1"]) {
   appearance:none;
   padding-inline-end:calc(26px * var(--ui-font-scale,1))!important;
-  background-image:linear-gradient(45deg,transparent 50%,#427e66 50%),linear-gradient(135deg,#427e66 50%,transparent 50%)!important;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ui-control-accent) 50%),linear-gradient(135deg,var(--ui-control-accent) 50%,transparent 50%)!important;
   background-size:5px 5px,5px 5px!important;
   background-position:right 13px center,right 8px center!important;
   background-repeat:no-repeat!important;
 }
 select:not([multiple]):disabled {
-  background-image:linear-gradient(45deg,transparent 50%,#78897e 50%),linear-gradient(135deg,#78897e 50%,transparent 50%)!important;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ui-action-disabled-ink) 50%),linear-gradient(135deg,var(--ui-action-disabled-ink) 50%,transparent 50%)!important;
 }
 
 .electronic-state-warning { position:relative; display:inline-block; flex:0 0 auto; margin:0; padding:0; border:0; color:#916d12; background:transparent; }
@@ -149,15 +382,17 @@ select:not([multiple]):disabled {
   display:grid; place-items:center; box-sizing:border-box; inline-size:22px; block-size:22px;
   list-style:none; cursor:pointer; border:1px solid #d4b454; border-radius:50%;
   background:#fff3cc; color:#86620d; font:700 14px/1 var(--ui-font-family);
+  transition:var(--ui-transition);
 }
+.electronic-state-warning>summary:hover { background:#ffebb0; border-color:#c29c34; }
 .electronic-state-warning>summary::-webkit-details-marker { display:none; }
 .electronic-state-warning>summary:focus-visible { outline:2px solid var(--ui-control-focus); outline-offset:2px; }
 .electronic-state-warning[open]>[role=note] {
   position:absolute; z-index:40; inset-block-start:calc(100% + 6px); inset-inline-end:0;
   box-sizing:border-box; inline-size:max-content; max-inline-size:min(320px,calc(100vw - 32px));
-  padding:8px 10px; border:1px solid #d4b454; border-radius:7px; background:#fffbef; color:#765b20;
+  padding:8px 10px; border:1px solid #d4b454; border-radius:var(--ui-control-radius); background:#fffbef; color:#765b20;
   font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family); white-space:normal; overflow-wrap:anywhere;
-  box-shadow:0 4px 12px #614a1520;
+  box-shadow:var(--ui-popover-shadow);
 }
 
 @media (prefers-contrast: more) {
@@ -176,8 +411,12 @@ select:not([multiple]):disabled {
   padding:var(--ui-control-padding); border:1px solid var(--ui-control-border);
   border-radius:var(--ui-control-radius); background:var(--ui-control-bg);
   color:var(--ui-control-ink); font:inherit;
+  transition:var(--ui-transition);
 }
-:where(.model-settings-popover,.postprocess-plot,.dialog-shell,.dialog-surface,.ui-control-surface) :where(button:hover:not(:disabled)) { background:var(--ui-control-hover-bg); }
+:where(.model-settings-popover,.postprocess-plot,.dialog-shell,.dialog-surface,.ui-control-surface) :where(button:hover:not(:disabled)) { background:var(--ui-control-hover-bg); border-color:color-mix(in srgb,var(--ui-control-accent) 42%,var(--ui-control-border)); }
+:where(.model-settings-popover,.postprocess-plot,.input-settings-surface,.dialog-shell,.dialog-surface,.ui-control-surface) :where(input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]),select,textarea):hover:not(:disabled) {
+  border-color:color-mix(in srgb,var(--ui-control-accent) 45%,var(--ui-control-border));
+}
 :where(.model-settings-popover,.postprocess-plot,.input-settings-surface,.dialog-shell,.dialog-surface,.ui-control-surface) :where(button,input,select,textarea):focus-visible { outline:2px solid var(--ui-control-focus); outline-offset:2px; }
 :where(.dialog-shell,.dialog-surface,.ui-control-surface) :where(input[type=checkbox],input[type=radio],input[type=range]) { accent-color:var(--ui-control-accent); }
 
@@ -197,13 +436,19 @@ select:not([multiple]):disabled {
 .ui-control-surface :where(button,input,select,textarea):disabled {
   opacity:1; color:var(--ui-action-disabled-ink); background:var(--ui-action-disabled-bg); border-color:var(--ui-action-disabled-border);
 }
-.ui-control-surface :where(input,select,textarea)[aria-invalid=true]:not(:disabled) { border-color:var(--ui-control-invalid); background:#fff; }
+.ui-control-surface :where(input,select,textarea)[aria-invalid=true]:not(:disabled) { border-color:var(--ui-control-invalid); background:var(--ui-control-bg); }
 .ui-control-surface :where(.button-primary,[data-ui-action=primary]) {
-  min-height:var(--ui-control-primary-height); min-width:min(100%,var(--ui-control-primary-width)); padding:5px 12px;
+  min-height:var(--ui-control-primary-height); min-width:min(100%,var(--ui-control-primary-width)); padding:5px 14px;
   border-color:var(--ui-action-primary-bg); background:var(--ui-action-primary-bg); color:#fff; font-weight:600;
+  box-shadow:0 1px 3px rgb(var(--ui-shadow-tint,20 62 54) / 0.18);
 }
 .ui-control-surface :where(.button-primary,[data-ui-action=primary]):hover:not(:disabled) {
   border-color:var(--ui-action-primary-hover); background:var(--ui-action-primary-hover);
+  box-shadow:0 2px 6px rgb(var(--ui-shadow-tint,20 62 54) / 0.24);
+}
+:root[data-interface-surface=flat] .ui-control-surface :where(.button-primary,[data-ui-action=primary]),
+:root[data-interface-surface=flat] .ui-control-surface :where(.button-primary,[data-ui-action=primary]):hover:not(:disabled) {
+  box-shadow:none;
 }
 
 /* One action group uses one size role. Grid rows share the tallest content,
@@ -228,16 +473,15 @@ select:not([multiple]):disabled {
 }
 .dialog-shell .modal-buttons { --ui-action-group-justify:end; }
 
-/* Ordinary cards share one painted stroke. The inset extends the native border
-   inward by .2 px; it has no blur, offset, depth or layout effect. State rings,
-   splitters, fields and buttons retain their own roles. */
+/* Ordinary cards share one painted 1.2 px stroke plus optional surface-tier elevation. */
 :root :is(.sy-settings-card,.analysis-task-card,.analysis-task-section,
   .postprocess-file-slot,.postprocess-basic,.scientific-quick-values,.scientific-scf,
   .optimization-plot,.orbital-channel,.orbital-shared-frame,
   .workbench-tool-cell,.workbench-layout-editor,.model-clipboard-dock,.advanced-modeling-function-card,
   .task-analysis-card) {
   border:1px solid var(--ui-surface-border);
-  box-shadow:var(--ui-card-stroke-inset);
+  box-shadow:var(--ui-card-shadow);
+  transition:var(--ui-transition);
 }
 :root :is(.sy-settings-card,.workbench-tool-cell,.workbench-layout-editor,.task-analysis-card) {
   background:var(--ui-surface-bg);
@@ -245,6 +489,7 @@ select:not([multiple]):disabled {
 :root :is(.sy-settings-card,.workbench-tool-cell,.workbench-layout-editor,.task-analysis-card)
   :is(.sy-settings-card,.workbench-tool-cell,.workbench-layout-editor,.task-analysis-card) {
   background:var(--ui-subcard-bg);
+  box-shadow:var(--ui-card-stroke-inset);
 }
 :root :is(.page-heading h1,.workflow-session-bar,.input-workflow-header .breadcrumb>strong,
   .workflow-content-card .heading-with-number h2,.shared-orca-form .card-heading h2,
@@ -267,6 +512,6 @@ select:not([multiple]):disabled {
 :root .software-choice-card:enabled,
 :root .task-card.shared-task-choice:enabled:not(.selected) {
   border-color:var(--ui-surface-border);
-  box-shadow:var(--ui-card-stroke-inset);
+  box-shadow:var(--ui-card-shadow);
   color:var(--ui-section-ink);
 }

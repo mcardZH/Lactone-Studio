@@ -8,12 +8,14 @@ import { inputSelectionIndices } from '../../core/input-selection';
 import { confirmCoordinateSelection } from '../../modeling/application/coordinate-selection';
 import type { TrajectoryResult } from '../../results/contracts';
 import { trajectoryPlotAxis, trajectoryPlotKind } from '../../results/optimization-plot-axis';
-import { traceInternalCoordinate, type CoordinateTrace } from '../../results/scientific-analysis';
+import { traceInternalCoordinate, trajectoryScanDefinition, type CoordinateTrace } from '../../results/scientific-analysis';
 import InteractiveSelectionField, { SelectionAddButton, SelectionRemoveButton } from '../InteractiveSelectionField';
 import { assertAnalysisSelectionPort, type AnalysisSelectionPort } from '../analysis-selection-intent';
 import CoordinatePlot from './CoordinatePlot';
 import { OptimizationPlot,type OptimizationPlotExtension } from './OptimizationPlot';
 import { AnalysisTaskLayout, AnalysisTaskSection } from './AnalysisTaskLayout';
+import {ResultsMcpInlinePlotSource} from './results-mcp-context';
+import {objectSchema} from '../mcp/types';
 import './TrajectoryAnalysisControls.css';
 
 export interface TrajectoryAnalysisControlsProps {
@@ -29,15 +31,7 @@ interface TraceEntry { id: string; trace: CoordinateTrace }
 const traceId = (trace: Pick<CoordinateTrace, 'kind' | 'atomIndices'>) => `${trace.kind}:${trace.atomIndices.join(',')}`;
 const traceLabel = (trace: CoordinateTrace) => `${{ B: '键长', A: '键角', D: '二面角' }[trace.kind]} (${trace.atomIndices.map(index => index + 1).join(', ')}) / ${trace.unit === 'angstrom' ? 'Å' : '°'}`;
 
-/** A single explicit 1D source definition is enough; method names and filenames are never definitions. */
-export function trajectoryScanDefinition(result: TrajectoryResult): { kind: CoordinateTrace['kind']; atomIndices: number[] } | null {
-  if (trajectoryPlotKind(result) !== 'scan' || result.scientific?.scanCoordinates?.length !== 1) return null;
-  const definition = result.scientific.scanCoordinates[0], kind = ({ bond: 'B', angle: 'A', dihedral: 'D' } as const)[definition.kind];
-  const count = kind === 'B' ? 2 : kind === 'A' ? 3 : 4;
-  if (definition.atomIndices.length !== count || new Set(definition.atomIndices).size !== count || definition.atomIndices.some(index => !Number.isSafeInteger(index) || index < 0 || index >= result.initialStructure.atoms.length)
-    || definition.unit !== (kind === 'B' ? 'angstrom' : 'degree')) return null;
-  return { kind, atomIndices: [...definition.atomIndices] };
-}
+export {trajectoryScanDefinition};
 
 /** Shared ordered-selection validation followed only by source geometry reads; no store or QM operation. */
 export async function traceTrajectorySelection(result: TrajectoryResult, structure: Structure, atomIds: readonly string[], signal?: AbortSignal, isCurrent: () => boolean = () => true): Promise<CoordinateTrace | null> {
@@ -56,8 +50,13 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
   const [editor, setEditor] = useState(false);
   const [entries, setEntries] = useState<TraceEntry[]>([]), [scanX, setScanX] = useState('source');
   const [defaultTrace, setDefaultTrace] = useState<CoordinateTrace | null>(null), [tracing, setTracing] = useState(false);
+  const [traceFailure,setTraceFailure]=useState<{result:TrajectoryResult;message:string}>();
   const scan = trajectoryPlotKind(p.result) === 'scan';
+  const firstOrigin=p.result.frames[0]?.pesOrigin;
+  const pathOrigin=firstOrigin?.recordId&&p.result.frames.every(frame=>frame.pesOrigin?.recordId===firstOrigin.recordId&&
+    frame.pesOrigin?.runId===firstOrigin.runId)?firstOrigin:undefined;
   const nativeScanAxis = useMemo(() => scan && trajectoryPlotAxis(p.result, p.result.frames).physical, [p.result, scan]);
+  const scanDefinition=useMemo(()=>scan?trajectoryScanDefinition(p.result):null,[scan,p.result]);
   const mounted = useRef(true), traceController = useRef<AbortController | null>(null), defaultController = useRef<AbortController | null>(null);
   const latest = useRef(p); latest.current = p;
   const source = useRef(p.result); if (source.current !== p.result) { traceController.current?.abort(); defaultController.current?.abort(); source.current = p.result; }
@@ -72,13 +71,17 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
   useEffect(()=>{if(restoring)void loadAnalysisProjectSnapshot(snapshotKey).then(()=>setRestoring(false),()=>setRestoring(false));},[snapshotKey,restoring]);
   useEffect(() => {
     if (restoring || !p.active || traceOwner === p.result && defaultTrace || nativeScanAxis) return;
-    const definition = trajectoryScanDefinition(p.result); if (!definition) return;
+    const definition = scanDefinition; if (!definition) return;
     const result = p.result, controller = new AbortController(); defaultController.current = controller;
     void traceInternalCoordinate(result, definition.kind, definition.atomIndices, controller.signal).then(trace => {
       if (mounted.current && latest.current.result === result && latest.current.active && !controller.signal.aborted) setDefaultTrace(trace);
-    }).catch(error => { if (!controller.signal.aborted && mounted.current && latest.current.result === result && latest.current.active) latest.current.onError(error instanceof Error ? error.message : '扫描坐标读取失败。'); });
+    }).catch(error => {
+      if(controller.signal.aborted||!mounted.current||latest.current.result!==result||!latest.current.active)return;
+      const message=error instanceof Error?error.message:'扫描坐标读取失败。';
+      setTraceFailure({result,message});latest.current.onError(message);
+    });
     return () => { controller.abort(); if (defaultController.current === controller) defaultController.current = null; };
-  }, [p.result, p.active, defaultTrace, traceOwner, restoring, nativeScanAxis]);
+  }, [p.result,p.active,defaultTrace,traceOwner,restoring,nativeScanAxis,scanDefinition]);
   const visibleEntries = traceOwner === p.result ? entries : [];
   useEffect(()=>{
     p.onCoordinateAnnotations?.(traceOwner===p.result?entries.flatMap((entry,index)=>{
@@ -93,6 +96,22 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
     ? traceOwner === p.result ? defaultTrace : null
     : visibleEntries.find(entry => entry.id === scanAxis)?.trace ?? null : null;
   const sourceScanAxis = nativeScanAxis || scan && Boolean(traceOwner === p.result && defaultTrace);
+  const currentFailure=traceFailure?.result===p.result?traceFailure.message:undefined;
+  const sourceState=sourceScanAxis?'ready':scanDefinition&&!currentFailure?'preparing':'unavailable';
+  const axisOptions=['ordinal',...(sourceState!=='unavailable'?['source']:[]),...visibleEntries.map(entry=>entry.id)];
+  const effectiveAxis=scanAxis==='source'&&!sourceScanAxis?'ordinal':scanAxis;
+  const scanAxisSettings=scan?{
+    schema:objectSchema({axis:{type:'string',enum:axisOptions}},['axis']),
+    read:()=>{
+      const domain=effectiveAxis==='ordinal'?null:trajectoryPlotAxis(p.result,p.result.frames,override);
+      return {requestedAxis:scanAxis,effectiveAxis,sourceState,sourceError:currentFailure,axisLabel:domain?.label??'Scan Point',
+        axisUnit:domain?.unit,definition:scanDefinition,availableAxes:axisOptions};
+    },
+    apply(patch:Record<string,unknown>){
+      if(!latest.current.active||!axisOptions.includes(String(patch.axis)))throw new Error('当前扫描图不支持此横轴。');
+      setScanX(String(patch.axis));
+    },
+  }:undefined;
   const scanAxisControl = scan && (sourceScanAxis || visibleEntries.length > 0) ? <label>横轴 <select aria-label="扫描横轴"
     value={scanAxis === 'source' && !sourceScanAxis ? 'ordinal' : scanAxis} onChange={event => setScanX(event.target.value)}>
     {sourceScanAxis && <option value="source">来源扫描坐标</option>}
@@ -134,8 +153,11 @@ function TrajectoryAnalysisControlsInner(p: TrajectoryAnalysisControlsProps) {
   };
   return <div className="trajectory-analysis-controls" data-testid="trajectory-analysis-controls">
     {p.extension?.controls}
-    {p.extension?.energyPlot??<OptimizationPlot result={p.result} currentIndex={p.currentIndex} onSelectFrame={seek} coordinateTrace={override}
-      scanOrdinal={scanAxis === 'ordinal'} axisControl={scanAxisControl} extension={p.extension?.plot} responsive/>}
+    {p.extension?.energyPlot??<ResultsMcpInlinePlotSource kind={pathOrigin?'pes-path-energy':scan?'scan-energy':'trajectory-energy'}
+      collectionId={pathOrigin?.recordId} runId={pathOrigin?.runId}>
+      <OptimizationPlot result={p.result} currentIndex={p.currentIndex} onSelectFrame={seek} coordinateTrace={override}
+        scanOrdinal={scanAxis === 'ordinal'} axisControl={scanAxisControl} scanAxisSettings={scanAxisSettings} extension={p.extension?.plot} responsive/>
+    </ResultsMcpInlinePlotSource>}
     {p.extension?.details}
     <AnalysisTaskLayout variant="card" title="内坐标变化" className="trajectory-coordinate-task"
       headerActions={<SelectionAddButton label="添加内坐标" disabled={!p.active || !p.structure || tracing || editor} onClick={() => { p.onPause(); setEditor(true); }}/>}

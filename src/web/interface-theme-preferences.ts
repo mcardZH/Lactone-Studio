@@ -1,14 +1,15 @@
 import {useCallback,useSyncExternalStore} from 'react';
 import {applicationVersion} from '../application-version';
 
-export type InterfaceTheme='mixed'|'mint'|'clear';
+export const INTERFACE_THEMES=['mixed','mint','clear','slate','ivory','graphite'] as const;
+export type InterfaceTheme=(typeof INTERFACE_THEMES)[number];
 export const INTERFACE_THEME_KEY='sciyue.interface-theme';
 export const INTERFACE_THEME_VERSION_KEY=`${INTERFACE_THEME_KEY}.version`;
 export const DEFAULT_INTERFACE_THEME:InterfaceTheme='mixed';
 const CHANGE_EVENT='sciyue:interface-theme';
 let current:InterfaceTheme|undefined;
 let unsavedSessionChoice=false;
-const validTheme=(value:unknown):InterfaceTheme=>value==='clear'||value==='mint'?value:DEFAULT_INTERFACE_THEME;
+const validTheme=(value:unknown):InterfaceTheme=>typeof value==='string'&&(INTERFACE_THEMES as readonly string[]).includes(value)?value as InterfaceTheme:DEFAULT_INTERFACE_THEME;
 function currentDocument():Document|undefined{return typeof document==='undefined'?undefined:document;}
 function readStoredTheme():InterfaceTheme {
   try{

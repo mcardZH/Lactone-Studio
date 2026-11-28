@@ -28,7 +28,7 @@ export interface SurfaceColorMapping { min: number; max: number; colors: readonl
 export interface SurfaceMeshState {
   status: 'empty' | 'pending' | 'committed' | 'failed'; attemptKey: string | null; committedKey: string | null;
   sourceId?: string; sourceRevision?: string; shapeId?: string; mappingId?: string | null;
-  shapeCount: number; vertexCount: number; triangleCount: number; colored: boolean; submitted: boolean; error?: string;
+  shapeCount: number; vertexCount: number; triangleCount: number; colored: boolean; submitted: boolean; appearanceKey?:string; error?: string;
 }
 export interface ViewportSurfaceLayer {
   /** Required and stable within the owning analysis for multi-field display. */
@@ -146,6 +146,9 @@ export function surfaceMeshKey(layer: ViewportSurfaceLayer, transform: RigidTran
   return JSON.stringify([layer.documentId, layer.geometryRevision, layer.pair.shape.context, layer.pair.shape.id, layer.pair.shape.source.revision,
     layer.pair.mapping?.id, layer.pair.mapping?.source.revision, pairGeometryKey(layer.pair), layer.sourceToDocument, layer.pair.isovalue, layer.opacity, layer.color, layer.solidColor, layer.contactFocus?.contact, transform.rotation, transform.translation,meshFinishKey(layer.finish)]);
 }
+export function surfaceMeshAppearanceKey(layer:ViewportSurfaceLayer):string {
+  return JSON.stringify([layer.color,layer.solidColor,layer.opacity,meshFinishKey(layer.finish)]);
+}
 const emptyMeshState = (): SurfaceMeshState => ({ status: 'empty', attemptKey: null, committedKey: null, shapeCount: 0, vertexCount: 0, triangleCount: 0, colored: false, submitted: false });
 
 function focusedColor(value: number, color: SurfaceColorMapping, position?: Vector3, focus?: ViewportSurfaceLayer['contactFocus']) {
@@ -185,10 +188,11 @@ export function createSurfaceLayer(viewer: any, mol: any, notify?: () => void) {
       const key = surfaceMeshKey(current, transform);
       if (shapeField === pair.shape && mappingField === pair.mapping && surfaceSignature === key) return false;
       const color = pair.mapping ? current.color : undefined, solidColor = current.solidColor ?? '#d5dfdf', nextColorSignature = JSON.stringify([color, solidColor, current.contactFocus?.contact]);
+      const keepUnmappedShape=pair.shape.source.kind==='generated-cube'&&pair.mapping?.source.kind==='generated-cube'&&(pair.mapping.function==='esp'||pair.mapping.function==='alie');
       const nextFinishSignature=meshFinishKey(current.finish);
       const geometryKey = JSON.stringify([current.documentId, current.geometryRevision, pair.shape.context, pair.shape.id, pair.shape.source.revision,
-        pair.mapping?.id, pair.mapping?.source.revision, pairGeometryKey(pair), current.sourceToDocument, pair.isovalue, Boolean(color), Boolean(current.contactFocus), transform.rotation, transform.translation]);
-      meshState = { ...meshState, status: 'pending', attemptKey: key, sourceId: pair.shape.context.sourceId, sourceRevision: pair.shape.context.sourceRevision, shapeId: pair.shape.id, mappingId: pair.mapping?.id ?? null, submitted: false, error: undefined };
+        pair.mapping?.id, pair.mapping?.source.revision, pairGeometryKey(pair), current.sourceToDocument, pair.isovalue, Boolean(color), Boolean(current.contactFocus), keepUnmappedShape, transform.rotation, transform.translation]);
+      meshState = { ...meshState, status: 'pending', attemptKey: key, sourceId: pair.shape.context.sourceId, sourceRevision: pair.shape.context.sourceRevision, shapeId: pair.shape.id, mappingId: pair.mapping?.id ?? null, appearanceKey:surfaceMeshAppearanceKey(current), submitted: false, error: undefined };
       const next = createShapeLayer(viewer);
       try {
         if (!Number.isFinite(pair.isovalue) || !Number.isFinite(current.opacity) || current.opacity < 0 || current.opacity > 1) throw new Error('表面等值或透明度无效。');
@@ -197,7 +201,7 @@ export function createSurfaceLayer(viewer: any, mol: any, notify?: () => void) {
         if (shapeField === pair.shape && mappingField === pair.mapping && geometrySignature === geometryKey) {
           const recolor = colorSignature !== nextColorSignature;
           for (const entry of materials) {
-            const colors = recolor ? color && entry.samples ? Array.from(entry.samples,(value,index)=>focusedColor(value,color,sourcePoint(entry.sourcePositions,index),current.contactFocus)) : solidColor : undefined;
+            const colors = recolor ? color && entry.samples ? Array.from(entry.samples,(value,index)=>Number.isNaN(value)?solidColor:focusedColor(value,color,sourcePoint(entry.sourcePositions,index),current.contactFocus)) : solidColor : undefined;
             if (colors || materialOpacity !== current.opacity) updateCustomMeshAppearance(entry.handle, entry.vertices, current.opacity, colors);
             if (finishSignature!==nextFinishSignature) updateLocalMeshFinish(entry.handle,current.finish);
           }
@@ -207,7 +211,7 @@ export function createSurfaceLayer(viewer: any, mol: any, notify?: () => void) {
         }
         const interaction=interactionPair(pair),inside=interaction?pair.inside:'above';
         const validation = interaction ? validateInteractionFieldPair(pair) : excitationPair(pair) ? validateExcitationDensityFieldPair(pair) : hirshfeldPair(pair) ? validateHirshfeldFieldPair(pair) : validateSurfaceFieldPair(pair); if (!validation.compatible) throw new Error(validation.reasons.join('；'));
-        const chunks = preparation.read(geometryKey, { kind: 'surface', shape: pair.shape, mapping: color ? pair.mapping : null, inside, restricted: interaction,
+        const chunks = preparation.read(geometryKey, { kind: 'surface', shape: pair.shape, mapping: color ? pair.mapping : null, inside, restricted: interaction,keepUnmappedShape,
           sameGrid: !!pair.mapping && sameSurfaceGrid(pair.shape, pair.mapping), positions: !!current.contactFocus, isovalue: pair.isovalue,
           pose: surfaceDisplayTransform(current, transform), factor: pair.shape.grid.coordinateUnit === 'bohr' ? BOHR_TO_ANGSTROM : 1 });
         if (!chunks) {
@@ -217,12 +221,13 @@ export function createSurfaceLayer(viewer: any, mol: any, notify?: () => void) {
           meshState = { ...meshState, committedKey: null, shapeCount: 0, vertexCount: 0, triangleCount: 0, colored: false };
           return changed;
         }
-        let vertexCount = 0, triangleCount = 0;
+        let vertexCount = 0, triangleCount = 0, colored = false;
         const nextMaterials: typeof materials = [];
         for (const chunk of chunks) {
           const {samples,sourcePositions}=chunk;
           const colorArr = color && samples ? Array.from(samples,(value,index) => {
-            const hex = focusedColor(value, color, sourcePoint(sourcePositions,index), current.contactFocus);
+            if(!colored&&Number.isFinite(value))colored=true;
+            const hex = Number.isNaN(value)?solidColor:focusedColor(value, color, sourcePoint(sourcePositions,index), current.contactFocus);
             return { r: parseInt(hex.slice(1, 3), 16) / 255, g: parseInt(hex.slice(3, 5), 16) / 255, b: parseInt(hex.slice(5, 7), 16) / 255 };
           }) : undefined;
           const handle: any = addPackedNativeMesh(viewer,mol,chunk,{color:solidColor,opacity:current.opacity,clickable:false,hoverable:false},colorArr);
@@ -233,7 +238,7 @@ export function createSurfaceLayer(viewer: any, mol: any, notify?: () => void) {
           nextMaterials.push({ handle, vertices: chunk.vertices.length/3, samples: samples ?? null, sourcePositions });
           // Locked GLShape.globj reapplies handle.color on every render. Its
           // own volumetric-color path deletes it too; retain our uploaded RGB.
-          if (color) delete handle.color;
+          if (colorArr) delete handle.color;
           const groups = handle?.geo?.geometryGroups;
           if (!groups?.length) throw new Error('分子表面没有实际提交的渲染几何。');
           for (const group of groups) { vertexCount += group.vertices; triangleCount += group.faceidx / 3; }
@@ -241,7 +246,7 @@ export function createSurfaceLayer(viewer: any, mol: any, notify?: () => void) {
         if (!(vertexCount > 0 && triangleCount > 0)) throw new Error('分子表面实际渲染几何为空。');
         surfaceShapes.clear(); surfaceShapes = next; materials = nextMaterials; shapeField = pair.shape; mappingField = pair.mapping; surfaceSignature = key;
         geometrySignature = geometryKey; colorSignature = nextColorSignature; finishSignature=nextFinishSignature; materialOpacity = current.opacity;
-        meshState = { ...meshState, status: 'committed', committedKey: key, shapeCount: next.size, vertexCount, triangleCount, colored: Boolean(color && pair.mapping), error: undefined };
+        meshState = { ...meshState, status: 'committed', committedKey: key, shapeCount: next.size, vertexCount, triangleCount, colored, error: undefined };
         return true;
       } catch (error) {
         preparation.cancel();

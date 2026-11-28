@@ -15,6 +15,7 @@ import {objectSchema} from '../mcp/types';
 import { decimalEnergyValue, energySummaryValue } from '../../results/numeric-format';
 import {projectTrajectoryEnergyOverlays,type TrajectoryEnergyGap,type TrajectoryEnergyOverlay} from '../../results/trajectory-energy-extension';
 import {usePlotFigure, type PlotFigureRecord} from './scientific-plot-figure';
+import type {NativeMcpSettings} from './results-mcp-context';
 import './OptimizationPlot.css';
 import './TrajectoryAnalysisControls.css';
 
@@ -26,6 +27,7 @@ export interface OptimizationPlotProps {
   coordinateTrace?: CoordinateTrace | null;
   scanOrdinal?: boolean;
   axisControl?: ReactNode;
+  scanAxisSettings?:NativeMcpSettings;
   extension?: OptimizationPlotExtension;
 }
 export type {OptimizationEnergyDisplay} from '../../results/scientific-plot-editing';
@@ -76,7 +78,7 @@ export function OptimizationPlot(props:OptimizationPlotProps) {
   </AnalysisTaskLayout>;
 }
 
-function OptimizationPlotBody({result,currentIndex,currentConvergence,onSelectFrame,onSeriesChange,onDraw,responsive=false,coordinateTrace,scanOrdinal=false,axisControl,extension,display,updateDisplay,record}:
+function OptimizationPlotBody({result,currentIndex,currentConvergence,onSelectFrame,onSeriesChange,onDraw,responsive=false,coordinateTrace,scanOrdinal=false,axisControl,scanAxisSettings,extension,display,updateDisplay,record}:
   OptimizationPlotProps&{display:OptimizationEnergyDisplay;updateDisplay(value:Partial<OptimizationEnergyDisplay>):void;record:PlotFigureRecord}) {
   const {unit,relative,reference,zeroPoint}=display;
   const [selectingZero, setSelectingZero] = useState(false);
@@ -225,6 +227,7 @@ function OptimizationPlotBody({result,currentIndex,currentConvergence,onSelectFr
     {currentIndex !== undefined && <div className="trajectory-energy-readout"><p className="trajectory-current-energy">帧 {currentIndex + 1} / {result.frames.length} · {currentValue === null ? '能量缺失' : `${relative ? 'ΔE' : 'E'} ${energySummaryValue(currentValue,unit)} ${unit}`}{!selected && nodeLayer ? ' · 点内迭代帧（未入节点曲线）' : ''}</p>
     {currentValue !== null && <details className="trajectory-energy-full-value"><summary>完整值</summary><span className="trajectory-energy-copy-value" aria-label="当前能量完整值" title="选择并复制完整数值" onCopy={event=>{event.clipboardData.setData('text/plain',precision(currentValue));event.preventDefault();}}>{precision(currentValue)}</span><span> {unit}</span></details>}</div>}
     {hasChart ? <ScientificPlot appearanceKey={plotIdentity(result)} figureRecord={record} toolbar={toolbar} title={title} xLabel={chart.axis.label} yLabel={`${relative ? 'Relative Energy' : 'Energy'} / ${unitLabel}`} series={plotSeries} selectedIndex={currentIndex} onSelectIndex={selectPoint}
+      mcpConfigurations={scanAxisSettings?{'scan-axis':scanAxisSettings}:undefined}
       mcpConfiguration={{schema:objectSchema({unit:settingEnum(energyPlotUnits),zero:settingEnum(['original',...choices.filter(choice=>!choice.disabled).map(choice=>choice.value),'point']),
         seriesId:settingText,pointIndex:{type:'integer',minimum:0}}),
         read:()=>({kind:'trajectory-energy',unit,zero:relative?reference:'original',zeroPoint,referenceIndex:series.referenceIndex,referenceValue:series.referenceValue}),

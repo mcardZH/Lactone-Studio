@@ -10,7 +10,9 @@ import { InputSettingsAction, InputSettingsCheckbox, InputSettingsLayout } from 
 import { assertAnalysisSelectionPort } from '../analysis-selection-intent';
 import { AnalysisTaskLayout, AnalysisTaskSection, SpatialGridSummary } from './AnalysisTaskLayout';
 import { ScientificDataTable } from './ScientificDataTable';
-import { scientificTableText, type ScientificTableProjection } from './scientific-table';
+import { scientificTableText } from './scientific-table';
+import {hirshfeldContactTable} from './hirshfeld-contact-table';
+import {ResultsMcpInlinePlotSource} from './results-mcp-context';
 import { formatAnalysisValue } from './analysis-display';
 import {prepareHirshfeldDisplayRanges,type HirshfeldDisplayRanges} from './hirshfeld-range-display';
 import { hirshfeldContactKey, hirshfeldContactLabel, hirshfeldContactOptions, type HirshfeldContactFocus } from '../../results/hirshfeld-presentation';
@@ -46,13 +48,12 @@ function combinedFingerprintSvg(panels: readonly string[], doc: Document): strin
     root.appendChild(copy); });
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + new Serializer().serializeToString(root);
 }
-function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps & {displayRanges?:HirshfeldDisplayRanges}) {
+function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps & {displayRanges?:HirshfeldDisplayRanges;mcpAnalysisId?:string}) {
   const s = p.state, result = s.result, locked = p.disabled || p.running;
   const appearanceDefaults=useSurfaceAppearanceDefaults();
   const restorePlotting=()=>{const base=initialHirshfeldState().display,saved=appearanceDefaults.snapshot?.value['surface:hirshfeld'];p.onChange({display:saved && 'colors' in saved ? restoreHirshfeldAppearance(base,saved):base});};
   const display = (patch: Partial<typeof s.display>) => p.onChange({ display: { ...s.display, ...patch } });
-  const nativeRows = result?.contacts ? s.merged ? result.contacts.mergedRows : result.contacts.directedRows : [];
-  const rows = useMemo(() => [...nativeRows].sort((a, b) => { const value = s.areaSort === 'contact' ? `${a.insideElement}:${a.outsideElement}`.localeCompare(`${b.insideElement}:${b.outsideElement}`) : s.areaSort === 'area' ? a.area - b.area : a.nativePercent - b.nativePercent; return value * (s.areaSortDirection === 'asc' ? 1 : -1); }), [nativeRows, s.areaSort, s.areaSortDirection]);
+  const {rows,table} = useMemo(() => hirshfeldContactTable(s), [s.result,s.merged,s.areaSort,s.areaSortDirection,s.decimals,s.contactNumberFormat]);
   const options = useMemo(() => result ? hirshfeldContactOptions(result, s.merged) : [], [result, s.merged]);
   const focusKey = s.selectedContact ? hirshfeldContactKey(s.selectedContact.insideElement, s.selectedContact.outsideElement, s.merged) : '';
   const [selectedExport, setSelectedExport] = useProjectState<readonly string[]>('HirshfeldAnalysisControls.selectedExport', []), [exporting, setExporting] = useState(false), [exportFocus, setExportFocus] = useState<{ value: HirshfeldContactFocus | null } | null>(null), [exportError, setExportError] = useState('');
@@ -81,12 +82,6 @@ function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps & {dis
     } catch (error) { if (alive.current && own === batch.current) setExportError(error instanceof Error ? error.message : String(error)); }
     finally { if (alive.current && own === batch.current) { setExportFocus(null); setExporting(false); } }
   };
-  const table = useMemo<ScientificTableProjection>(() => ({ columns: [
-    { key: 'contact', label: s.merged ? '接触（双向合并）' : '接触（内→外）' },
-    { key: 'area', label: '接触面积 / Å²', heading: '接触面积', headerUnit: 'Å²' },
-    { key: 'percent', label: '完整表面占比 / %', heading: '完整表面占比', headerUnit: '%' },
-  ], rows: rows.map(row => ({ key: hirshfeldContactKey(row.insideElement, row.outsideElement, s.merged),
-    cells: [`${row.insideElement}${s.merged ? '···' : ' → '}${row.outsideElement}`, formatAnalysisValue(row.area, s.decimals, s.contactNumberFormat), formatAnalysisValue(row.nativePercent, s.decimals, s.contactNumberFormat)] })) }), [rows, s.merged, s.decimals, s.contactNumberFormat]);
   const ranges = p.displayRanges ?? prepareHirshfeldDisplayRanges(s, p.context, p.structure);
   const actualGrid = ranges.actual?.grid, estimated = ranges.estimate;
   const rangeIssue = s.showRange ? ranges.issue || s.rangeError : '';
@@ -166,7 +161,7 @@ function HirshfeldAnalysisControlsInner(p: HirshfeldAnalysisControlsProps & {dis
           {s.areaView !== 'chart' && <ScientificDataTable hideTitle projection={table} selectionScope={`${result.stamp.requestId}:${s.merged}`} exportFileName="Ester-Studio-hirshfeld-contacts.txt" onExport={() => exportBlob(new Blob([scientificTableText(table)], { type: 'text/plain;charset=utf-8' }), 'Ester-Studio-hirshfeld-contacts.txt')}
             activeRowKey={focusKey} sorting={{ value: s.areaSort, direction: s.areaSortDirection, options: [{ value: 'contact', label: '接触类型' }, { value: 'area', label: '接触面积' }, { value: 'percent', label: '完整表面占比' }], onChange: (value, areaSortDirection) => p.onChange({ areaSort: value as typeof s.areaSort, areaSortDirection }) }}
             onRowActivate={row => { const contact = rows.find(value => hirshfeldContactKey(value.insideElement, value.outsideElement, s.merged) === row.key); if (contact) p.onChange({ selectedContact: { insideElement: contact.insideElement, outsideElement: contact.outsideElement, merged: s.merged } }); }}/ >}
-          {s.areaView !== 'table' && <HirshfeldContactContribution appearanceKey={`hirshfeld-contact:${result.stamp.sourceId}:${result.stamp.sourceRevision}:${result.stamp.jobIndex}:${result.stamp.sourceFrameIndex}:${result.stamp.documentId}:${result.stamp.documentRevision}:${s.merged}`} rows={rows} merged={s.merged} decimals={s.decimals} numberFormat={s.contactNumberFormat} onContact={selectedContact => p.onChange({ selectedContact })}/>}
+          {s.areaView !== 'table' && <ResultsMcpInlinePlotSource kind="hirshfeld-contact-contribution" analysisId={p.mcpAnalysisId}><HirshfeldContactContribution appearanceKey={`hirshfeld-contact:${result.stamp.sourceId}:${result.stamp.sourceRevision}:${result.stamp.jobIndex}:${result.stamp.sourceFrameIndex}:${result.stamp.documentId}:${result.stamp.documentRevision}:${s.merged}`} rows={rows} merged={s.merged} decimals={s.decimals} numberFormat={s.contactNumberFormat} onContact={selectedContact => p.onChange({ selectedContact })}/></ResultsMcpInlinePlotSource>}
         </>}
       </AnalysisTaskSection>
     </AnalysisTaskLayout></InputSettingsLayout></section>;

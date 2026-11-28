@@ -78,6 +78,12 @@ export class TrajectoryPageAsset {
       assertResultNotAborted(signal);
       const { offset, length } = range, committed = this.committed;
       if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length < 0 || offset + length > this.length) throw Error('轨迹准备页范围无效。');
+      if(length>0&&length<=pageBytes&&offset+length<=committed){
+        const bytes=await this.port.readBinaryAsset(this.id!,offset,length);
+        assertResultNotAborted(signal);
+        if(bytes.byteLength!==length)throw Error('轨迹准备页读取字节不完整。');
+        return new Uint8Array(bytes);
+      }
       const output = new Uint8Array(length);
       const diskLength = Math.max(0, Math.min(length, committed - offset));
       if (diskLength < length) output.set(this.buffer!.subarray(Math.max(0, offset - committed), offset + length - committed), diskLength);

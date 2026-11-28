@@ -1,8 +1,9 @@
 'use strict';
 const fsDefault = require('node:fs/promises');
 const path = require('node:path');
-const { createHash, randomUUID } = require('node:crypto');
+const { createHash } = require('node:crypto');
 const { assert, plain, string } = require('./security.cjs');
+const { configurationError, programPathError, writeConfiguration } = require('./backend-configuration.cjs');
 
 const DARWIN_DEFAULT_CANDIDATES = Object.freeze([
   '/opt/homebrew/opt/multiwfn/bin/multiwfn',
@@ -131,52 +132,53 @@ function createOrbitalBackendStore(root, options = {}) {
       string(executable, 4096) && (pathImpl.isAbsolute(executable) || path.isAbsolute(executable)) && !/^[/\\]{2}/.test(executable),
       'Select a local Multiwfn executable',
     );
-    if (platform === 'win32') {
-      const selected = await fs.lstat(executable, { bigint: true }).catch(error => {
-        if (!/^Multiwfn(?:\.exe)?$/i.test(pathImpl.basename(executable))) {
-          throw new Error('Select a local Multiwfn executable or directory', { cause: error });
+    try {
+      if (platform === 'win32') {
+        const selected = await fs.lstat(executable, { bigint: true }).catch(error => {
+          if (!/^Multiwfn(?:\.exe)?$/i.test(pathImpl.basename(executable))) {
+            throw new Error('Select a local Multiwfn executable or directory', { cause: error });
+          }
+          throw error;
+        });
+        if (selected.isDirectory() && !selected.isSymbolicLink()) {
+          executable = pathImpl.join(executable, 'Multiwfn.exe');
         }
-        throw error;
-      });
-      if (selected.isDirectory() && !selected.isSymbolicLink()) {
-        executable = pathImpl.join(executable, 'Multiwfn.exe');
+        assert(
+          /^Multiwfn(?:\.exe)?$/i.test(pathImpl.basename(executable)),
+          'Select a local Multiwfn executable',
+        );
+        const stat = await fs.lstat(executable, { bigint: true });
+        assert(stat.isFile() && !stat.isSymbolicLink(), 'Multiwfn executable must be a regular file');
+        return {
+          path: await fs.realpath(executable),
+          programIdentity: buildProgramIdentity(stat),
+        };
+      }
+
+      let resolved = await fs.realpath(executable);
+      let stat = await fs.lstat(resolved, { bigint: true });
+      if (stat?.isDirectory() && !stat.isSymbolicLink()) {
+        for (const relative of POSIX_DIRECTORY_CANDIDATES) {
+          const candidate = await fs.realpath(path.join(resolved, relative)).catch(() => null);
+          if (!candidate) continue;
+          const candidateStat = await fs.lstat(candidate, { bigint: true }).catch(() => null);
+          if (isValidPosixExecutable(candidate, candidateStat)) {
+            resolved = candidate;
+            stat = candidateStat;
+            break;
+          }
+        }
       }
       assert(
-        /^Multiwfn(?:\.exe)?$/i.test(pathImpl.basename(executable)),
+        stat?.isFile() && !stat.isSymbolicLink() && /^Multiwfn(?:\.exe)?$/i.test(path.basename(resolved)),
         'Select a local Multiwfn executable',
       );
-      const stat = await fs.lstat(executable, { bigint: true });
-      assert(stat.isFile() && !stat.isSymbolicLink(), 'Multiwfn executable must be a regular file');
+      assert((Number(stat.mode) & 0o111) !== 0, 'Multiwfn executable must be executable');
       return {
-        path: await fs.realpath(executable),
+        path: resolved,
         programIdentity: buildProgramIdentity(stat),
       };
-    }
-
-    let resolved = await fs.realpath(executable).catch(() => null);
-    assert(resolved, 'Select a local Multiwfn executable');
-    let stat = await fs.lstat(resolved, { bigint: true }).catch(() => null);
-    if (stat?.isDirectory() && !stat.isSymbolicLink()) {
-      for (const relative of POSIX_DIRECTORY_CANDIDATES) {
-        const candidate = await fs.realpath(path.join(resolved, relative)).catch(() => null);
-        if (!candidate) continue;
-        const candidateStat = await fs.lstat(candidate, { bigint: true }).catch(() => null);
-        if (isValidPosixExecutable(candidate, candidateStat)) {
-          resolved = candidate;
-          stat = candidateStat;
-          break;
-        }
-      }
-    }
-    assert(
-      stat?.isFile() && !stat.isSymbolicLink() && /^Multiwfn(?:\.exe)?$/i.test(path.basename(resolved)),
-      'Select a local Multiwfn executable',
-    );
-    assert((Number(stat.mode) & 0o111) !== 0, 'Multiwfn executable must be executable');
-    return {
-      path: resolved,
-      programIdentity: buildProgramIdentity(stat),
-    };
+    } catch (error) { throw await programPathError('MULTIWFN', 'Multiwfn', executable, error); }
   }
 
   async function read() {
@@ -266,12 +268,15 @@ function createOrbitalBackendStore(root, options = {}) {
   let writing = Promise.resolve();
   function update(fields) {
     const task = writing.then(async () => {
-      const value = await read().catch(() => ({ schema: 1 }));
-      await fs.mkdir(root, { recursive: true });
-      const temporary = location + '.' + randomUUID() + '.tmp';
-      await fs.writeFile(temporary, JSON.stringify({ ...value, ...fields }) + '\n', { encoding: 'utf8', flag: 'wx' });
-      try { await fs.rename(temporary, location); }
-      catch (error) { await fs.unlink(temporary).catch(() => {}); throw error; }
+      const value = await read().catch(error => {
+        throw configurationError('MULTIWFN_CONFIGURATION_READ_FAILED', '无法读取已有 Multiwfn 配置，已保留原文件。', location, error);
+      });
+      try {
+        await fs.mkdir(root, { recursive: true });
+        await writeConfiguration(location, { ...value, ...fields });
+      } catch (error) {
+        throw configurationError('MULTIWFN_CONFIGURATION_WRITE_FAILED', '无法保存 Multiwfn 配置，已保留原文件。', location, error);
+      }
       return info();
     });
     writing = task.catch(() => {});
@@ -285,10 +290,15 @@ function createOrbitalBackendStore(root, options = {}) {
 
   async function selectWorkDirectory(directory) {
     if (directory === null) return update({ workDirectory: undefined });
-    const identity = await directoryIdentity(directory, fs, platform);
-    const probe = await createRunDirectory({ workDirectoryIdentity: identity, workPrefix }, root, 'probe-', fs, platform);
-    await verifyRunDirectory(probe, fs, platform);
-    await fs.rmdir(probe.directory);
+    let identity;
+    try {
+      identity = await directoryIdentity(directory, fs, platform);
+      const probe = await createRunDirectory({ workDirectoryIdentity: identity, workPrefix }, root, 'probe-', fs, platform);
+      await verifyRunDirectory(probe, fs, platform);
+      await fs.rmdir(probe.directory);
+    } catch (error) {
+      throw configurationError('MULTIWFN_WORK_DIRECTORY_UNAVAILABLE', '无法使用所选 Multiwfn 临时运行目录。', directory, error);
+    }
     return update({ workDirectory: identity });
   }
 

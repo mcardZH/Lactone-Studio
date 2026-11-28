@@ -56,6 +56,8 @@ const electronicState = object({ charge: integer, multiplicity: positive, confir
 export const solvation = { oneOf:[object({mode:choice('builtin'),id:string},['mode','id']),object({mode:choice('custom'),
   custom:object({name:string,dielectric:numeric,refractiveIndex:numeric,hydrogenBondAcidity:numeric,hydrogenBondBasicity:numeric,
     surfaceTension:numeric,aromaticity:numeric,halogenicity:numeric,opticalApproximation:choice('epsinf-1.9')},['name','dielectric'])},['mode','custom'])] };
+const solvent = {...string,description:'Exact native solvent name or reviewed alias. For an exact catalog ID use settings.solvation and discover it with input_solvents.'};
+const inputSolvation = {...nullable(solvation),description:'Complete native selection; use input_solvents for reviewed IDs. Null explicitly clears this field and the legacy solvent value to return to gas phase.'};
 const advanced = object({scfAlgorithm:choice('default','qc','xqc'),noVarAcc:boolean,noIncFock:boolean,fermi:boolean,noDIIS:boolean,
   vshift:nullable(numeric),scfMaxCycle:nullable(positive),maxConventional:nullable(positive),optConvergence:choice('default','loose','tight','verytight'),
   maxStep:nullable(numeric),optMaxCycles:nullable(positive)});
@@ -67,7 +69,7 @@ const scf=object({convergence:choice('default','loose','normal','strong','tight'
 const gaussianSettings = object({
   method: choice(...METHODS.map(method => method.id)), customMethod: string, basis: string,
   dispersion: choice('gd3bj', 'gd3', 'none'), grid: choice('efficient', 'default'),
-  scf: choice('default', 'conver6'), nosymm: boolean, solvent: string, solvation, solventModel: choice('iefpcm', 'smd'), solventModelManuallySelected:boolean,unrestricted: boolean,
+  scf: choice('default', 'conver6'), nosymm: boolean, solvent, solvation:inputSolvation, solventModel: choice('iefpcm', 'smd'), solventModelManuallySelected:boolean,unrestricted: boolean,
   use5D: boolean, integral: integration, advanced,
   xtb: object({ scriptPath: string, executable: string, level: string, entryBasis: boolean, scriptConfirmed: boolean }),
   mixedBasis:object({enabled:boolean,dForm:choice('5D','6D'),angularExplicit:boolean,
@@ -99,7 +101,7 @@ const fileSettings = object({
 const orcaSettings = object({
   version: choice(...ORCA_VERSIONS), method: choice(...getOrcaCommonMethods().map(method => method.id)), basis: string,
   unrestricted: boolean, pno: choice('normal','tight','loose'), grid,
-  solvent: string, solvation, solventModel: choice('cpcm','smd'), solventModelManuallySelected:boolean,nmr: choice('shielding','coupling'), stableOptimize: boolean,
+  solvent, solvation:inputSolvation, solventModel: choice('cpcm','smd'), solventModelManuallySelected:boolean,nmr: choice('shielding','coupling'), stableOptimize: boolean,
   fragmentStatesConfirmed: boolean,
   fragments: list(object({ id: string, atomIds: list(string), charge: integer, multiplicity: positive, multiplicityMode: choice('auto','manual') }, ['id','atomIds','charge','multiplicity'])),
   frequency: object({ raman: boolean, temperatureK: numeric, pressureAtm: numeric }),
@@ -128,7 +130,7 @@ const byEngine = {
 };
 export const inputConfigurationSchema = { oneOf: Object.values(byEngine) };
 export const frameInputConfigurationSchema={oneOf:Object.values(byEngine).map(schema=>{
-  const {name:_name,electronicState:_state,confirmIrcStart:_irc,...properties}=schema.properties as Record<string,Schema>;
+  const {name:_name,confirmIrcStart:_irc,...properties}=schema.properties as Record<string,Schema>;
   return {...schema,properties};
 })};
 
@@ -169,20 +171,34 @@ export function writableInputConfiguration(engine:InputEngine,parameters:Record<
   return writableValue(candidate,byEngine[engine]) as InputDraftConfiguration;
 }
 
-/** Returning the readable configuration and editing one field must not turn
- * unchanged native facts into new manual choices or clear confirmations. */
+const sourceBindingFields = new Set(['ircHessianId', 'initialOrbitalsId', 'restartAssetId', 'taskIdentity']);
+const isConfirmation = (key: string) => /(?:^confirmed$|Confirmed$)/.test(key);
+
+/** Same-task edits are differences. A native task or Gaussian method transition
+ * resets settings before the MCP patch is applied. */
 export function changedInputConfiguration(current:InputDraftConfiguration,next:InputDraftConfiguration):InputDraftConfiguration {
   if(current.engine!==next.engine)return next;
-  function difference(before:unknown,after:unknown):unknown {
-    if(JSON.stringify(before)===JSON.stringify(after))return undefined;
+  const taskChanges = next.task !== undefined && next.task !== current.task;
+  const methodChanges = next.engine === 'gaussian' && next.settings?.method !== undefined && next.settings.method !== current.settings?.method;
+
+  function difference(before:unknown,after:unknown,keepExplicit=false):unknown {
+    if(!keepExplicit&&JSON.stringify(before)===JSON.stringify(after))return undefined;
     if(after&&typeof after==='object'&&!Array.isArray(after)){
       const prior=before&&typeof before==='object'&&!Array.isArray(before)?before as Record<string,unknown>:{};
       const patch:Record<string,unknown>={};
-      for(const [key,value]of Object.entries(after)){const changed=difference(prior[key],value);if(changed!==undefined)patch[key]=changed;}
+      for(const [key,value]of Object.entries(after)){
+        // A copied confirmation or source binding belongs to the previous
+        // conditions. A changed binding and an explicit clear still pass through.
+        const confirmed = value === true && isConfirmation(key);
+        const bound = typeof value === 'string' && value !== '' && sourceBindingFields.has(key);
+        if(keepExplicit&&value===prior[key]&&(confirmed||bound))continue;
+        const changed=difference(prior[key],value,keepExplicit);
+        if(changed!==undefined)patch[key]=changed;
+      }
       // A confirmation supplied beside a changed value confirms that new
-      // value, even when the previous configuration had the same boolean.
-      if(Object.keys(patch).length)for(const [key,value]of Object.entries(after)){
-        if(typeof value==='boolean'&&/(?:^confirmed$|Confirmed$)/.test(key))patch[key]=value;
+      // value within the current conditions.
+      if(!keepExplicit&&Object.keys(patch).length)for(const [key,value]of Object.entries(after)){
+        if(typeof value==='boolean'&&isConfirmation(key))patch[key]=value;
       }
       return Object.keys(patch).length?patch:undefined;
     }
@@ -191,6 +207,18 @@ export function changedInputConfiguration(current:InputDraftConfiguration,next:I
   const patch=(difference(current,next)??{}) as Record<string,unknown>;
   // q/M and confirmation are one explicit pair in the public contract.
   if(patch.electronicState!==undefined)patch.electronicState=next.electronicState;
+  if(taskChanges||methodChanges){
+    const settings = difference(current.settings,next.settings,true);
+    if(settings===undefined)delete patch.settings;
+    else patch.settings=settings;
+  }
+  const settingsPatch=patch.settings as Record<string,unknown>|undefined;
+  if(settingsPatch&&next.settings?.solvation!==undefined&&['solvation','solvent','solventModel'].some(key=>Object.hasOwn(settingsPatch,key)))
+    settingsPatch.solvation=next.settings.solvation;
+  // A legacy solvent write replaces the retained structured selection even if
+  // the requested name matches the previous inactive text field.
+  if(next.settings?.solvent!==undefined&&next.settings.solvation===undefined&&current.settings?.solvation!==undefined)
+    patch.settings={...settingsPatch,solvent:next.settings.solvent};
   return {...patch,engine:next.engine} as InputDraftConfiguration;
 }
 

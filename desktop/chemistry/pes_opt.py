@@ -128,7 +128,7 @@ def run(request, ctx):
     require(algorithm in ('lbfgs', 'precon-exp', 'fire2', 'sella-xyz', 'sella-ric'), 'Unsupported ordinary optimization algorithm')
     lbfgs = algorithm in ('lbfgs', 'precon-exp')
     cell = request['structure'].get('cell')
-    max_steps = positive(parameters, 'maxSteps', 1000 if cell else 500, integer=True)
+    max_steps = positive(parameters, 'maxSteps', 500, integer=True)
     maximum = positive(parameters, 'maxStepAngstrom', .1)
     limits = optimization_limits(parameters)
     space = ctx.constraints
@@ -187,16 +187,6 @@ def run(request, ctx):
                     and gradient_norm <= limits['gradientNormHartreePerBohr'])
             item = frame(request, positions, raw['energyHartree'], index, 'opt', 'opt',
                          'converged' if done else 'accepted', converged=done, convergence=metrics)
-            if done and parameters.get('rebuildBonds') and not cell and request['method'] == 'gfn2':
-                try:
-                    bond_data = ctx.evaluate(positions, need_bond_orders=True)
-                    item['bondOrders'] = bond_data['bondOrders']
-                    if 'bondOrderMissingPairUpperBound' in bond_data:
-                        item['bondOrderMissingPairUpperBound'] = bond_data['bondOrderMissingPairUpperBound']
-                except PesCancelled:
-                    raise
-                except PesError as error:
-                    metadata['bondOrderWarning'] = error_details(error)
             if final_only:
                 frames[:] = [item]
             else:
@@ -251,7 +241,26 @@ def run(request, ctx):
                 metadata['terminationReason'] = 'no-feasible-step'
                 break
             previous_energy = before_energy
-    return dict(status=status, frames=frames, series=[dict(id='opt', kind='opt')],
-                provenance=dict(optimizer=metadata, acceptedSteps=frames[-1]['step'], convergence=metrics,
-                                convergenceCriterion='accepted-energy-difference-and-projected-gradient-norm',
-                                convergenceThresholds=limits))
+    final = frames[-1]
+    provenance = dict(optimizer=metadata, acceptedSteps=final['step'], convergence=metrics,
+                      convergenceCriterion='accepted-energy-difference-and-projected-gradient-norm',
+                      convergenceThresholds=limits)
+    if parameters.get('rebuildBonds') is True and not (cell and any(cell.get('pbc', ()))) and request['method'] == 'gfn2':
+        ctx.check_cancelled()
+        try:
+            # The accepted frame may already have been emitted. Keep its
+            # numerical record intact and bind optional WBO by frame identity.
+            data = ctx.evaluate(final['positions'], need_bond_orders=True)
+            native_version = getattr(ctx, 'runtime', {}).get('version')
+            require(isinstance(native_version, str) and native_version, 'Missing xTB WBO provider version', 'PES_BOND_ORDERS_INVALID')
+            atoms = request['structure']['atoms']
+            orders = data['bondOrders']
+            entries = [dict(atomIds=[atom['id'], atoms[j]['id']], value=float(orders[i, j]))
+                       for i, atom in enumerate(atoms) for j in range(i + 1, len(atoms)) if orders[i, j] >= .1]
+            provenance['finalBondOrders'] = dict(frameId=final['id'], definition='mayer-ao', sourceField='wbo',
+                                                threshold=.1, entries=entries, version=native_version)
+        except PesCancelled:
+            raise
+        except (ValueError, OSError) as error:
+            metadata['bondOrderWarning'] = error_details(error)
+    return dict(status=status, frames=frames, series=[dict(id='opt', kind='opt')], provenance=provenance)

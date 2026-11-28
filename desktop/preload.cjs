@@ -104,6 +104,7 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
     forget: clientId => ipcRenderer.invoke('sciyue:mcp-forget', clientId),
     show: request => ipcRenderer.invoke('sciyue:mcp-show', request),
     connectionConfig: () => ipcRenderer.invoke('sciyue:mcp-connection-config'),
+    savePublicSkill: () => ipcRenderer.invoke('sciyue:mcp-save-public-skill'),
     file: spec => invoke('sciyue:mcp-file', spec),
     onRequest: listener => onMcpEvent('sciyue:mcp-request', listener),
     onCancel: listener => onMcpEvent('sciyue:mcp-cancel', listener),
@@ -148,6 +149,9 @@ if (typeof location === 'undefined' || location.href !== 'about:blank') contextB
   discardConformerRecovery: (kind, id) => invoke('sciyue:discard-conformer-recovery', kind, id),
   readPesTerminalFrames: request => invoke('sciyue:read-pes-terminal-frames', request),
   releasePesTerminalFrames: identity => invoke('sciyue:release-pes-terminal-frames', identity),
+  listPesRecovery: () => invoke('sciyue:list-pes-recovery'),
+  claimPesRecovery: id => invoke('sciyue:claim-pes-recovery', id),
+  closePesRecovery: id => invoke('sciyue:close-pes-recovery', id),
   citationRuntimeInfo: () => invoke('sciyue:citation-runtime-info'),
   exportCitations: request => invoke('sciyue:export-citations', request),
   onCitationsOpen: listener => {

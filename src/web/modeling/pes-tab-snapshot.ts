@@ -10,18 +10,22 @@ import type { PostprocessScientificFileDocument } from '../../results/postproces
 import { postprocessFileJob } from '../../results/postprocess-sources';
 import type { ObservedPostprocessFrame } from '../results/PostprocessResultView';
 import { pesNodeObserving } from './pes-canvas-publication';
-import { readScientificTrajectoryFrame } from './scientific-frame-source';
+import { getPreparedTrajectoryFrame } from '../../results/prepared-trajectory';
+import { readScientificTrajectoryFrame, scientificFrameForModel } from './scientific-frame-source';
+import { isOrdinaryPesTabCandidate } from '../../modeling/pes/tab-admission';
 
 export interface PesTabSnapshotSource {
   key: string;
   label: string;
   pesNode?: WorkspaceDocumentEntry['pesGroup'];
+  ordinaryCandidate?: { documentId: string; groupId?: string };
   read(signal: AbortSignal): Promise<PesGeometry>;
 }
 
 interface TabSnapshotPorts {
   lookup(id: string): WorkspaceDocumentEntry | undefined;
   closing(id: string): boolean;
+  candidateGroup?(id: string): string | undefined;
   controller: PesController | null | undefined;
   /** Undefined for a tab that has never published a result. Null blocks fallback
    * when a presented result has no attributable complete frame. */
@@ -72,9 +76,10 @@ export function pesFileSnapshotSources(
         const frame = currentFrame(), summary = frame?.result.frames[frame.index];
         if (!frame || !summary) throw Error('来源文件的当前帧尚未就绪，请在后处理页选择一个完整结果帧。');
         const { result, index } = frame;
-        const structure = await readScientificTrajectoryFrame(result, index, signal);
+        const raw = await readScientificTrajectoryFrame(result, index, signal);
         guard();
         if (currentFrame() !== frame) throw Error('读取期间来源帧已切换，请重新选择。');
+        const structure = scientificFrameForModel(raw, getPreparedTrajectoryFrame(result,index));
         const sourceId = summary.geometrySource?.id ?? result.source.id;
         const geometrySource = sourceId === result.source.id ? result.source
           : document.companions?.find(item => item.source.result.source.id === sourceId)?.source.result.source;
@@ -189,8 +194,9 @@ export function pesGroupSnapshotSources(
 export function pesTabSnapshotSources(entries: readonly WorkspaceDocumentEntry[], ports: TabSnapshotPorts): PesTabSnapshotSource[] {
   return entries.flatMap(tab => {
     if (!tab.pesGroup && !tab.result && !tab.legacyResult && !tab.trajectory && !tab.store.getSnapshot().draft.structure.atoms.length) return [];
+    const ordinaryCandidate = isOrdinaryPesTabCandidate(tab) ? { documentId: tab.id, groupId: ports.candidateGroup?.(tab.id) } : undefined;
     return [{
-      key: JSON.stringify(['workspace-tab', tab.id, tab.epoch]), label: tab.label, pesNode: tab.pesGroup,
+      key: JSON.stringify(['workspace-tab', tab.id, tab.epoch]), label: tab.label, pesNode: tab.pesGroup, ordinaryCandidate,
       async read(signal: AbortSignal) {
         const entry = ports.lookup(tab.id);
         if (!entry || entry.epoch !== tab.epoch || ports.closing(tab.id)) throw Error('来源标签已关闭，请重新选择。');
@@ -210,6 +216,8 @@ export function pesTabSnapshotSources(entries: readonly WorkspaceDocumentEntry[]
           if (!ports.controller) throw Error('来源势能面标签已关闭，请重新选择。');
           geometry = await readPesNodeSnapshot(ports.controller, groupId, nodeId, signal,
             { entry, base, readSubmitted: () => ports.pesFrame?.(entry) });
+        } else if (ordinaryCandidate?.groupId && isOrdinaryPesTabCandidate(entry)) {
+          geometry = { ...base, structure: sealPesDraft(entry, model.draft.structure) };
         } else if (entry.trajectory) {
           const current = ports.conformer(entry);
           if (!current) throw Error('当前构象帧尚未准备，请在来源标签选择完整帧。');

@@ -80,11 +80,11 @@ import {
 } from "./mixed-conformer-draft";
 import { compileSampling } from "./process-config";
 import {samplingRemainingLabel} from './sampling-time-estimate';
-import {optimizationActionView,conformerPlaybackReference} from './conformer-incremental-presentation';
+import {optimizationActionView} from './conformer-incremental-presentation';
 import {submitConformerSampling,commitConformerElectronicDraft} from './conformer-sampling-action';
 import {ConformerSamplingCardProgress,conformerGenerationProgressForCard,conformerSamplingTimeProgress} from './ConformerSamplingProgress';
 import {conformerMcpConfigurationRevision,subscribeConformerMcpConfiguration} from '../mcp/science-conformer-state';
-import {createConformerPlaybackResolver,projectConformerPlaybackCollection} from './conformer-playback';
+import {projectConformerPlaybackCollection} from './conformer-playback';
 import {
 	buildConformerResultCollections,
 	conformerCollectionRevision,
@@ -135,7 +135,6 @@ const RUN_LABEL: Record<AdvancedTaskRun["status"], string> = {
 	stopped: "已终止"
 };
 const RESOURCES_WAITING = "全局计算资源尚未就绪；配置载入或修复后可开始采样和优化。";
-const EMPTY_DISPLAY_CORE:string[]=[];
 function usableComputeResources(value:AdvancedWorkspaceProps['computeResources']) {
   return value&&Number.isSafeInteger(value.threads)&&value.threads>0&&Number.isSafeInteger(value.memoryBudgetBytes)&&value.memoryBudgetBytes>0?value:null;
 }
@@ -462,7 +461,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			return {definition:null,compileError:cause instanceof Error?cause.message:String(cause)};
 		}
 	}, [effectiveDraft, source, resources?.threads, resources?.memoryBudgetBytes]);
-	const definitionKey = definition ? JSON.stringify(definition) : "",
+	const definitionKey = useMemo(()=>definition?JSON.stringify(definition):'',[definition]),
 		savedDefinition = useRef("");
 	useEffect(() => {
 		if (
@@ -477,7 +476,6 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		act(() => {p.controller.configureMixedSampling(task.id, definition);savedDefinition.current = `${task.id}:${definitionKey}`;});
 	}, [task?.id, task?.spec.source, busy, definitionKey, p.controller]);
 	const resultRevision=conformerCollectionRevision(task);
-	const resolvePlayback=useMemo(()=>createConformerPlaybackResolver(task),[resultRevision]);
 	const retainedCollections=useRef<ConformerResultCollection[]>([]);
 	const collections=useMemo(()=>{const next=buildConformerResultCollections(task,draft.stages,retainedCollections.current);retainedCollections.current=next;return next.map(collection=>projectConformerPlaybackCollection(collection,task));},[resultRevision,draft.stages]);
 	const currentCollection =
@@ -496,12 +494,8 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const selectedFrame =
 		currentCollection?.frames.find((value) => value.id === p.activeConformerFrame?.frameId) ??
 		currentCollection?.frames[0];
-	const playbackResolution=selectedFrame?resolvePlayback(selectedFrame):undefined;
-	const shownCoreIds=playbackResolution?.coreAtomIds??EMPTY_DISPLAY_CORE;
-	const effectivePlaybackReference=conformerPlaybackReference(undefined,playbackResolution,shownCoreIds).mode;
-	const displayedPlaybackFrame=Boolean(selectedFrame&&!isPeriodic(selectedFrame.source.structure)&&p.activeConformerFrame?.taskId===task?.id&&p.activeConformerFrame?.frameId===selectedFrame.id);
-	const displayCoreCapture=useAnalysisAtomCapture({ownerId:'conformer-playback-reference',structure:p.displayedSource?.structure??EMPTY,documentId:p.displayedSource?.ref.documentId??'',revision:p.displayedSource?.ref.revision??0,sourceId:JSON.stringify(p.displayedSource?.ref??''),frameIndex:p.displayedSource?.ref.sourceFrameIndex??0,activationEpoch:p.displayTargetId??'',active:Boolean(p.active&&displayedPlaybackFrame&&p.displayedSource),lazyStructureIdentity:true,purpose:'advanced-region'});
-	useEffect(()=>{p.onCaptureProjection?.(displayCoreCapture.viewportCapture??coordinateCapture.viewportCapture??regionCapture.viewportCapture);return()=>p.onCaptureProjection?.(undefined);},[p.onCaptureProjection,displayCoreCapture.viewportCapture,coordinateCapture.viewportCapture,regionCapture.viewportCapture]);
+	const currentCapture=coordinateCapture.viewportCapture??regionCapture.viewportCapture;
+	useEffect(()=>{p.onCaptureProjection?.(currentCapture);return()=>p.onCaptureProjection?.(undefined);},[p.onCaptureProjection,currentCapture]);
 	const published = useRef(new Map<string, string>()),
 		openCallback = useRef(p.onOpenConformerCollection);
 	openCallback.current = p.onOpenConformerCollection;
@@ -731,11 +725,11 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		draft.cards,
 		protectedSource?.constraints
 	]);
+	// The player already owns conformer fit and normal frame presentation.
+	// Only an actual overlay or torsion preview needs a Shell layer.
+	const layerSource=p.active&&(overlay||torsionPreview)?p.displayedSource:undefined;
 	useEffect(() => {
-		if (!p.active || !p.displayedSource) {
-			p.onDisplayLayers?.(undefined);
-			return;
-		}
+		if (!layerSource) return;
 		let animation = 0;
 		const began = performance.now();
 		const emit = (now: number) => {
@@ -752,13 +746,12 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 				setHover(null);
 			}
 			p.onDisplayLayers?.(
-				overlay || previewStructure || displayedPlaybackFrame&&playbackResolution?.referenceSource
+				overlay || previewStructure
 					? {
 							targetId: p.displayTargetId,
-							source: p.displayedSource!,
+							source: layerSource,
 							multiframeDisplay: overlay?.plan,
 							previewStructure,
-							playbackReference:displayedPlaybackFrame&&playbackResolution?.referenceSource?{mode:effectivePlaybackReference,referenceSource:playbackResolution.referenceSource,coreAtomIds:shownCoreIds}:undefined
 						}
 					: undefined
 			);
@@ -769,7 +762,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			cancelAnimationFrame(animation);
 			p.onDisplayLayers?.(undefined);
 		};
-	}, [p.active, p.displayTargetId, p.displayedSource, p.onDisplayLayers, torsionPreview, overlay,displayedPlaybackFrame,playbackResolution,effectivePlaybackReference,shownCoreIds]);
+	}, [p.displayTargetId, layerSource, p.onDisplayLayers, torsionPreview, overlay]);
 	useEffect(() => {
 		const row = previewOwner
 			? draft.cards
@@ -793,7 +786,7 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 		fit,
 		range,
 		displayStride,
-		displayCoreIds,displayCoreAutomatic,playbackReferenceMode,effectivePlaybackReference,playbackResolution
+		displayCoreIds,displayCoreAutomatic,playbackReferenceMode
 	]);
 	const samplingRun = task?.runs
 			.slice()
@@ -809,15 +802,19 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 	const hasSamplingHistory=batches.length>0||Boolean(task?.runs.some(run=>run.intent==='sampling'))||Boolean(collections[0]?.frames.length);
 	const atomConfigurationError=atomConfigurationIssues.core??Object.values(atomConfigurationIssues.cards)[0]??'';
 	const invalidSphere=!periodic&&draft.shared.sphereEnabled&&sphereInputInvalid;
-	let samplingConfigurationError=atomConfigurationError?'':compileError;
-	let samplingImpact:ReturnType<AdvancedController['previewMixedConfiguration']>|undefined;
-	try{samplingImpact=task&&definition?p.controller.previewMixedConfiguration(task.id,definition):undefined;}catch(cause){samplingConfigurationError=cause instanceof Error?cause.message:String(cause);}
+	const {samplingImpact,previewConfigurationError}=useMemo(()=>{
+		try{return {samplingImpact:task&&definition?p.controller.previewMixedConfiguration(task.id,definition):undefined};}
+		catch(cause){return {previewConfigurationError:cause instanceof Error?cause.message:String(cause)};}
+	},[p.controller,task,definition]);
+	const samplingConfigurationError=previewConfigurationError??(atomConfigurationError?'':compileError);
 	const batchLocked=Boolean(currentBatch?.sealed||samplingImpact?.sealed);
  const samplingNewBlocked=gxtbSamplingRunBlocked(gxtbBackend,draft.cards);
  const samplingContinueBlocked=gxtbSamplingRunBlocked(gxtbBackend,draft.cards,samplingImpact?.pendingCardIds);
 	const renderCardProgress=(card:AdvancedSamplingCardState,configuration:AdvancedMixedSamplingCard,index:number)=><ConformerSamplingCardProgress card={card} configuration={configuration} index={index} batchRunning={running(samplingRun)} configurationChanged={samplingImpact?.affectedCardIds.includes(card.id)} timeProgress={card.id===currentCard?.id?timeProgress:null} generationProgress={conformerGenerationProgressForCard(samplingRun,task?.id,currentBatch?.id,card.id)}/>;
 	const currentCard=mix?.definition.cards[mix.currentCardIndex];
 	const timeProgress=p.active?conformerSamplingTimeProgress(samplingRun,state.activeNative,currentBatch?.id):null;
+	const upstreamStages=useMemo(()=>draft.stages.map((stage,index)=>conformerUpstreamSummary(task,index,stage.inputClusterCount??10)),[task,draft.stages]);
+	const stageActions=useMemo(()=>new Map(draft.stages.map(stage=>[stage.id,optimizationActionView(task,stage.id)])),[task,draft.stages]);
 	const canStartStage = (index: number) =>
 		!!(
 			resources &&
@@ -825,9 +822,9 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 			task?.conformerWorkflow?.candidateSet?.valid &&
 			task.conformerWorkflow.candidateSet.frameIds.length &&
 			(index === 0 ||
-				conformerUpstreamSummary(task,index,draft.stages[index].inputClusterCount??10).ready)
+				upstreamStages[index]?.ready)
 		);
-	const collectionStates = Object.fromEntries(
+	const collectionStates = useMemo(()=>Object.fromEntries(
 		collections.map((collection) => {
 			const owned = task?.runs.find((value) => value.id === collection.identity.runId);
 			const interrupted=collection.id.endsWith(':interrupted')||collection.id.endsWith(':unconverged'),stage=task?.conformerWorkflow?.stages.find(stage=>stage.collectionId===collection.id),partial=!interrupted&&stage?.resultFrameIds!==undefined&&!stage.completed;
@@ -843,8 +840,8 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 				}
 			];
 		})
-	);
-	const electronicError = source ? baseElectronicStateError(source.structure, electronic) : "";
+	),[collections,task]);
+	const electronicError = useMemo(()=>source?baseElectronicStateError(source.structure,electronic):'',[source,electronic]);
 
 	const configuration = (
 		<div
@@ -1110,11 +1107,11 @@ export default function MixedConformerWorkspace(p: AdvancedWorkspaceProps) {
 					busy={busy}
 					onChange={(stages) => act(()=>changeStages(stages))}
 					canStart={canStartStage}
-					upstreamForStage={index=>conformerUpstreamSummary(task,index,draft.stages[index].inputClusterCount??10)}
+					upstreamForStage={index=>upstreamStages[index]}
 					onStart={(index) => act(() => startOptimization(index))}
 					onRunAll={() => act(() => startOptimization())}
 					actionForStage={id => {
-						const action = optimizationActionView(task, id);
+						const action = stageActions.get(id)??optimizationActionView(task,id);
 						const error = task && action.run && action.retainedStage
 							? <ConformerRetainedBatch controller={p.controller} taskId={task.id} runId={action.run.id} stage={action.retainedStage} active={p.active} busy={busy}/>
 							: action.hasRunError && action.run ? <ConformerRunError run={action.run}/> : undefined;

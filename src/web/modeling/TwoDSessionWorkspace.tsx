@@ -36,7 +36,7 @@ export interface TwoDDraftChange {
 export interface TwoDImportRuntime {
   isBusy():boolean;isDirty():boolean;hasContent():boolean;
   sketch:TwoDSketchCommands;
-  stop():Promise<void>;cancelGesture():void;confirmReplacement():Promise<boolean>;reportError(message:string,context?:TwoDReportContext):void;
+  stop():Promise<void>;cancelGesture():void;confirmReplacement(signal?:AbortSignal):Promise<boolean>;reportError(message:string,context?:TwoDReportContext):void;
 }
 interface TwoDSketchCommands {
   subscribeChanges(listener:(change:TwoDDraftChange)=>void):()=>void;
@@ -168,7 +168,15 @@ export default function TwoDSessionWorkspace({file,visible=true,captureGuard,onC
   },[visible,previewEnabled,busy,assemblyDraft?.input.key,assemblyGenerator]);
   useEffect(()=>{
     onRuntime({isBusy:()=>Boolean(operation.current),isDirty:()=>Boolean(lastSnapshot.current?.dirty),hasContent,get sketch(){return sketch.current;},
-      stop,reportError,cancelGesture:()=>editor.current?.cancelGesture(),confirmReplacement:()=>{editor.current?.cancelGesture();replacement.current?.(false);return new Promise<boolean>(resolve=>{replacement.current=resolve;setReplacePrompt(true);});}});
+      stop,reportError,cancelGesture:()=>editor.current?.cancelGesture(),confirmReplacement:signal=>{
+        if(signal?.aborted)return Promise.resolve(false);
+        editor.current?.cancelGesture();replacement.current?.(false);
+        return new Promise<boolean>(resolve=>{
+          function finish(accepted:boolean){signal?.removeEventListener('abort',abort);resolve(accepted);}
+          function abort(){if(replacement.current===finish)resolveReplacement(false);}
+          replacement.current=finish;signal?.addEventListener('abort',abort,{once:true});setReplacePrompt(true);
+        });
+      }});
     return()=>onRuntime(null);
   },[onRuntime,stop,file.id]);
   function resolveReplacement(value:boolean){const resolve=replacement.current;replacement.current=null;setReplacePrompt(false);resolve?.(value);}

@@ -76,8 +76,9 @@
 	height: 120px;
 	object-fit: contain;
 	flex: 0 0 120px;
-	background: var(--workspace-background, #f8fafb);
-	border-radius: 6px;
+	background: var(--ui-page-bg);
+	border: 1px solid var(--ui-surface-border);
+	border-radius: var(--ui-subcard-radius);
 }
 .task-card-thumbnail > svg {
 	width: 100%;
@@ -86,7 +87,7 @@
 .task-thumbnail-empty {
 	display: grid;
 	place-items: center;
-	color: var(--ui-muted-ink, #687480);
+	color: var(--ui-note-ink);
 }
 .task-card-content {
 	min-width: 0;
@@ -123,9 +124,10 @@
 }
 .task-state[data-status-tone] {
 	display: inline-block;
-	padding: 3px 7px;
-	border-radius: 5px;
+	padding: 2px 9px;
+	border-radius: 99px;
 	font-weight: 600;
+	font-size: var(--ui-control-small-font);
 }
 .task-center .task-monitor {
 	display: grid;
@@ -519,16 +521,22 @@
 }
 .task-gallery .task-card {
 	position: relative;
-	padding: 16px;
-	border: 1px solid var(--ui-control-border);
-	border-radius: 8px;
-	background: var(--ui-control-bg);
+	padding: 15px;
+	border: 1px solid var(--ui-surface-border);
+	border-radius: var(--ui-surface-radius);
+	background: var(--ui-surface-bg);
+	box-shadow: var(--ui-card-shadow);
 	cursor: pointer;
 	min-width: 0;
+	transition: var(--ui-transition);
+}
+.task-gallery .task-card:hover:not(.selected) {
+	border-color: color-mix(in srgb, var(--ui-control-accent) 45%, var(--ui-surface-border));
+	box-shadow: var(--ui-card-hover-shadow);
 }
 .task-gallery .task-card.selected {
 	border-color: #d5ac43;
-	box-shadow: inset 0 0 0 1px #d5ac43;
+	box-shadow: inset 0 0 0 1px #d5ac43, var(--ui-card-shadow);
 	background: #fffbea;
 }
 .task-gallery .task-card p {
@@ -929,14 +937,14 @@
 .task-monitor.workspace-three-columns>.task-monitor-info{width:auto;max-width:none;max-height:none;flex:initial;padding:8px;box-sizing:border-box;overflow:auto;scrollbar-gutter:stable}
 .task-monitor.workspace-three-columns .task-monitor-model{min-height:0;min-width:0;height:100%;overflow:hidden}
 .task-monitor.workspace-three-columns .task-monitor-cards{width:auto;min-height:0;max-height:none;height:100%;grid-column:auto;border-top:0;padding:8px;box-sizing:border-box;overflow:auto;scrollbar-gutter:stable}
-.task-monitor .task-monitor-result-toolbar{flex:none;background:#fff;border-bottom:1px solid #d8e7df;padding:3px 6px;min-height:38px}
+.task-monitor .task-monitor-result-toolbar{flex:none;background:var(--ui-surface-bg);border-bottom:1px solid var(--ui-surface-border);padding:4px 10px;min-height:40px}
 .task-monitor .task-monitor-result-toolbar>.model-workspace-heading{min-height:31px;padding:0;border:0;margin:0}
 .task-monitor .task-monitor-info .input-settings-layout{display:flex;flex-direction:column;gap:8px}
 .task-monitor .task-monitor-info .task-monitor-name{justify-content:flex-end}
 .task-monitor .task-monitor-info .task-actions{margin-bottom:8px}
 .task-monitor .task-monitor-info .task-directory-row{grid-template-columns:auto minmax(0,1fr);gap:6px}
 .task-monitor .task-monitor-info .task-directory-row button{justify-self:start}
-.task-state[data-status-tone="neutral"]{color:var(--ui-control-muted);background:#edf0f2}
+.task-state[data-status-tone="neutral"]{color:var(--ui-control-muted);background:var(--ui-action-disabled-bg)}
 .task-state[data-status-tone="unknown"]{color:#926000;background:#fff1c4}
 .task-gallery .task-card{display:grid!important;grid-template-columns:120px minmax(0,1fr);align-items:start!important}
 .task-gallery .task-card .task-directories,.task-gallery .task-card .task-card-footer{grid-column:1/-1}
@@ -947,21 +955,21 @@
 .task-directory-row>span{overflow-wrap:anywhere}
 .task-card-footer{display:flex;align-items:center;justify-content:space-between;position:relative;gap:8px}
 .task-card-footer>button:last-of-type{margin-left:auto}
-.task-context-menu{display:flex;flex-direction:column;gap:5px;padding:8px;background:var(--ui-control-bg);border:1px solid var(--ui-control-border);border-radius:6px;z-index:5;min-width:0}
-.task-card-footer .task-context-menu{position:absolute;right:0;bottom:100%;min-width:180px;box-shadow:0 4px 15px #163c2020}
+.task-context-menu{display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--ui-popover-bg,var(--ui-control-bg));backdrop-filter:var(--ui-popover-blur,none);border:1px solid var(--ui-surface-border);border-radius:var(--ui-subcard-radius);z-index:5;min-width:0}
+.task-card-footer .task-context-menu{position:absolute;right:0;bottom:100%;min-width:184px;box-shadow:var(--ui-popover-shadow)}
 .task-group-heading{display:flex;align-items:center;gap:5px}
-.task-group-heading strong{flex:1}
+.task-group-heading strong{flex:1;color:var(--ui-section-ink)}
 .task-group-heading button{width:auto;padding:4px;display:flex;align-items:center}
-.task-group-folder{color:#378663;flex:none}
+.task-group-folder{color:var(--ui-control-accent);flex:none}
 .task-group-row>button:last-child>span{flex:1;min-width:0}
 .task-group-row small{flex:none}
-.task-group-insertion[data-drop-active=true]{background:#80bba0;height:8px}
-.task-group-row [data-drop-active=true],.task-group-root-drop[data-drop-active=true]{background:#e1f1e7;outline:2px solid #6aa184}
+.task-group-insertion[data-drop-active=true]{background:var(--ui-control-accent);height:8px}
+.task-group-row [data-drop-active=true],.task-group-root-drop[data-drop-active=true]{background:var(--ui-control-selected-bg);outline:2px solid var(--ui-control-accent)}
 .task-library-entry{margin:auto;padding:28px;max-width:640px;overflow-wrap:anywhere}
 .task-center .task-filters label{flex-wrap:nowrap;max-width:100%}
 .task-center .task-filters input,.task-center .task-filters select{min-width:0}
 .task-center .task-filters input[type=search]{min-width:min(12em,100%)}
 
 /* Task-center columns remain fixed: no resize handle or interaction is added. */
-.task-center .task-center-body>.task-groups { border-inline-end:3px solid #e5e8e6; }
-.task-center .task-center-body>.task-detail { border-inline-start:3px solid #e5e8e6; }
+.task-center .task-center-body>.task-groups { border-inline-end:2px solid var(--ui-divider-line); background:var(--ui-sidebar-bg); }
+.task-center .task-center-body>.task-detail { border-inline-start:2px solid var(--ui-divider-line); background:var(--ui-sidebar-bg); }

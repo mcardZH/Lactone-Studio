@@ -479,13 +479,34 @@ test('createOrbitalBackendStore rejects empty/missing paths, non-Multiwfn binari
     await assert.rejects(() => posixStore.select(''), /Select a local Multiwfn executable/);
     await assert.rejects(
       () => posixStore.select(path.join(root, 'does-not-exist', 'multiwfn')),
-      /Select a local Multiwfn executable/,
+      { code: 'MULTIWFN_PROGRAM_NOT_FOUND' },
     );
-    await assert.rejects(() => posixStore.select(wrongName), /Select a local Multiwfn executable/);
+    await assert.rejects(
+      () => posixStore.select(wrongName),
+      (err) => err?.code === 'MULTIWFN_PROGRAM_UNAVAILABLE' && /Select a local Multiwfn executable/.test(err.message),
+    );
     await assert.rejects(
       () => posixStore.select(nonExecBin),
-      /Multiwfn executable must be executable/,
+      (err) => err?.code === 'MULTIWFN_PROGRAM_UNAVAILABLE' && /Multiwfn executable must be executable/.test(err.message),
     );
+    await assert.rejects(
+      () => posixStore.selectWorkDirectory(path.join(root, 'missing-work-dir')),
+      { code: 'MULTIWFN_WORK_DIRECTORY_UNAVAILABLE' },
+    );
+
+    const corruptStoreRoot = path.join(root, 'corruptUserData');
+    await fs.mkdir(corruptStoreRoot, { recursive: true });
+    await fs.writeFile(path.join(corruptStoreRoot, 'orbital-backend.json'), '{not-valid-json', 'utf8');
+    const corruptStore = createOrbitalBackendStore(corruptStoreRoot, {
+      platform: 'darwin',
+      env: {},
+      defaultCandidates: [],
+      fs: posixFs,
+    });
+    const validBin = path.join(root, 'valid-mw', 'Multiwfn');
+    await fs.mkdir(path.dirname(validBin), { recursive: true });
+    await posixFs.writeExecutable(validBin, '#!/bin/sh\n', 0o755);
+    await assert.rejects(() => corruptStore.select(validBin), { code: 'MULTIWFN_CONFIGURATION_READ_FAILED' });
 
     const winDir = path.join(root, 'win');
     await fs.mkdir(winDir, { recursive: true });

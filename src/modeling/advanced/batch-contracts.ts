@@ -23,9 +23,13 @@ export interface ConformerBatchResult {
   sessionId?: string; resourceGrant?: ComputeResourceEvidence;
   sharedOptimization?: import('./conformer-shared-optimization').ConformerSharedOptimizationEvidence;
 }
+export interface ConformerBatchDiagnosticWarning {
+  code: 'PES_DIAGNOSTIC_SAVE_FAILED'; message: string; index?: number; candidateId?: string;
+}
 export interface ConformerBatchEntry extends ConformerBatchInput {
   index: number; status: 'pending' | 'succeeded' | 'discarded';
   result?: ConformerBatchResult; reason?: { code: string; message: string };
+  diagnosticWarning?: ConformerBatchDiagnosticWarning;
 }
 export interface ConformerBatchProgress {
   /** Original requested preferences on a retained terminal batch, not a new grant. */
@@ -34,7 +38,9 @@ export interface ConformerBatchProgress {
   phase: 'registering' | 'ready' | 'running' | 'stopping' | 'completed' | 'stopped' | 'error';
   total: number; succeeded: number; discarded: number; pending: number; running: number;
   elapsedMs: number; etaMs: number | null;
+  actualGpuBatchWidth?: number;
   error?: { code: string; message: string };
+  diagnosticWarning?: ConformerBatchDiagnosticWarning;
 }
 export interface ConformerBatchBridge {
   begin(request: ConformerBatchBegin): Promise<{ batchId: string }>;

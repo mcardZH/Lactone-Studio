@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('node:fs/promises');
 const os = require('node:os');
+const net = require('node:net');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { createHash, randomUUID } = require('node:crypto');
@@ -84,6 +85,17 @@ function livePid(pid) {
   catch (error) { return error.code === 'EPERM'; }
 }
 
+function livePipe(instanceId) {
+  return new Promise(resolve => {
+    const socket = net.createConnection(pipeName(instanceId));
+    let available = false;
+    const timeout = setTimeout(() => socket.destroy(), 350);
+    socket.once('connect', () => { available = true; socket.destroy(); });
+    socket.once('error', () => {});
+    socket.once('close', () => { clearTimeout(timeout); resolve(available); });
+  });
+}
+
 async function discover(dir) {
   if (!dir) throw failure('discovery_unavailable', '找不到当前用户的 ES 连接目录。');
   let names;
@@ -93,6 +105,9 @@ async function discover(dir) {
     try {
       const value = JSON.parse(await fs.readFile(path.join(dir, 'instances', name), 'utf8'));
       if (value.version !== 1 || value.instanceId !== name.slice(0, -5) || !livePid(value.pid) || typeof value.protectedSecret !== 'string') return null;
+      // PID reuse may leave a descriptor that appears live after abrupt exit.
+      // Discovery checks the exact instance endpoint; binding still authenticates it.
+      if (process.platform === 'win32' && !await livePipe(value.instanceId)) return null;
       const windows = Array.isArray(value.windows) ? value.windows.filter(row => isId(row?.windowId)) : [];
       const tools = Array.isArray(value.tools) ? value.tools.filter(isToolDescriptor) : [];
       return { instanceId: value.instanceId, pid: value.pid, protectedSecret: value.protectedSecret, windows, tools,

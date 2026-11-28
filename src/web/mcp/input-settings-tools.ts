@@ -3,6 +3,7 @@ import { createTaskSystemBridge } from '../../task-system/integration/desktop-br
 import { newEnvironment } from '../task-system/EnvironmentSettings';
 import { checkComputeResourceSnapshot } from '../useComputeResources';
 import { MULTIWFN_CONFIGURATION_CHANGED } from '../global-settings-events';
+import type { ComputeResourcePreferenceValues, ComputeResourceSnapshot } from '../../modeling/resource-preferences';
 import { boolean, choice, inputTool, list, object, positive, string } from './input-arguments';
 import { toolError, type McCall, type McTool } from './types';
 import { jobEnvironmentTools } from './job-environment-tools';
@@ -26,6 +27,23 @@ const environmentPatch=object({
 });
 const secret=object({password:string,privateKeyPassphrase:string,remember:boolean},['remember']);
 const envFields={environmentId:string,expectedRevision:positive,patch:environmentPatch,secret};
+const resourceBudgets={memoryBudgetBytes:positive,outputBudgetBytes:positive};
+const resourceValues={oneOf:[
+  object({threads:positive,...resourceBudgets},['threads','memoryBudgetBytes']),
+  object({threads:positive,...resourceBudgets,multiwfnThreads:positive,xtbSingleTaskMode:choice('auto','fixed'),
+    xtbSingleTaskThreads:positive,xtbBatchParallelism:positive},
+    ['memoryBudgetBytes','multiwfnThreads','xtbSingleTaskMode','xtbSingleTaskThreads','xtbBatchParallelism']),
+]};
+
+function publicResourceValues(setting:ComputeResourcePreferenceValues){
+  const {netCpuThreads:_,...values}=setting;
+  return values;
+}
+
+function publicResourceSnapshot(snapshot:ComputeResourceSnapshot){
+  const {value,effective,defaults,...metadata}=checkComputeResourceSnapshot(snapshot);
+  return {...metadata,value:value&&publicResourceValues(value),effective:publicResourceValues(effective),defaults:publicResourceValues(defaults)};
+}
 
 function environmentFor(args:Record<string,unknown>, state:TaskCenterView):EnvironmentView{
   if(args.environmentId===undefined)return {...newEnvironment(),...args.patch as Partial<EnvironmentView>};
@@ -56,14 +74,21 @@ export function inputSettingsTools():McTool[] & {dispose():void}{
       (args,call)=>withTaskCenter(bridge,call,()=>bridge.request('environment.trust-host-key',
         {challengeId:args.challengeId as string,fingerprint:args.fingerprint as string},{signal:call?.signal}))),
     ...environmentTools,
-    inputTool('compute_resources','Read the current local compute-resource preference or write all intended values at the previous baseVersion. An omitted outputBudgetBytes leaves output unrestricted.',
-      object({baseVersion:string,values:object({threads:positive,memoryBudgetBytes:positive,outputBudgetBytes:positive},['threads','memoryBudgetBytes'])}),
+    inputTool('compute_resources','Read the local compute-resource preference or write values using the previous baseVersion. Set Multiwfn threads, xTB single-task mode and thread limit, and xTB batch parallelism independently. The legacy threads/memoryBudgetBytes/outputBudgetBytes form remains valid. An omitted outputBudgetBytes leaves output unrestricted.',
+      object({baseVersion:string,values:resourceValues}),
       async args=>{
         const desktop=window.sciyueDesktop;
         if(!desktop?.readComputeResources)throw Error('当前实例不能读取统一计算资源。');
-        if(args.values===undefined)return checkComputeResourceSnapshot(await desktop.readComputeResources());
+        if(args.values===undefined)return publicResourceSnapshot(await desktop.readComputeResources());
         if(!desktop.writeComputeResources||typeof args.baseVersion!=='string')throw Error('设置运行资源需要 baseVersion。');
-        return checkComputeResourceSnapshot(await desktop.writeComputeResources({baseVersion:args.baseVersion,value:args.values as Parameters<NonNullable<typeof desktop.writeComputeResources>>[0]['value']}));
+        const values=args.values as Omit<ComputeResourcePreferenceValues,'threads'|'netCpuThreads'>&{threads?:number};
+        const threads=values.threads??values.multiwfnThreads;
+        if(threads===undefined)throw Error('请明确提供旧版通用线程数或 Multiwfn 线程数。');
+        // Keep the host's compatibility value while exposing only public resource policies.
+        const netCpuThreads=values.multiwfnThreads===undefined?undefined:
+          checkComputeResourceSnapshot(await desktop.readComputeResources()).effective.netCpuThreads;
+        const value={...values,threads,...(netCpuThreads===undefined?{}:{netCpuThreads})};
+        return publicResourceSnapshot(await desktop.writeComputeResources({baseVersion:args.baseVersion,value}));
       }),
     inputTool('multiwfn_configure','Read the Multiwfn runtime configuration, select its program or work directory, or restore the default work directory.',
       object({programDirectory:string,workDirectory:string,resetWorkDirectory:boolean}),async(args,call)=>{

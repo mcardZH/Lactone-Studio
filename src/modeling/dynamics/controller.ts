@@ -8,7 +8,7 @@ import type { DynamicsCapabilities, DynamicsPort } from './port';
 import { acceptTransportedDynamicsStructure, validateDynamicsAdmission, validateDynamicsConfig, validateDynamicsStructure, validateDynamicsError } from './validation';
 import { createRuntimeModelStore } from '../../core/modeling/model-store';
 import {runtimePreviewSourceCurrent} from '../../core/modeling/runtime-source-lineage';
-import { supportsXtbAlpb, XTB_METHOD_LABELS } from '../../core/xtb-capabilities';
+import { isXtbMethod, supportsXtbAlpb, XTB_METHOD_LABELS } from '../../core/xtb-capabilities';
 import type { XtbSolvation } from '../xtb/contracts';
 import { mdHydrogenSettings, resolveMDConstraint } from './md-methods';
 import { BoundedDisplayQueue, createDisplayScheduler, DISPLAY_BYTE_LIMIT, DISPLAY_FRAME_LIMIT, DISPLAY_INTERVAL_MS, DISPLAY_MAX_WAIT_MS, serializedFrameBytes, type DisplayScheduler } from './display-queue';
@@ -221,6 +221,7 @@ export class DynamicsController {
 
   async start(mode: DynamicsOperation, config: DynamicsConfig = {}, capturedSource?:ModelDocument): Promise<void> {
     if (this.disposed) throw new Error('动态控制器已关闭。');
+    if(config.method!==undefined&&!isXtbMethod(config.method))throw Error('此版本提供 xTB 动力学，请重新选择计算级别。');
     this.connect();
     if (active(this.state.status)) throw new Error('请先停止当前动态会话。');
     const owner=this.deps.getWorkingSnapshot?.();

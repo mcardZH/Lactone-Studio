@@ -1,6 +1,7 @@
 "use strict";
 /** Independent external-process identities; never registered with application cleanup. */
 const fs = require("node:fs/promises");
+const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { isDeepStrictEqual } = require("node:util");
@@ -173,13 +174,13 @@ function createProcessIdentityProvider(options = {}) {
 	const spawnProcess = options.spawn || spawn;
 	const execFileProcess = options.execFile || execFile;
 	const hostFs = options.fs || fs;
-	function runDarwinCommand(file, args) {
+	function runDarwinCommand(file, args, timeoutMs = options.controlTimeoutMs || 10000) {
 		return new Promise((resolve) => {
 			execFileProcess(
 				file,
 				args,
 				{
-					timeout: options.controlTimeoutMs || 10000,
+					timeout: timeoutMs,
 					maxBuffer: 2 * 1024 * 1024,
 					windowsHide: true,
 					env: { ...process.env, LC_ALL: "C", TZ: "UTC" }
@@ -299,15 +300,47 @@ function createProcessIdentityProvider(options = {}) {
 			bootId: host.bootId
 		};
 	}
-	async function control(request) {
+	async function posixInspectWriterOwners(pids, hostResolver, psCommand, timeoutMs) {
+		const host = await hostResolver();
+		if (!host.hostId || !host.bootId)
+			return { status: "unknown", reason: host.reason || "HOST_IDENTITY_UNAVAILABLE" };
+		const computerName = String(options.hostname ?? os.hostname() ?? "").trim() || "localhost";
+		const processes = await Promise.all(
+			(Array.isArray(pids) ? pids : []).map(async (pid) => {
+				const commRes = await runDarwinCommand(
+					psCommand,
+					["-ww", "-p", String(pid), "-o", "pid=,uid=,state=,lstart=,comm="],
+					timeoutMs
+				);
+				if (!commRes.ok) {
+					return commRes.code === 1 &&
+						!commRes.killed &&
+						!commRes.signal &&
+						!commRes.stdout.trim() &&
+						!commRes.stderr.trim()
+						? { pid, status: "dead" }
+						: { pid, status: "unknown" };
+				}
+				const parsed = parsePsLine(commRes.stdout, pid);
+				if (!parsed) return { pid, status: "unknown" };
+				if (parsed.zombie) return { pid, status: "dead" };
+				if (!parsed.creationFileTime) return { pid, status: "unknown" };
+				return { pid, status: "alive", creationFileTime: parsed.creationFileTime };
+			})
+		);
+		return { hostId: host.hostId, computerName, bootId: host.bootId, processes };
+	}
+	async function control(request, timeoutMs = options.controlTimeoutMs || 30000) {
 		if (platform === "darwin") {
 			if (request.action === "host") return darwinHost();
 			if (request.action === "inspect") return posixPsInspect(request.pid, darwinHost, "/bin/ps");
+			if (request.action === "writer-owners") return posixInspectWriterOwners(request.pids, darwinHost, "/bin/ps", timeoutMs);
 			return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
 		}
 		if (platform === "linux") {
 			if (request.action === "host") return linuxHost();
 			if (request.action === "inspect") return posixPsInspect(request.pid, linuxHost, "ps");
+			if (request.action === "writer-owners") return posixInspectWriterOwners(request.pids, linuxHost, "ps", timeoutMs);
 			return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
 		}
 		if (platform !== "win32") return { status: "unknown", reason: "PLATFORM_NOT_IMPLEMENTED" };
@@ -322,7 +355,7 @@ function createProcessIdentityProvider(options = {}) {
 			const timer = setTimeout(() => {
 				child.kill();
 				finish({ status: "unknown", reason: "IDENTITY_CONTROL_TIMEOUT" });
-			}, options.controlTimeoutMs || 30000);
+			}, timeoutMs);
 			const finish = (value) => {
 				if (!settled) {
 					settled = true;
@@ -674,6 +707,10 @@ function createProcessIdentityProvider(options = {}) {
 	}
 	return {
 		inspect,
+		async inspectWriterOwners(pids) {
+			const { hostId, computerName, ...evidence } = await control({ action: "writer-owners", pids: [...new Set(pids)].filter(pid => Number.isInteger(pid) && pid > 0 && pid <= 0xffffffff) }, options.controlTimeoutMs || 3500);
+			return hostId && computerName ? { ...evidence, hostId: digest(`${hostId}:${computerName.toLowerCase()}`) } : evidence;
+		},
 		probe,
 		stop,
 		waitTreeEnded,

@@ -345,13 +345,13 @@ function PlotEditor({record, appearance, identity, ...p}: PlotEditorProps & {rec
   async function captureExport(format:PlotExportFormat,signal:AbortSignal) {
     const node=svg.current;
     if(!node?.isConnected)throw new Error('图窗尚未准备好或已关闭。');
-    const data=p.exportText;
-    if(format==='raw'||format==='txt'&&!data)throw new Error('当前图形没有该格式的导出。');
+    const data=format==='raw'?p.exportRawText:p.exportText;
+    if((format==='raw'||format==='txt')&&!data)throw new Error('当前图形没有该格式的导出。');
     const blob=format==='png'?await capture(node.ownerDocument,signal)
       :format==='svg'?new Blob([serializeOptimizationSvg(node)],{type:'image/svg+xml;charset=utf-8'})
       :new Blob([typeof data?.text==='function'?data.text():data?.text??''],{type:'text/plain;charset=utf-8'});
     assertResultNotAborted(signal);
-    return {blob,filename:format==='txt'&&data?data.fileName:`${p.exportFileName??'Ester-Studio-plot'}.${format}`};
+    return {blob,filename:(format==='txt'||format==='raw')&&data?data.fileName:`${p.exportFileName??'Ester-Studio-plot'}.${format}`};
   }
   const choose = (which: PlotPart, id: string, saved?: PlotStyle) =>
     update(which, saved ? {presetId: id} : applyPlotPreset(controlsFor(which).pane, id, library.style(id)));
@@ -394,11 +394,11 @@ function PlotEditor({record, appearance, identity, ...p}: PlotEditorProps & {rec
       insetControls.change(patch);
     },
   };
-  const mcpPort=mainGeometry&&range?<ResultsMcpPlotRegistration chartId={id} figureIdentity={`${identity}:${String(p.resetKey)}`} port={{
+  const mcpPort=mainGeometry&&range?<ResultsMcpPlotRegistration chartId={id} chartKey={p.appearanceKey===undefined?undefined:String(p.appearanceKey)} figureIdentity={`${identity}:${String(p.resetKey)}`} port={{
     read:()=>{
       const mainPart=plotPartCapabilities(main);
       return {title:figure.text?.title?.content??titles.title,xLabel:figure.text?.x?.content??titles.x,yLabel:figure.text?.y?.content??titles.y,
-        family,figure,range,metadata:p.metadata,formats:['svg','png',...(p.exportText?['txt' as const]:[])],
+        family,figure,range,metadata:p.metadata,formats:['svg','png',...(p.exportText?['txt' as const]:[]),...(p.exportRawText?['raw' as const]:[])],
         series:mainPart.series,textIds:mainPart.textIds,edits:mainPart.editOperations,parts:child?['main','inset']:['main'],
         partCapabilities:{main:mainPart,...(child?{inset:plotPartCapabilities(child)}:{})},
         presets:[...library.builtins,...library.personal].map(({id,label})=>({id,label})),defaultPresetId:library.defaultId,canUndo:record.canUndo,canRedo:record.canRedo};
@@ -408,7 +408,8 @@ function PlotEditor({record, appearance, identity, ...p}: PlotEditorProps & {rec
       if(which==='inset'&&!child)throw new Error('当前主图没有副图。');
       editCurrentPlot(change,which==='inset'?child!:main,record);
     },
-    configuration:{canvas:plotCanvasConfiguration(main,assertFigureIdle),...(p.mcpConfiguration?{presentation:{...p.mcpConfiguration,
+    configuration:{canvas:plotCanvasConfiguration(main,assertFigureIdle),...Object.fromEntries(Object.entries(p.mcpConfigurations??{}).map(([scope,settings])=>[scope,
+      {...settings,apply:(patch:Record<string,unknown>)=>{assertFigureIdle();settings.apply(patch);}}])),...(p.mcpConfiguration?{presentation:{...p.mcpConfiguration,
       apply:(patch:Record<string,unknown>)=>{assertFigureIdle();p.mcpConfiguration!.apply(patch);}}}:{}),...(insetConfiguration?{inset:insetConfiguration}:{})},
     preset:presetId=>{assertFigureIdle();choose('main',presetId);},
     savePreset:label=>{
@@ -417,6 +418,18 @@ function PlotEditor({record, appearance, identity, ...p}: PlotEditorProps & {rec
     },
     defaultPreset:library.makeDefault,
     export:(format,signal)=>captureExport(format,signal),
+    canSelectPoint:Boolean(p.onSelectIndex&&!p.selectingZero),
+    point(seriesId,pointIndex,action){
+      const series=main.series.find(item=>item.id===seriesId),point=series?.points[pointIndex];
+      if(!point)return;
+      if(action==='select'){
+        assertFigureIdle();
+        if(!p.onSelectIndex||p.selectingZero||point.index===undefined||
+          (main.pane.series?.[seriesId]?.hidden??main.style.line.hidden))return;
+        pick(point);
+      }
+      return point;
+    },
     isVisible:()=>!!svg.current?.getClientRects().length,
   }}/>:null;
   async function exportFigure(format: 'svg' | 'png' | 'txt') {

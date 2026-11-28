@@ -85,6 +85,7 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
       stamp:session.request.stamp,runIdentity:session.request.runIdentity,method:session.request.method,
       calculation:session.request.calculation,atomCount:session.request.structure.atoms.length,
       charge:session.request.charge,uhf:session.request.uhf,maxSteps:session.request.maxSteps,optimizationStepPolicy:session.request.optimizationStepPolicy,maxSccIterations:session.request.maxSccIterations,
+      nativeOptimizationPreset:session.request.nativeOptimizationPreset,
       startedAt:session.startedAt,closedAt:terminal?new Date(now()).toISOString():undefined,
       elapsedSeconds:session.startedMs===undefined?undefined:(now()-session.startedMs)/1000,
       runtime:session.runtime?{executable:session.runtime.executable,dataDirectory:session.runtime.dataDirectory,version:session.runtime.version,engineIdentity:session.runtime.engineIdentity}:undefined,
@@ -262,7 +263,18 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
         return;
       }
       emit(session,'completed',{coordinates,metadata,...(optimizationCache??{}),...(electronicArtifacts?{electronicArtifacts}:{}),exit:{code,signal},...(session.trace&&session.trace.lastFrameStep>=0?{step:session.trace.lastFrameStep,stepKind:session.periodic?'native-fire-cycle':'native-log-frame'}:{})});
-    }catch(error){await diagnostics(session);await preserveDiagnostics(session,{reason:'xtb-failed',error:String(error.message),exit:{code,signal}}).catch(failure=>{session.preserveForRecovery=true;console.warn('XTB_DIAGNOSTIC_RETAIN_FAILED',String(failure.message));});emit(session,'error',{error:{code:['XTB_BOND_ORDERS_MISSING','XTB_BOND_ORDERS_INVALID','XTB_ARTIFACT_HANDOFF_FAILED','XTB_SOLVATION_MISMATCH','XTB_NATIVE_STEP_OVERRUN','XTB_CANDIDATE_SCC','XTB_CANDIDATE_GEOMETRY','XTB_CANDIDATE_OPTIMIZER','XTB_CANDIDATE_RESULT','XTB_CANDIDATE_EXIT'].includes(error.code)?error.code:'XTB_RESULT_REJECTED',message:String(error.message).slice(0,8192)},...(session.lastReliableFrame??{}),exit:{code,signal}});}
+    }catch(error){
+      await diagnostics(session);
+      await preserveDiagnostics(session,{reason:'xtb-failed',error:String(error.message),exit:{code,signal}}).catch(failure=>{
+        session.preserveForRecovery=true;console.warn('XTB_DIAGNOSTIC_RETAIN_FAILED',String(failure.message));
+      });
+      const codeForDisplay=['XTB_BOND_ORDERS_MISSING','XTB_BOND_ORDERS_INVALID','XTB_ARTIFACT_HANDOFF_FAILED','XTB_SOLVATION_MISMATCH','XTB_NATIVE_STEP_OVERRUN','XTB_CANDIDATE_SCC','XTB_CANDIDATE_GEOMETRY','XTB_CANDIDATE_OPTIMIZER','XTB_CANDIDATE_RESULT','XTB_CANDIDATE_EXIT'].includes(error.code)?error.code:'XTB_RESULT_REJECTED';
+      const detail=session.batchSink?[error.code!==codeForDisplay?error.code:undefined,
+        typeof code==='number'&&(code>>>0)===0xC0000135?'0xC0000135':undefined,
+        session.stderr.trim().slice(-2048)].filter(Boolean).join('\n'):undefined;
+      emit(session,'error',{error:{code:codeForDisplay,message:String(error.message).slice(0,8192),...(detail?{detail}:{})},
+        ...(session.lastReliableFrame??{}),exit:{code,signal}});
+    }
     finally{
       await closeTrace(session.trace);
       await closeLogs(session);
@@ -309,28 +321,44 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
   }
   async function start(owner,rawRequest,id,beforeStart=()=>{},batchSink,capturedRuntime){
     assert(batchSink===undefined||typeof batchSink==='function','Trusted batch result sink required');
+    assert(batchSink||rawRequest?.optimizationPool===undefined&&rawRequest?.nativeOptimizationPreset===undefined,'Managed xTB candidate fields are reserved for the trusted batch host');
     assert(!disposed&&Number.isSafeInteger(owner)&&owner>=0&&!closedOwners.has(owner)&&typeof beforeStart==='function','Invalid or closed xTB owner');const sessionId=sessionIdentity(id),key=keyFor(owner,sessionId),resourceHints={threads:rawRequest?.threads,memoryBudgetBytes:rawRequest?.memoryBudgetBytes};if(resolveResources)assert(rawRequest?.threads===undefined||Number.isSafeInteger(rawRequest.threads)&&rawRequest.threads>0,'Invalid requested xTB threads');const request=validateStart(resolveResources?{...rawRequest,threads:1}:rawRequest);
     assert(!request.electronicProperties||typeof retainElectronicArtifacts==='function','Managed xTB electronic artifact handoff unavailable');
-    const priorClosed = request.optimizationPool ? [...sessions.values()].filter(session=>session.owner===owner&&session.terminal) : [];
-    // A batch backfill must acquire its own session identity synchronously.
-    // Other terminal candidates may still await canonical persistence; their
-    // shared pool grants already prevent execution until actual release.
-    // Awaiting them here leaves a cancellable job with no registered identity.
-    if (priorClosed.length&&!batchSink) await Promise.all(priorClosed.map(session=>session.closeTask));
-    assert(!sessions.has(key),'Duplicate owned xTB session');
-    const samePool = session => request.optimizationPool && session.request.optimizationPool
-      && request.runIdentity.taskId===session.request.runIdentity.taskId && request.runIdentity.runId===session.request.runIdentity.runId
-      && request.optimizationPool.stageId===session.request.optimizationPool.stageId;
-    assert(![...sessions.values()].some(session=>session.owner===owner&&!samePool(session))&&!periodicHost.hasOwner(owner),'Only one owned xTB job per window, until actual child close');
+    // Trusted candidates have separate identities and use the stage admission
+    // lease. Ordinary calls keep their existing per-window occupancy.
+    assert(!sessions.has(key)&&!periodicHost.owns(owner,sessionId),'Duplicate owned xTB session');
+    assert(batchSink||![...sessions.values()].some(session=>session.owner===owner&&!session.batchSink)&&!periodicHost.hasOwner(owner),'Only one owned xTB job per window, until actual child close');
     assert(policy.maxSessions===undefined||[...sessions.values()].filter(session=>!session.terminal).length+periodicHost.activeCount()<policy.maxSessions,'xTB configured concurrency limit reached');
     if(isPeriodic(request)){assert(!request.runIdentity,'Advanced xTB tasks require an isolated structure');if(request.calculation==='singlepoint')return periodicHost.start(owner,request,sessionId,beforeStart,resourceHints);const periodicRuntime=capturedRuntime??await runtimeInput(request);if(periodicRuntime.engineIdentity?.runtimeVariant!=='fire')return periodicHost.start(owner,request,sessionId,beforeStart,resourceHints);capturedRuntime=periodicRuntime;}
     const periodic=nativePeriodicOptimization(request), gxtb=request.method==='gxtb';
-    const session={key,owner,sessionId,request,batchSink,periodic,seq:0,stdout:'',stderr:'',scientificStdout:scientificLog({periodicFire:periodic,gxtb,gxtbSinglepoint:gxtb&&request.calculation==='singlepoint'}),scientificStderr:scientificLog(),outputBytes:0,outDecoder:new StringDecoder('utf8'),errDecoder:new StringDecoder('utf8'),lastProgressAt:-Infinity,admissionController:new AbortController()};session.closeTask=new Promise((resolve,reject)=>{session.resolveClosed=resolve;session.rejectClosed=reject;});void session.closeTask.catch(()=>{});sessions.set(key,session);
+    const session={key,owner,sessionId,request,batchSink,periodic,seq:0,stdout:'',stderr:'',scientificStdout:scientificLog({periodicFire:periodic,nativeRfSetup:!!request.nativeOptimizationPreset,gxtb,gxtbSinglepoint:gxtb&&request.calculation==='singlepoint'}),scientificStderr:scientificLog(),outputBytes:0,outDecoder:new StringDecoder('utf8'),errDecoder:new StringDecoder('utf8'),lastProgressAt:-Infinity,admissionController:new AbortController()};session.closeTask=new Promise((resolve,reject)=>{session.resolveClosed=resolve;session.rejectClosed=reject;});void session.closeTask.catch(()=>{});sessions.set(key,session);
+    const trustedRf=!!request.nativeOptimizationPreset;
+    let dependencyCode;
     try{
+      dependencyCode='XTB_RUNTIME_UNAVAILABLE';
       if(request.method==='gxtb')session.runtime=capturedRuntime??await runtimeInput(request,session.admissionController.signal);if(session.stopReason){await finish(session,null,null);return{sessionId,status:'stopped'};}
-      if(resolveResources){session.configuredResources=await new Promise((resolve,reject)=>{const signal=session.admissionController.signal,abort=()=>reject(Error('xTB resource capture cancelled'));if(signal.aborted){abort();return;}signal.addEventListener('abort',abort,{once:true});Promise.resolve(resolveResources(owner,{...structuredClone(request),...resourceHints})).then(resolve,reject).finally(()=>signal.removeEventListener('abort',abort));});beforeStart();Object.assign(request,validateStart({...request,threads:session.configuredResources.threads}));}
-      if(admit&&(request.runIdentity||resolveResources)){const release=await admit(owner,structuredClone({...request,...(request.optimizationPool?{threads:1}:{})}),{signal:session.admissionController.signal,resources:session.configuredResources});assert(typeof release==='function','xTB admission must return a trusted release function');session.releaseAdmission=release;if(session.configuredResources){assert(release.resources&&Number.isSafeInteger(release.resources.memoryBudgetBytes)&&release.resources.memoryBudgetBytes>0,'XTB_RESOURCE_GRANT: Shared actual resource grant unavailable');session.effectiveResources=structuredClone(release.resources);Object.assign(request,validateStart({...request,threads:release.resources.threads}));}if(session.stopReason){await finish(session,null,null);return{sessionId,status:'stopped'};}}
+      dependencyCode='XTB_RESOURCE_GRANT';
+      if(resolveResources&&!trustedRf){session.configuredResources=await new Promise((resolve,reject)=>{const signal=session.admissionController.signal,abort=()=>reject(Error('xTB resource capture cancelled'));if(signal.aborted){abort();return;}signal.addEventListener('abort',abort,{once:true});Promise.resolve(resolveResources(owner,{...structuredClone(request),...resourceHints})).then(resolve,reject).finally(()=>signal.removeEventListener('abort',abort));});beforeStart();Object.assign(request,validateStart({...request,threads:session.configuredResources.threads}));}
+      assert(!trustedRf||typeof admit==='function','Trusted native RF stage admission unavailable');
+      if(admit&&(request.runIdentity||resolveResources)){
+        // The execution request may already be capped. Ordinary admission
+        // re-reads policy after acquiring a slot using the original hints.
+        const release=await admit(owner,structuredClone({...request,...(request.optimizationPool?{threads:1}:{})}),{
+          signal:session.admissionController.signal,resources:session.configuredResources,
+          ...(resolveResources&&!request.optimizationPool?{resourceHints}:{}),
+        });
+        assert(typeof release==='function','xTB admission must return a trusted release function');session.releaseAdmission=release;
+        if(session.configuredResources||trustedRf){
+          const actual=release.resources;
+          assert(actual&&Number.isSafeInteger(actual.memoryBudgetBytes)&&actual.memoryBudgetBytes>0&&(!trustedRf||actual.threads===1),'XTB_RESOURCE_GRANT: Shared actual resource grant unavailable');
+          session.effectiveResources=structuredClone(actual);session.configuredResources??=structuredClone(actual.configured);
+          Object.assign(request,validateStart({...request,threads:actual.threads}));
+        }
+        if(session.stopReason){await finish(session,null,null);return{sessionId,status:'stopped'};}
+      }
+      dependencyCode='XTB_RUNTIME_UNAVAILABLE';
       session.runtime??=capturedRuntime??await runtimeInput(request);if(session.stopReason){await finish(session,null,null);return{sessionId,status:'stopped'};}
+      dependencyCode=undefined;
       session.outputBudgetBytes=outputBudget(session.effectiveResources??session.configuredResources,policy.maxOutputBytes);
       if(request.calculation==='optimize')session.trace={parser:periodic?createFireTrajectoryParser(request,session.runtime.version):createTrajectoryParser(request),decoder:new StringDecoder('utf8'),offset:0,frameCount:0,lastFrameStep:-1};
       await fs.mkdir(jobRoot,{recursive:true});await directory(jobRoot);session.job=await fs.mkdtemp(path.join(jobRoot,'job-'));assert(within(jobRoot,session.job)&&path.dirname(session.job)===path.resolve(jobRoot),'Owned fresh xTB job required');await directory(session.job);
@@ -340,21 +368,26 @@ function createXtbHost({spawn,resolveRuntime,resolvePeriodicRuntime,prepareElect
       await fs.writeFile(path.join(session.job,'request.json'),JSON.stringify(request)+'\n',{encoding:'utf8',flag:'wx'});
       session.logHandles={};session.logHandles.stdout=await fs.open(path.join(session.job,'stdout.log'),'wx');session.logHandles.stderr=await fs.open(path.join(session.job,'stderr.log'),'wx');
       beforeStart();assert(!disposed&&!session.ownerClosed&&!closedOwners.has(owner),'xTB owner closed during preparation');if(session.stopReason){await finish(session,null,null);return{sessionId,status:'stopped'};}
-      await verifyGxtbRuntime(session.runtime);
       const libraryRoot=session.runtime.root??path.dirname(session.runtime.directory), libDirectory=path.join(libraryRoot,'lib');
       let hasLibDirectory=false;
       try{const libStat=await fs.lstat(libDirectory);assert(libStat.isDirectory()&&!libStat.isSymbolicLink(),'xTB lib directory must not be a symlink');hasLibDirectory=true;}catch(error){if(error.code!=='ENOENT')throw error;}
       const libSearchPaths=hasLibDirectory?[libDirectory,session.runtime.directory]:[session.runtime.directory];
       const env={...Object.fromEntries(Object.entries(process.env).filter(([name])=>/^(?:SystemRoot|WINDIR|SYSTEMDRIVE)$/i.test(name))),PATH:session.runtime.directory,...(process.platform==='darwin'?{DYLD_FALLBACK_LIBRARY_PATH:[...libSearchPaths,'/usr/lib'].join(path.delimiter)}:{}),...(process.platform==='linux'?{LD_LIBRARY_PATH:libSearchPaths.join(path.delimiter)}:{}),XTBPATH:session.runtime.dataDirectory,HOME:session.job,USERPROFILE:session.job,XDG_CONFIG_HOME:session.job,TEMP:session.job,TMP:session.job,LANG:'C',LC_ALL:'C',OMP_NUM_THREADS:String(request.threads),OMP_MAX_ACTIVE_LEVELS:'1',OMP_DYNAMIC:'FALSE',OPENBLAS_NUM_THREADS:String(request.threads),MKL_NUM_THREADS:String(request.threads)};
       session.argv=invocation(request);session.threadEnvironment=Object.fromEntries(['OMP_NUM_THREADS','OMP_MAX_ACTIVE_LEVELS','OMP_DYNAMIC','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS'].map(key=>[key,env[key]]));session.startedMs=now();session.startedAt=new Date(session.startedMs).toISOString();await runEvidence(session);
+      dependencyCode='XTB_RUNTIME_UNAVAILABLE';await verifyGxtbRuntime(session.runtime);dependencyCode=undefined;
       beforeStart();if(session.stopReason){await finish(session,null,null);return{sessionId,status:'stopped'};}
       if(request.ffModel)session.cancelWallDeadline=armWallDeadline(request.maxWallTimeSeconds,()=>stop(session,{code:'XTB_WALL_TIMEOUT',message:'xTB optimization exceeded its wall-time budget'}),{monotonicNow,later,clearLater});
       await prepareFixedFf({session,fs,spawn,env,readRegular,directory,clearTimer:clearLater,outputLimit:session.outputBudgetBytes??policy.maxOutputBytes});
       beforeStart();if(session.stopReason){await finish(session,null,null);return{sessionId,status:'stopped'};}
       const child=session.child=spawn(session.runtime.executable,session.argv,{cwd:session.job,env,windowsHide:true,shell:false,stdio:['ignore','pipe','pipe']});
-      child.stdout.on('data',chunk=>capture(session,'stdout',chunk));child.stderr.on('data',chunk=>capture(session,'stderr',chunk));child.on('error',error=>stop(session,{code:'XTB_SPAWN_FAILED',message:String(error.message).slice(0,8192)}));child.once('close',(code,signal)=>{for(const stream of ['stdout','stderr']){const tail=session[stream==='stdout'?'outDecoder':'errDecoder'].end();session[stream]+=tail;session[stream==='stdout'?'scientificStdout':'scientificStderr'].push(tail);appendLog(session,stream,tail);}void finish(session,code,signal??null);});
+      child.stdout.on('data',chunk=>capture(session,'stdout',chunk));child.stderr.on('data',chunk=>capture(session,'stderr',chunk));child.on('error',error=>stop(session,{code:batchSink&&error.code==='ENOENT'?'XTB_RUNTIME_UNAVAILABLE':'XTB_SPAWN_FAILED',message:String(error.message).slice(0,8192),...(batchSink&&error.code?{detail:error.code}:{})}));child.once('close',(code,signal)=>{for(const stream of ['stdout','stderr']){const tail=session[stream==='stdout'?'outDecoder':'errDecoder'].end();session[stream]+=tail;session[stream==='stdout'?'scientificStdout':'scientificStderr'].push(tail);appendLog(session,stream,tail);}void finish(session,code,signal??null);});
       session.cancelWallDeadline??=armWallDeadline(request.maxWallTimeSeconds,()=>stop(session,{code:'XTB_WALL_TIMEOUT',message:'xTB optimization exceeded its wall-time budget'}),{monotonicNow,later,clearLater});emit(session,'started',{status:'running'});scheduleTrajectory(session);scheduleProgress(session);return{sessionId,status:'starting'};
-    }catch(error){if(!session.child){session.stopReason??={code:'XTB_START_FAILED',message:String(error.message).slice(0,8192)};await finish(session,null,null);}else stop(session,{code:'XTB_START_FAILED',message:String(error.message).slice(0,8192)});return{sessionId,status:session.stopReason?.code==='XTB_CANCELLED'?'stopped':'error'};}
+    }catch(error){
+      const failure={code:batchSink&&dependencyCode||'XTB_START_FAILED',message:String(error.message).slice(0,8192),
+        ...(batchSink&&error.code?{detail:error.code}:{})};
+      if(!session.child){session.stopReason??=failure;await finish(session,null,null);}else stop(session,failure);
+      return{sessionId,status:session.stopReason?.code==='XTB_CANCELLED'?'stopped':'error'};
+    }
   }
   function command(owner,id,value){assert(value&&Object.keys(value).length===1&&value.command==='stop','Only xTB stop is supported');if(periodicHost.owns(owner,id))return periodicHost.command(owner,id);const session=sessions.get(keyFor(owner,id));assert(session&&(!session.terminal||session.batchSink),'xTB job is not owned or is no longer active');stop(session);return session.closeTask.then(()=>({sessionId:session.sessionId,status:'stopped'}));}
   function closeOwner(owner){closedOwners.add(owner);periodicHost.closeOwner(owner);for(const session of sessions.values())if(session.owner===owner){session.ownerClosed=true;stop(session,{code:'XTB_OWNER_CLOSED',message:'xTB owner closed'});}closeOptimizationCaches(owner);}

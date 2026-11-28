@@ -15,7 +15,7 @@ import ConformerSolventField from './ConformerSolventField';
 import {applyConformerSamplingPreset,conformerSamplingPresetId,CONFORMER_SAMPLING_PRESETS} from './conformer-sampling-presets';
 import {changeSamplingMethod,NATIVE_MD_CORE_UNAVAILABLE,type SamplingDraft} from './process-config';
 import {protectionStrengthToDisplay,protectionStrengthToNative} from './protection-units';
-import {ConformerMethodField,conformerNetMethods} from './ConformerMethodFields';
+import {ConformerMethodField} from './ConformerMethodFields';
 
 export default function ConformerMolecularSamplingControls(p:{value:SamplingDraft;onChange(value:SamplingDraft):void;source:AdvancedFrameSource|null;renderRegion(label:string,ids:string[],onConfirm:(ids:string[])=>void):ReactNode;spherePreview?:boolean;onToggleSphere?():void;progress?:ReactNode;actions?:ReactNode;frameSummary?:ReactNode;sphereControls?:ReactNode;embedded?:boolean;sharedConstraints?:boolean}){
   const gxtbBackend=useGxtbBackend();
@@ -43,7 +43,7 @@ export default function ConformerMolecularSamplingControls(p:{value:SamplingDraf
   const content=<>
     {p.progress}<GxtbAvailability method={d.method}/>
     <InputSettingsRow>
-      <ConformerMethodField method={d.method} ariaLabel="采样方法" xtb={methods} net={d.operation==='md'?conformerNetMethods(periodic):[]} onChange={method=>p.onChange(changeSamplingMethod(d,method as SamplingDraft['method'],periodic))}/>
+      <ConformerMethodField method={d.method} ariaLabel="采样方法" xtb={methods} onChange={method=>p.onChange(changeSamplingMethod(d,method as SamplingDraft['method'],periodic))}/>
       {!net&&!periodic&&conformerAlpbPresets(d.method).length>0&&<ConformerSolventField method={d.method} value={d} onChange={value=>update(value)} ariaLabel="采样溶剂"/>}
     </InputSettingsRow>
     <InputSettingsRow>

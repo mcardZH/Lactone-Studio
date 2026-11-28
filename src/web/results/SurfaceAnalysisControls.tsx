@@ -26,7 +26,8 @@ import {patchColorbarLayout,patchMeshFinish,settingArray,settingBool,settingColo
 import {analysisCube,analysisText} from './analysis-mcp-assets';
 import {objectSchema,toolError} from '../mcp/types';
 import { useAnalysisFeedback } from './AnalysisFeedback';
-import { projectSurfaceDistribution, surfaceColorbarUnitLabel, surfaceContextKey, surfaceDisplayUnit, surfaceDistributionTable, surfaceEspMetricTables, surfaceExtremaRange, surfaceExtremaTable, surfaceExtremumIdentity, surfaceExtremumLabel, surfaceExtremumCoordinates, surfaceExtremumPosition, surfaceMetricTable } from './surface-presentation';
+import { projectSurfaceDistribution, surfaceColorbarUnitLabel, surfaceContextKey, surfaceDisplayUnit, surfaceDistributionTable, surfaceEspMetricTables, surfaceExtremaTable, surfaceExtremumIdentity, surfaceExtremumLabel, surfaceExtremumCoordinates, surfaceExtremumPosition, surfaceMetricTable, surfaceRegionColorRange } from './surface-presentation';
+import {surfaceMeshAppearanceKey} from '../modeling/render/surface-layer';
 import type { SurfaceAnalysisControlsProps, SurfaceCapabilityRequest, SurfaceDisplaySettings, SurfaceProjection } from './surface-controls-contracts';
 import {surfaceCapabilityKey} from './surface-capability';
 import { surfaceFieldDefinition, surfaceFieldDescriptor, surfaceGenerationDescriptor, type SurfaceFieldDescriptor, type SurfaceGenerationDescriptor } from './surface-ui-cache';
@@ -53,7 +54,9 @@ interface AnalysisCache { key: string; analysis: SurfaceAnalysisResult; regions:
 export interface ElectronicSurfaceMeshReceipt {
   pairKey: string;
   attemptKey: string;
+  appearanceKey:string;
   status: 'pending' | 'drawn' | 'failed';
+  colored:boolean;
   error?: string;
 }
 export function electronicSurfacePairKey(pair: SurfaceFieldPair): string {
@@ -189,8 +192,12 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps & { meshRe
     const complete = surfaceMetricTable(displayedRegion, decimals);
     return { summary: complete, complete };
   }, [displayedRegion, fn, decimals]);
-  const rangeInUnit = (unit: string) => { try { return surfaceExtremaRange(nativeExtrema.map(row => ({ ...row, value: convertSurfaceMappingValue(row.value, fn, row.valueUnit, unit), valueUnit: unit }))); } catch { return undefined; } };
-  const autoRange = useMemo(() => rangeInUnit(colorbarUnit), [nativeExtrema, fn, colorbarUnit]), colorRange = display.range ?? autoRange;
+  const moleculeRegion=record?.regions.find(value=>value.selection.kind==='molecule');
+  const selectedRange=useMemo(()=>surfaceRegionColorRange(region,analysis?.extrema??[],fn,colorbarUnit),[region,analysis,fn,colorbarUnit]);
+  const moleculeRange=useMemo(()=>scope!=='molecule'&&!selectedRange?surfaceRegionColorRange(moleculeRegion,analysis?.extrema??[],fn,colorbarUnit):undefined,[scope,selectedRange,moleculeRegion,analysis,fn,colorbarUnit]);
+  const colorRange=display.range??selectedRange??moleculeRange;
+  const usingMoleculeRange=!display.range&&!selectedRange&&Boolean(moleculeRange);
+  const rangeInUnit=(unit:string)=>surfaceRegionColorRange(region,analysis?.extrema??[],fn,unit)??(scope!=='molecule'?surfaceRegionColorRange(moleculeRegion,analysis?.extrema??[],fn,unit):undefined);
   const colorbarUnitLabel = surfaceColorbarUnitLabel(fn, colorbarUnit);
   const generated = record?.generated;
   const generatedValidation = useMemo(() => {
@@ -385,12 +392,14 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps & { meshRe
     surfaceCubeBudgetIssue(quality,p.resourceBudgetBytes);
   const admittedGeneration=generatedValidation?.compatible?generated:undefined;
   const requestedQualityReady=admittedGeneration&&JSON.stringify(admittedGeneration.quality)===JSON.stringify(quality);
-  const mesh=p.meshReceipt&&visiblePair&&p.meshReceipt.pairKey===electronicSurfacePairKey(visiblePair)?p.meshReceipt:null;
+  const layer=projection?.surfaceLayer;
+  const mesh=p.meshReceipt&&layer?.visible&&p.meshReceipt.pairKey===electronicSurfacePairKey(layer.pair)&&p.meshReceipt.appearanceKey===surfaceMeshAppearanceKey(layer)?p.meshReceipt:null;
+  const drawn=mesh?.status==='drawn',colored=Boolean(drawn&&mesh.colored);
+  const viewportStatus=!p.active||!display.visible?'hidden':!visiblePair?'absent':mesh?.status??'pending';
   const output={quantitative:analysis?{status:'ready',stamp:analysis.stamp}:{status:'absent'},session,
     generation:{status:admittedGeneration?'ready':record?.generation?'released':'absent',stamp:admittedGeneration?.stamp,matchesRequestedQuality:Boolean(requestedQualityReady),
       canSubmit:!disabled&&!generationUnavailable,reason:generationUnavailable||undefined},
-    viewport:{status:!p.active||!display.visible?'hidden':!visiblePair?'absent':mesh?.status??'pending',
-      mapped:Boolean(mesh?.status==='drawn'&&projection?.surfaceLayer?.color),error:mesh?.error}};
+    viewport:{status:viewportStatus,mapped:colored,error:mesh?.error}};
   const mcpPort=<ResultsMcpPortRegistration kind="runs" id={p.active?p.analysisId??null:null} port={{
     sourceRevision:JSON.stringify([contextKey,analysisKey,quality,scope,selectedSourceIndices,extremaViewKey,display,colorbarUnit,analysis?.stamp.requestId,generated?.stamp.requestId,distribution?.stamp.requestId]),
     methods:p.available===false||inputKind==='cubes'?[]:[...(!analysisUnavailable||analysis?['surface-analyze']:[]),
@@ -450,7 +459,7 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps & { meshRe
         markersVisible:display.markersVisible,valuesVisible:display.valuesVisible!==false,coordinatesVisible:display.coordinatesVisible===true,
         hiddenExtremumIds:display.hiddenExtremumIds??[],pinnedExtremumIds:display.pinnedExtremumIds,
         extrema:extrema.map(row=>({id:row.id,kind:row.type,scope:row.scope,visible:display.markersVisible&&!display.hiddenExtremumIds?.includes(row.id)})),
-        mesh:!display.visible?'hidden':!visiblePair?'absent':mesh?.status??'pending',
+        mesh:viewportStatus,
       }),
       apply(values){
         if(!p.active||p.available===false)throw new Error('当前表面显示不可编辑。');
@@ -569,7 +578,7 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps & { meshRe
   </CalculationQualityControl> : <output>使用外部 Cube 原有网格，不重采样。</output>;
   const extremaPlotting = analysis && <><InputSettingsRow><InputSettingsCheckbox label="显示极值标记" checked={display.markersVisible} onChange={markersVisible => patchDisplay({ markersVisible })}/><InputSettingsCheckbox label="显示极值数值" checked={display.valuesVisible !== false} onChange={valuesVisible => patchDisplay({ valuesVisible })}/><InputSettingsCheckbox label="显示极值 XYZ 坐标" checked={display.coordinatesVisible === true} onChange={coordinatesVisible => patchDisplay({ coordinatesVisible })}/><InputSettingsAction disabled={!display.pinnedExtremumIds.length} onClick={() => patchDisplay({ pinnedExtremumIds: [] })}>清除固定</InputSettingsAction></InputSettingsRow>
     <InputSettingsRow><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: extrema.map(row => row.id) })}>隐藏全部</InputSettingsAction><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: [] })}>显示全部</InputSettingsAction><InputSettingsAction onClick={() => patchDisplay({ hiddenExtremumIds: extrema.filter(row => row.scope !== 'global').map(row => row.id) })}>仅显示全局最大／最小</InputSettingsAction></InputSettingsRow></>;
-  return <section className="analysis-controls" aria-label="分子表面分析" data-testid="surface-analysis-controls" data-surface-function={fn} data-surface-state={busy ? 'running' : visiblePair?.mapping ? 'fields-ready' : analysis ? 'analysis-ready' : 'idle'} data-analysis-id={analysis?.stamp.analysisId ?? ''} data-request-id={running.current?.id ?? ''} data-source-id={p.context.sourceId} data-source-revision={p.context.sourceRevision} data-source-frame={p.context.sourceFrameIndex ?? ''} data-surface-colored={!!projection?.surfaceLayer?.color}>{mcpPort}<InputSettingsLayout>{feedback}{error && <MultiwfnErrorNotice message={error} identity={lifetime.current.serial}/>}{restoreMessage && <div className="postprocess-actions"><output role="status">{restoreMessage}</output><InputSettingsAction disabled={!!busy} onClick={() => setRestoreRetry(value => value + 1)}>恢复已有显示格点</InputSettingsAction></div>}{presentation.unitWarning && <p className="postprocess-warning">部分来源单位不能换算，相关数值保留来源单位。</p>}
+  return <section className="analysis-controls" aria-label="分子表面分析" data-testid="surface-analysis-controls" data-surface-function={fn} data-surface-state={busy ? 'running' : visiblePair?.mapping ? 'fields-ready' : analysis ? 'analysis-ready' : 'idle'} data-analysis-id={analysis?.stamp.analysisId ?? ''} data-request-id={running.current?.id ?? ''} data-source-id={p.context.sourceId} data-source-revision={p.context.sourceRevision} data-source-frame={p.context.sourceFrameIndex ?? ''} data-surface-colored={colored}>{mcpPort}<InputSettingsLayout>{feedback}{error && <MultiwfnErrorNotice message={error} identity={lifetime.current.serial}/>}{restoreMessage && <div className="postprocess-actions"><output role="status">{restoreMessage}</output><InputSettingsAction disabled={!!busy} onClick={() => setRestoreRetry(value => value + 1)}>恢复已有显示格点</InputSettingsAction></div>}{presentation.unitWarning && <p className="postprocess-warning">部分来源单位不能换算，相关数值保留来源单位。</p>}
     <AnalysisTaskLayout variant="card" methodDetails title="分子表面定量分析" className="surface-preparation" testId="surface-quantitative-task" onRestoreQuality={inputKind === 'wavefunction' ? ()=>{setAnalysisPreset('native-default');setQuantitativeGrid({mode:'spacing',spacingBohr:SURFACE_ANALYSIS_DEFAULT_SPACING});}:undefined} qualityDisabled={disabled} setup={<><InputSettingsRow className="surface-preparation-row surface-identity-row"><InputSettingsField label="映射函数"><select aria-label="表面映射函数" value={fn} disabled={disabled} onChange={event => { setFunction(event.target.value as SurfaceFunction); setRegionId(''); setError(''); }}>{(['esp','alie'] as const).map(method=><option key={method} value={method} disabled={inputKind==='wavefunction'&&p.allowedWavefunctionMethods!==undefined&&!p.allowedWavefunctionMethods.includes(method)}>{method.toUpperCase()}</option>)}</select></InputSettingsField>
       <InputSettingsField label="ρ 等值 / a.u."><NumericInput stepper adaptiveStep={0.01} aria-label="密度表面等值"  min={0} step={.0001} value={isovalue} disabled={disabled} onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value > 0) setIsovalue(value); }}/></InputSettingsField></InputSettingsRow>
       {inputKind === 'cubes' && <DismissibleNotice role="alert">旧记录引用了外部 Cube；当前不再支持此输入。请重新选择支持的波函数来源，原文件保留。</DismissibleNotice>}
@@ -581,7 +590,7 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps & { meshRe
       {extrema.length ? <SurfaceTable projection={surfaceExtremaTable([...extrema].sort((a,b)=>(extremaSort.column==='value'?a.value-b.value:a.sourceIndex-b.sourceIndex)*(extremaSort.direction==='asc'?1:-1)), extremaDecimals)} fileName={`Ester-Studio-surface-${fn}-extrema.txt`} selectionScope={`extrema:${extremaViewKey}`} format={tableFormat('extrema')} sorting={{value:extremaSort.column,direction:extremaSort.direction,options:[{value:'identity',label:'极值编号'},{value:'value',label:'数值'}],onChange:(column,direction)=>setExtremaSort({column,direction})}} activeRowKey={display.currentExtremumId ?? undefined} onRowActivate={row => patchDisplay({ currentExtremumId: row.key })} onRowPreview={row => hoverExtremum(row?.key ?? null)} onClearActive={() => patchDisplay({ currentExtremumId: null, hoveredExtremumId: null })} rowBindings={row => ({ 'aria-selected': display.currentExtremumId === row.key })} rowActions={[
         { kind: 'visibility', text: row => (display.hiddenExtremumIds ?? []).includes(row.key) ? '显示' : '隐藏', label: row => `${(display.hiddenExtremumIds ?? []).includes(row.key) ? '显示' : '隐藏'} ${row.cells[0]}`, active: row => !(display.hiddenExtremumIds ?? []).includes(row.key), onActivate: row => toggleExtremumVisible(row.key) },
         { kind: 'pin', label: row => `${display.pinnedExtremumIds.includes(row.key) ? '取消固定' : '固定'} ${row.cells[0]}`, active: row => display.pinnedExtremumIds.includes(row.key), onActivate: row => toggleExtremum(row.key) },
-      ]}/> : <p className="postprocess-note">{analysis ? '当前区域未输出极值。' : '尚未分析。'}</p>}{extremaPlotting}
+      ]}/> : <p className="postprocess-note">{region ? '当前区域未输出极值。' : analysis ? '当前区域尚未分析。' : '尚未分析。'}</p>}{extremaPlotting}
     </AnalysisTaskSection>
     <AnalysisTaskSection title="面积分布">
       {distributionError && <DismissibleNotice role="alert">{distributionError}</DismissibleNotice>}
@@ -623,16 +632,18 @@ function SurfaceAnalysisControlsInner(p: SurfaceAnalysisControlsProps & { meshRe
         disabled={p.available === false} palette={{ colors: display.colors ?? ANALYSIS_PALETTES[display.palette], reverse: display.reverse, labelPrefix: '表面',
           onChange: colors => patchDisplay({ appearancePreset: 'custom', colors }) }}/>
       {colorbarValues && <output data-testid="surface-colorbar-active-range">
-        {display.range ? '当前手动范围' : '当前自动范围'} {colorbarValues[0]} 至 {colorbarValues[1]} {colorbarUnitLabel}
+        {display.range ? '当前手动范围' : usingMoleculeRange?'当前自动范围（全分子）':scope!=='molecule'&&region?`当前自动范围（${region.selection.label}）`:'当前自动范围'} {colorbarValues[0]} 至 {colorbarValues[1]} {colorbarUnitLabel}
       </output>}
       <InputSettingsRow><div className="analysis-control-group"><InputSettingsField label={`下限草稿 / ${colorbarUnitLabel}`}><NumericInput aria-label="表面色标下限"  value={rangeDraft[0]} placeholder={colorbarValues?.[0] ?? ''} onChange={event => setRangeDraft(values => [event.target.value, values[1]])}/></InputSettingsField><InputSettingsField label={`上限草稿 / ${colorbarUnitLabel}`}><NumericInput aria-label="表面色标上限"  value={rangeDraft[1]} placeholder={colorbarValues?.[1] ?? ''} onChange={event => setRangeDraft(values => [values[0], event.target.value])}/></InputSettingsField></div><InputSettingsAction onClick={() => { const min = Number(rangeDraft[0]), max = Number(rangeDraft[1]); if (rangeDraft.every(value => value.trim()) && [min, max].every(Number.isFinite) && min < max) patchDisplay({ range: { min, max } }); else notify('请输入递增的有限色标范围。'); }}>应用范围</InputSettingsAction></InputSettingsRow>
-      {!colorRange && visiblePair?.mapping && <p className="postprocess-note">当前区域尚无可靠表面范围；仅显示形状，可分析后使用自适应色标或明确手动范围。</p>}
+      {!colorRange && visiblePair?.mapping && <p className="postprocess-note">源结果缺少可用的表面数值范围。已有形状可显示，设置手动范围后可着色。</p>}
     </div>}
-    </> : <p className="postprocess-note">尚未生成着色表面。</p>}>
-      {visiblePair && <output data-surface-draw-state={!display.visible ? 'hidden' : mesh?.status ?? 'pending'}>
-        {!display.visible ? '格点已就绪，表面已隐藏。' : mesh?.status === 'drawn' ? '表面已绘制。' : mesh?.status === 'failed' ? '格点已就绪。' : '格点已就绪，正在绘制表面…'}
+    </> : <p className="postprocess-note">{generated?'已有格点未通过当前结构或映射校验。':record?.generation?'已有格点待恢复。':'尚未生成着色表面。'}</p>}>
+      {visiblePair && <output data-surface-draw-state={viewportStatus}>
+        {viewportStatus==='hidden'?'格点已就绪，表面已隐藏。':colored?'着色表面已绘制。':drawn?'表面形状已绘制。':viewportStatus==='failed'?'格点已就绪。':'格点已就绪，正在绘制表面…'}
       </output>}
       {visiblePair && display.visible && mesh?.status === 'failed' && <MultiwfnErrorNotice label="表面绘制失败" message={mesh.error ?? '当前等值未形成可绘制的表面。'} identity={mesh}/>}
+      {generatedValidation&&!generatedValidation.compatible&&<MultiwfnErrorNotice label="表面格点不可用" message={generatedValidation.reasons.join('；')} identity={generated?.stamp.requestId}/>}
+      {drawn&&layer?.color&&!colored&&<p className="postprocess-note">当前表面没有可用的映射取样，已保留表面形状。</p>}
       {(generated || record?.generation) && <output>格点数据 {surfaceQualityLabel(generated?.quality ?? record!.generation!.quality)} · {(generated?.pair.shape.grid.dimensions ?? record!.generation!.dimensions).join(' × ')} 点{qualityChanged ? '；当前设置尚未生成。' : ''}</output>}
     </AnalysisTaskLayout>
   </InputSettingsLayout></section>;

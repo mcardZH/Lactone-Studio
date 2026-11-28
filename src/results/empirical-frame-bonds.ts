@@ -8,6 +8,8 @@ import { traceTrajectoryOperation, type TrajectoryOperationContext } from './tra
 
 export interface EmpiricalFrameBondOptions {
   port: ChemistryPort;
+  /** The active desktop bridge can change while a result reader is mounted. */
+  capabilityIdentity?():object|null;
   /** One source/document lifetime; never share a provider between sources. */
   sourceId: string;
   sourceRevision?: string | number;
@@ -149,10 +151,19 @@ export class EmpiricalFrameBonds {
   private lifetime = new AbortController();
   private closed = false;
   private capabilityWarmupUsed = false;
+  private nativeCapability?:object;
+  private lastAtomOrder?:{ids:readonly string[];indices:readonly number[]};
   constructor(private options: EmpiricalFrameBondOptions) {}
 
-  cancel(): void { this.lifetime.abort(); this.lifetime = new AbortController(); }
-  dispose(): void { this.closed = true; this.cancel(); this.cache.clear(); }
+  cancel(): void { this.lifetime.abort(); this.lifetime = new AbortController(); this.nativeCapability=undefined; }
+  dispose(): void { this.closed = true; this.cancel(); this.cache.clear(); this.lastAtomOrder=undefined; }
+
+  private orderFor(ids:readonly string[]):readonly number[]{
+    const previous=this.lastAtomOrder;
+    if(previous&&ids.length===previous.ids.length&&ids.every((id,index)=>id===previous.ids[index]))return previous.indices;
+    const indices=ids.map((_,index)=>index).sort((a,b)=>ids[a].localeCompare(ids[b]));
+    this.lastAtomOrder={ids:[...ids],indices};return indices;
+  }
 
   private retain(key: string | null, { structure, warnings, preview }: EmpiricalFrameBondProjection): void {
     if (key === null || this.options.retainCache === false) return;
@@ -203,37 +214,41 @@ export class EmpiricalFrameBonds {
       }
       let job: EmpiricalFrameBondJob | undefined, abort: (() => void) | undefined;
       try {
-        let capabilities = await Promise.race([this.options.port.capabilities(), new Promise<null>(resolve => {
-          abort = () => resolve(null); signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort();
-        })]);
-        if (abort) signal.removeEventListener('abort', abort);
-        stale = current(); if (stale) return projection(stale);
-        // Import, first frame and later frames share the same bounded startup
-        // grace. An unavailable renderer bridge is not a completed projection.
-        if ((!capabilities?.native || !capabilities.operations.includes('perceive-bonds')) && !this.capabilityWarmupUsed) {
-          this.capabilityWarmupUsed = true;
-          await new Promise<void>(resolve => {
-            const finish = () => { clearTimeout(timer); signal.removeEventListener('abort', finish); resolve(); };
-            const timer = setTimeout(finish, 200);
-            signal.addEventListener('abort', finish, { once: true }); if (signal.aborted) finish();
-          });
-          stale = current(); if (stale) return projection(stale);
-          capabilities = await Promise.race([this.options.port.capabilities(), new Promise<null>(resolve => {
+        const activePlatform=()=>this.options.capabilityIdentity?this.options.capabilityIdentity():this.options.port;
+        const platform=activePlatform();
+        if(!platform||this.nativeCapability!==platform){
+          const capability=()=>Promise.race([this.options.port.capabilities(),new Promise<null>(resolve=>{
             abort = () => resolve(null); signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort();
           })]);
+          let capabilities=await capability();
           if (abort) signal.removeEventListener('abort', abort);
           stale = current(); if (stale) return projection(stale);
+          // An unavailable bridge is retried through the existing startup grace.
+          if ((!capabilities?.native || !capabilities.operations.includes('perceive-bonds')) && !this.capabilityWarmupUsed) {
+            this.capabilityWarmupUsed=true;
+            await new Promise<void>(resolve=>{
+              const finish=()=>{clearTimeout(timer);signal.removeEventListener('abort',finish);resolve();};
+              const timer=setTimeout(finish,200);
+              signal.addEventListener('abort',finish,{once:true});if(signal.aborted)finish();
+            });
+            stale=current();if(stale)return projection(stale);
+            capabilities=await capability();if(abort)signal.removeEventListener('abort',abort);
+            stale=current();if(stale)return projection(stale);
+          }
+          if (!capabilities?.native || !capabilities.operations.includes('perceive-bonds'))
+            return projection('unavailable', ['当前环境没有原生经验判断能力；保留当前帧可靠原始连接，缺少时仅显示原子。']);
+          if(platform&&platform===activePlatform())this.nativeCapability=platform;
         }
-        if (!capabilities?.native || !capabilities.operations.includes('perceive-bonds'))
-          return projection('unavailable', ['当前环境没有原生经验判断能力；保留当前帧可靠原始连接，缺少时仅显示原子。']);
         // Composite perception derives its graph from coordinates; retain the
         // original graph separately rather than submitting stale file evidence.
         const structure = atomOnly(reference);
+        const movableAtomIds=reference.atoms.map(atom=>atom.id!);
+        const order=this.orderFor(movableAtomIds);
         const stamp: DocumentStamp = { documentId: this.options.sourceId, revision: reference.revision ?? index,
-          graphFingerprint: graphFingerprint(structure), coordinatesFingerprint: coordinatesFingerprint(structure),
+          graphFingerprint: graphFingerprint(structure,order), coordinatesFingerprint: coordinatesFingerprint(structure,order),
           constraintsFingerprint: JSON.stringify([this.options.sourceRevision ?? null, index]) };
         const request: ChemistryRequest = { operation: 'perceive-bonds', structure: options.immutableSource ? structure : structuredClone(structure), stamp,
-          movableAtomIds: reference.atoms.map(atom => atom.id!), aggression: 'standard', bondPerceptionPolicy: 'composite-v1' };
+          movableAtomIds, aggression: 'standard', bondPerceptionPolicy: 'composite-v1' };
         const result = await traceTrajectoryOperation('empirical', { sourceId: this.options.sourceId, ...this.options.operationContext, sourceFrameIndex: index }, async (): Promise<EmpiricalFrameBondProjection> => {
           job = options.immutableSource && Object.isFrozen(reference)
             ? this.options.port.startEmpiricalFrame?.(request) ?? this.options.port.start(request)
@@ -248,6 +263,7 @@ export class EmpiricalFrameBonds {
         this.retain(key, result);
         return result;
       } catch (error) {
+        this.nativeCapability=undefined;
         stale = current(); if (stale) return projection(stale);
         return projection('failed', ['经验判断未接受：' + (error instanceof Error ? error.message : String(error))]);
       } finally { if (abort) signal.removeEventListener('abort', abort); }

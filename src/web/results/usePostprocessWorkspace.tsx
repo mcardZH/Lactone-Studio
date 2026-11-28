@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { type TrajectoryResult, type ResultDiagnostic, type ResultInputFile } from '../../results/contracts';
 import type { Structure } from '../../core/types';
 import { resultFile, type ScientificSourceFile } from '../../results/input-file';
-import { identifyPostprocessSource, readPostprocessFileOutput, isScientificFileSource,postprocessFileJob, readPostprocessWavefunction, readPostprocessAuxiliary, readPostprocessNebAuxiliary,snapshotPostprocessNebAuxiliary,pairPostprocessSourcesForFrames, postprocessMetadataConflict, isUnifiedPostprocessSource, postprocessDestination, extractPostprocessModel, type PostprocessParsedResultsLease } from '../../results/postprocess-sources';
+import { identifyPostprocessSource, readPostprocessFileOutput, isScientificFileSource,postprocessFileJob, readPostprocessWavefunction, readPostprocessAuxiliary, postprocessAuxiliaryFromResult, readPostprocessNebAuxiliary,snapshotPostprocessNebAuxiliary,pairPostprocessSourcesForFrames, postprocessMetadataConflict, isUnifiedPostprocessSource, postprocessDestination, extractPostprocessModel, type PostprocessParsedResultsLease } from '../../results/postprocess-sources';
 import type {NebAuxiliarySource} from '../../results/neb-auxiliary-reader';
 import {readMdAuxiliary,type MdAuxiliarySource} from '../../results/md-aux-reader';
 import {VibronicSha256} from '../../core/gaussian-vibronic/sha256-stream';
 import {postprocessSourceExtras,retainPostprocessSourceExtras,type PostprocessSourceExtra} from '../../projects/postprocess-extra-sources';
 import { composePostprocessDocument,composePostprocessFileDocument,postprocessFileDisplayDocument,selectPostprocessFileJob,projectPostprocessAttachment,retainPostprocessFileSourceBytes,createPostprocessReleaseQueue, disposePostprocessAttachments, retainPostprocessManagedSource, retainPostprocessOutputSourceText,retainPostprocessSourceBytes, observePostprocessSource, projectPostprocessStage, type PostprocessAttachment, type PostprocessDocument,type PostprocessScientificFileDocument,type PostprocessScientificFileAttachment,type PostprocessFileExtraSource } from '../../results/postprocess-document';
-import {postprocessDocumentFileSlots,type PostprocessEngine,type PostprocessTask,type PostprocessSlotKey} from './PostprocessSidebar';
+import {POSTPROCESS_TASK_CHOICES,postprocessDocumentFileSlots,type PostprocessEngine,type PostprocessTask,type PostprocessSlotKey} from './PostprocessSidebar';
 import {releaseOrbitalSession} from './useOrbitalField';
-import {describePostprocessSource,matchingImportTargetForFrames,resolvePostprocessImportTarget,postprocessDocumentEngine,postprocessDocumentTask,preparePostprocessIncoming,preparePostprocessFileIncoming,defaultPostprocessCompanion,unaugmentedPostprocessOutput,type PostprocessImportMatch} from './postprocess-import-policy';
+import {describePostprocessSource,matchingImportTargetForFrames,resolvePostprocessImportTarget,postprocessDocumentEngine,postprocessDocumentTask,preparePostprocessIncoming,preparePostprocessFileIncoming,defaultPostprocessCompanion,unaugmentedPostprocessOutput,findPostprocessXyzTarget,type PostprocessImportMatch} from './postprocess-import-policy';
 import DialogShell from '../DialogShell';
 import type { XtbElectronicArtifactBundle } from '../../modeling/xtb/contracts';
 import { readGeneratedXtbSource, validateGeneratedXtbBundle, type GeneratedXtbExpected, type GeneratedXtbSourcePackage } from '../../results/xtb-generated-source';
@@ -54,12 +54,14 @@ interface Ports {
   attach?(id:string,result:TrajectoryResult,bindingId:string,frameBondIdentity?:FrameBondIdentity):string;
   bindFrameBondOrigin?(id:string,bindingId:string,identity:FrameBondIdentity):void;
   /** Resolve protected sources before reading bytes or opening native sessions. */
-  prepareRead?(targetId:string|undefined):Promise<{forceNew:true;onCreated(id:string):void}|null|undefined>;
+  prepareRead?(targetId:string|undefined):Promise<{forceNew:true;onCreated(id:string,present?:boolean):void}|null|undefined>;
   guardRemove?(id:string):void;
   available?(id: string): boolean;
   activate(id: string): void;
   exists(id: string): boolean;
   analyze(): void;
+  /** A late commit may present its result only while the initiating view still owns navigation. */
+  captureNavigation?():()=>boolean;
   reserveViews?(sessionId:string,targetId:string|null):Promise<void>;
   onError(message: string): void;
   onDiagnostics?(items: readonly ResultDiagnostic[]): void;
@@ -69,6 +71,39 @@ interface Ports {
 interface Pending {
   title: string; message: string; choices: { label: string; value: string }[];
   resolve(value: string): void;
+}
+type WizardStage = 'software' | 'tasks' | 'files';
+type WizardState = {engine:PostprocessEngine;task:PostprocessTask;stage:WizardStage};
+type WizardDrafts = Record<string,Partial<WizardState>>;
+type FileJobRequest = {
+  jobId:string;
+  jobs:PostprocessScientificFileDocument['output']['source']['jobs'];
+  canNavigate:()=>boolean;
+  finish:()=>void;
+};
+const startWizard:WizardState={engine:'gaussian',task:'sp',stage:'software'};
+const wizardOwner=(fileId:string|null,modelId:string|undefined)=>fileId?`file:${fileId}`:modelId?`model:${modelId}`:'workspace';
+const wizardTasks=new Set<string>(POSTPROCESS_TASK_CHOICES.map(choice=>choice.id));
+function readWizardDrafts(value:unknown):WizardDrafts {
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  const drafts:WizardDrafts={};
+  for(const [key,raw] of Object.entries(value)){
+    if(!(key==='workspace'||key.startsWith('model:')||key.startsWith('file:'))||!raw||typeof raw!=='object')continue;
+    const {engine,task,stage}=raw as Partial<WizardState>;
+    const draft:Partial<WizardState>={};
+    if(engine==='gaussian'||engine==='orca')draft.engine=engine;
+    if(typeof task==='string'&&wizardTasks.has(task))draft.task=task;
+    if(stage==='software'||stage==='tasks'||stage==='files')draft.stage=stage;
+    if(Object.keys(draft).length)drafts[key]=draft;
+  }
+  return drafts;
+}
+function fileWizard(document:PostprocessScientificFileDocument):WizardState {
+  const source=document.output.source;
+  const engine=source.software??(source.kind==='gaussian-output'?'gaussian':'orca');
+  const tasks=postprocessFileJob(source)?.scientific?.tasks??source.tasks;
+  const task=tasks.includes('opt')&&tasks.includes('freq')?'optfreq':(['irc','neb','scan','ts','opt','freq','td','nmr','stability','bsse','sp'] as const).find(item=>tasks.includes(item));
+  return {engine,task:task??'trajectory',stage:'files'};
 }
 const textError = (error: unknown) => error instanceof Error ? error.message : String(error);
 export interface DirectPostprocessAttachment {
@@ -148,15 +183,43 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
   // The source/session remains the owner while its geometry binding is
   // temporarily unavailable; Undo must restore the same cards and caches.
   const ownerId = activeDocumentId && documents[activeDocumentId] ? activeDocumentId : null;
-  const [engine, setEngine] = useState<PostprocessEngine>('gaussian'), [task, setTask] = useState<PostprocessTask>('sp');
-  const [stage, setStage] = useState<'software' | 'tasks' | 'files'>('software');
-  const [busy, setBusy] = useState(false), [pending, setPending] = useState<Pending | null>(null), [notice,setNotice]=useState('');
+  const current = ownerId ? documents[ownerId] : null;
+  const currentFile = fileOwnerId ? fileDocuments[fileOwnerId]??null : null;
+  const [wizardDrafts,setWizardDrafts]=useState<WizardDrafts>({});
+  const draftsRef=useRef(wizardDrafts);
+  const wizardKey=wizardOwner(fileOwnerId,activeDocumentId);
+  const fileDefaults=currentFile?fileWizard(currentFile):null;
+  const modelDefaults:WizardState=current?{engine:postprocessDocumentEngine(current),task:postprocessDocumentTask(current),stage:'files'}:startWizard;
+  const {engine,task,stage}={...(fileDefaults??modelDefaults),...wizardDrafts[wizardKey]};
+  const fileSelectionMatches=Boolean(fileDefaults&&engine===fileDefaults.engine&&task===fileDefaults.task);
+  const [busy, setBusy] = useState(false), [pending, setPending] = useState<Pending | null>(null);
   const [readState,setReadState]=useState<'idle'|'reading'|'cancelling'>('idle');
   const sourceNotices = useRef<Record<string,string>>({});
+  const notice=currentFile?sourceNotices.current[currentFile.id]??currentFile.sourceWarnings?.map(row=>row.message).join('；')??'':
+    ownerId?sourceNotices.current[ownerId]??(current?.output&&current.wavefunction&&!current.pair?'主输出和波函数保留为独立来源，未取得可靠配对；依赖可靠配对的分析暂不可用。':''):'';
   const pendingRef = useRef<Pending | null>(null), alive = useRef(true), requestEpoch = useRef(0), busyRef = useRef(false);
   const readOwnerRef=useRef<ImportReadOwner|null>(null);
+  const fileJobRequests=useRef(new Map<string,FileJobRequest>());
+  const [,refreshFileJobRequests]=useState(0);
   const closingIds=useRef(new Set<string>());
-  const sourceEngine = postprocessDocumentEngine;
+  function changeDrafts(next:WizardDrafts){draftsRef.current=next;setWizardDrafts(next);}
+  function updateDraft(patch:Partial<WizardState>){
+    const key=wizardOwner(fileOwnerRef.current,activeDocumentRef.current);
+    const previous=draftsRef.current[key];
+    if((patch.engine===undefined||previous?.engine===patch.engine)&&(patch.task===undefined||previous?.task===patch.task)&&(patch.stage===undefined||previous?.stage===patch.stage))return;
+    changeDrafts({...draftsRef.current,[key]:{...previous,...patch}});
+  }
+  function clearDraft(key:string){
+    if(!draftsRef.current[key])return;
+    const next={...draftsRef.current};delete next[key];changeDrafts(next);
+  }
+  function releaseBusy(){
+    busyRef.current=false;
+    if(alive.current){
+      setBusy(false);
+      if(fileJobRequests.current.size)queueMicrotask(()=>void drainFileJobs());
+    }
+  }
   const closeNative = async (id: string) => {const bridge=window.sciyueDesktop;if(!bridge?.commandOrbitals)throw Error('当前环境缺少波函数关闭接口，资源保留等待重试。');await bridge.commandOrbitals(id,{operation:'close'});releaseOrbitalSession(bridge,id);};
   const closeImportResource=(state:ImportCloseState,close:()=>void|Promise<void>,retry=false):Promise<void>=>{
     if(state.closed)return Promise.resolve();if(state.pending)return state.pending;if(state.error&&!retry)return Promise.reject(state.error);state.error=undefined;
@@ -168,7 +231,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
   const closeImportExtra=(owner:ImportReadOwner,extra:PostprocessFileExtraSource,retry=false)=>{const state=owner.extras.get(extra);return state?closeImportResource(state,()=>extra.dispose(),retry):Promise.resolve(extra.dispose());};
   const finishReadOwner=(owner:ImportReadOwner)=>{
     if(!owner.settled||[...owner.inputs.values(),...owner.sessions.values(),...owner.extras.values()].some(state=>!state.closed))return;
-    if(readOwnerRef.current===owner){readOwnerRef.current=null;busyRef.current=false;if(alive.current){setBusy(false);setReadState('idle');}}owner.finish();
+    if(readOwnerRef.current===owner){readOwnerRef.current=null;releaseBusy();if(alive.current)setReadState('idle');}owner.finish();
   };
   const stopReadOwner=(owner:ImportReadOwner,reason:unknown=new DOMException('后处理来源读取已取消。','AbortError'),retry=false)=>{
     if(readOwnerRef.current===owner&&alive.current)setReadState('cancelling');
@@ -194,12 +257,10 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
     const value = { title, message, choices, resolve: (answer: string) => { pendingRef.current = null; setPending(null); resolve(answer); } };
     pendingRef.current = value; setPending(value);
   });
-  useEffect(() => {
-    if (ownerId) { const value=documents[ownerId];setEngine(sourceEngine(value)); setTask(postprocessDocumentTask(value)); setStage('files');setNotice(sourceNotices.current[ownerId]??(value.output&&value.wavefunction&&!value.pair?'主输出和波函数保留为独立来源，未取得可靠配对；依赖可靠配对的分析暂不可用。':'')); }
-    else setNotice('');
-  }, [documents, ownerId]);
   useEffect(() => { alive.current = true; return () => {
     alive.current = false; requestEpoch.current++; pendingRef.current?.resolve('cancel');
+    for(const request of fileJobRequests.current.values())request.finish();
+    fileJobRequests.current.clear();
     const owner=readOwnerRef.current;if(owner)void stopReadOwner(owner);
     for (const [id,value] of Object.entries(documentsRef.current)) void dispose([value.output, value.wavefunction,...(value.companions??[])],id).catch(() => {});
     for (const value of Object.values(generatedRef.current)) void dispose([value.document.output,value.document.wavefunction,...(value.document.companions??[])],value.ownerId).catch(()=>{});
@@ -209,18 +270,47 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
   }; }, []);
   useEffect(()=>{const owner=readOwnerRef.current;if(!owner||owner.transferred||owner.controller.signal.aborted)return;try{owner.validate?.();}catch(error){void stopReadOwner(owner,error);}},[documents,generated,activeDocumentId,ports]);
 
-  async function read(files: ScientificSourceFile[], targetId?: string | null, expectedEngine?: PostprocessEngine, mode:'smart'|'replace'='smart',newDocument?:{guard?():void;beforeCommit?(document:PostprocessDocument):Promise<void>;beforeFileCommit?(document:PostprocessScientificFileDocument,directSlots?:ReturnType<typeof postprocessDocumentFileSlots>):Promise<void>;onCreated?(id:string):void;canNavigate?():boolean;throwOnFailure?:boolean;signal?:AbortSignal;reuseParsedOutput?(file:ScientificSourceFile,input:ResultInputFile):PostprocessParsedResultsLease|null;attachToTarget?:DirectPostprocessAttachment},replacementSlot?:{slotKey?:PostprocessSlotKey;sourceId?:string}) {
-    if (!files.length || busyRef.current) { if(newDocument?.throwOnFailure)throw Error(busyRef.current?'后处理正在读取其他来源，请稍后重试。':'没有可接入的完整来源。');return; }
-    busyRef.current = true; setBusy(true);setReadState('reading'); setNotice(''); const epoch = ++requestEpoch.current;
+  function captureXyzDrop(signal:AbortSignal,canNavigate:()=>boolean){
+    const candidates=[
+      ...Object.entries(documentsRef.current).filter(([id])=>!closingIds.current.has(id)&&portsRef.current.exists(id)&&portsRef.current.available?.(id)!==false),
+      ...Object.entries(fileDocumentsRef.current),
+    ].map(([id,document])=>({id,document}));
+    const current=(target:typeof candidates[number])=>(documentsRef.current[target.id]??fileDocumentsRef.current[target.id])===target.document;
+    return async(input:ResultInputFile,result:TrajectoryResult):Promise<boolean>=>{
+      if(busyRef.current||result.source.software!=='orca')return false;
+      const attachment={source:postprocessAuxiliaryFromResult(input,result,'xyz')};
+      const target=await findPostprocessXyzTarget(attachment,candidates.filter(current),signal);
+      signal.throwIfAborted();
+      if(!target||busyRef.current||!current(target))return false;
+      await read([],target.id,undefined,'smart',undefined,undefined,{input,attachment,signal,canNavigate});
+      return true;
+    };
+  }
+
+  async function read(files: ScientificSourceFile[], targetId?: string | null, expectedEngine?: PostprocessEngine, mode:'smart'|'replace'='smart',newDocument?:{guard?():void;beforeCommit?(document:PostprocessDocument):Promise<void>;beforeFileCommit?(document:PostprocessScientificFileDocument,directSlots?:ReturnType<typeof postprocessDocumentFileSlots>):Promise<void>;onCreated?(id:string):void;canNavigate?():boolean;throwOnFailure?:boolean;signal?:AbortSignal;reuseParsedOutput?(file:ScientificSourceFile,input:ResultInputFile):PostprocessParsedResultsLease|null;attachToTarget?:DirectPostprocessAttachment},replacementSlot?:{slotKey?:PostprocessSlotKey;sourceId?:string},matchedXyz?:{input:ResultInputFile;attachment:PostprocessAttachment;signal:AbortSignal;canNavigate():boolean}) {
+    if ((!files.length&&!matchedXyz) || busyRef.current) { if(newDocument?.throwOnFailure)throw Error(busyRef.current?'后处理正在读取其他来源，请稍后重试。':'没有可接入的完整来源。');return; }
+    busyRef.current = true; setBusy(true);setReadState('reading'); const epoch = ++requestEpoch.current;
     let finish!:()=>void;const done=new Promise<void>(resolve=>finish=resolve),owner:ImportReadOwner={controller:new AbortController(),inputs:new Map(),sessions:new Map(),extras:new Map(),targets:new Set(targetId?[targetId]:[]),settled:false,transferred:false,done,finish};readOwnerRef.current=owner;
-    const signal=owner.controller.signal,externalAbort=()=>{void stopReadOwner(owner,newDocument?.signal?.reason);};newDocument?.signal?.addEventListener('abort',externalAbort,{once:true});if(newDocument?.signal?.aborted)externalAbort();
+    const upstreamSignal=matchedXyz?.signal??newDocument?.signal;
+    const signal=owner.controller.signal,externalAbort=()=>{void stopReadOwner(owner,upstreamSignal?.reason);};
     const incoming: PostprocessAttachment[] = [];
+    if(matchedXyz){
+      incoming.push(matchedXyz.attachment);
+      owner.inputs.set(matchedXyz.input,{closed:false,adopted:true});
+    }
+    upstreamSignal?.addEventListener('abort',externalAbort,{once:true});if(upstreamSignal?.aborted)externalAbort();
     const fileIncoming:PostprocessScientificFileAttachment[]=[];
     const retainedFileExtras=new Set(Object.values(fileDocumentsRef.current).flatMap(document=>document.extraSources??[]));
     let pendingFileDocument:PostprocessScientificFileDocument|undefined;
     const initialSelectedFileId=fileOwnerRef.current,initialActiveDocumentId=activeDocumentRef.current;
-    let fileBase=(targetId?fileDocumentsRef.current[targetId]:undefined)??(!targetId&&!newDocument?fileDocumentsRef.current[fileOwnerRef.current??'']:undefined);
+    const navigation=portsRef.current.captureNavigation?.();
+    const canPresent=()=>navigation?.()!==false&&newDocument?.canNavigate?.()!==false&&matchedXyz?.canNavigate()!==false&&fileOwnerRef.current===initialSelectedFileId&&activeDocumentRef.current===initialActiveDocumentId;
+    const originWizardKey=wizardOwner(initialSelectedFileId,initialActiveDocumentId);
+    const originalDraft=draftsRef.current[originWizardKey];
+    const consumeDraft=(ownerKey:string)=>{if(!newDocument&&ownerKey===originWizardKey&&draftsRef.current[ownerKey]===originalDraft)clearDraft(ownerKey);};
+    let fileBase=targetId?fileDocumentsRef.current[targetId]:targetId===undefined&&!newDocument&&initialSelectedFileId?fileDocumentsRef.current[initialSelectedFileId]:undefined;
     const initialFileBase=fileBase;
+    if(initialFileBase)owner.targets.add(initialFileBase.id);
     const nebAuxiliaries:NebAuxiliarySource[]=[],mdAuxiliaries:MdAuxiliarySource[]=[],nebExtras:PostprocessSourceExtra[]=[],mdExtras:PostprocessSourceExtra[]=[];
     let nebDiagnosticsCommitted=false;
     const sourceReadWarnings = new Map<string,string>();
@@ -231,7 +321,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
     const readNotice = () => [...sourceReadWarnings.values()].join('；');
     const diagnostics: ResultDiagnostic[] = []; let diagnosticsCommitted = false;
     let committed = false;
-    let forceNew:{forceNew:true;onCreated(id:string):void}|undefined;
+    let forceNew:{forceNew:true;onCreated(id:string,present?:boolean):void}|undefined;
     const initialBase = targetId ? documentsRef.current[targetId] : undefined;
     let base = initialBase;
     const direct=newDocument?.attachToTarget;
@@ -259,8 +349,9 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       if(!forceNew)initialGuard?.();selectedGuard?.(); };
     owner.validate=guard;
     try {
+      if(matchedXyz)retainPostprocessSourceBytes(matchedXyz.attachment,matchedXyz.input);
       if(direct&&!initialBase&&!initialFileBase)throw Error('当前工作区没有指定的分析来源。');
-      const preparation=direct?undefined:newDocument?{forceNew:true as const,onCreated:(id:string)=>{newDocument.onCreated?.(id);if(newDocument.canNavigate?.()!==false){portsRef.current.activate(id);portsRef.current.analyze();}}}:fileBase?undefined:await portsRef.current.prepareRead?.(targetId??activeDocumentId);
+      const preparation=direct?undefined:newDocument?{forceNew:true as const,onCreated:(id:string,present=true)=>{newDocument.onCreated?.(id);if(present){portsRef.current.activate(id);portsRef.current.analyze();}}}:fileBase?undefined:await portsRef.current.prepareRead?.(targetId??initialActiveDocumentId);
       if(preparation===null)return;
       if(preparation?.forceNew){forceNew=preparation;base=undefined;fileBase=undefined;targetId=null;owner.targets.clear();expectedEngine=undefined;mode='smart';}
       guard();
@@ -270,6 +361,11 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         owner.inputs.set(input,{closed:false});
         try {
           const identity = await identifyPostprocessSource(input,{signal}); guard();
+          if(identity.kind==='xyz'&&files.length===1&&replacementSlot?.slotKey&&
+            (replacementSlot.slotKey==='wavefunction'||replacementSlot.slotKey==='hess'||
+              replacementSlot.slotKey==='output'&&Boolean((fileBase??base)?.output?.source.kind.endsWith('-output')))){
+            throw Error('此文件槽需要对应的主输出、波函数或模态文件。请选择后处理区域或配套轨迹槽载入 XYZ。');
+          }
           if (identity.kind === 'gaussian-output' || identity.kind === 'orca-output') {
             const source=await readPostprocessFileOutput(input,{signal,reuseParsedResults:newDocument?.reuseParsedOutput?()=>{guard();return newDocument.reuseParsedOutput!(file,input);}:undefined});
             if(isScientificFileSource(source))fileIncoming.push(retainPostprocessFileSourceBytes({source},input));
@@ -320,6 +416,8 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         const policyBase=selectedHess&&useBase?{...useBase,companions:useBase.companions?.filter(item=>item!==selectedHess)}:useBase??base;
         const sources=[...fileIncoming,...incoming];
         let prepared=await preparePostprocessFileIncoming(sources,policyBase,guard,policyOptions);guard();
+        if(matchedXyz&&(!prepared.companions.some(item=>item.source.result.source.id===matchedXyz.input.id)
+          ||prepared.sourceWarnings.some(warning=>warning.sourceId===matchedXyz.input.id)))throw Error('XYZ 与目标作业的配对已变化，未接入。');
         const verifiedHess=selectedHess && prepared.displayedResult?.scientific?.vibrationSets?.some(group=>group.sourceId===newHess[0].source.result.source.id);
         if(selectedHess && !verifiedHess){
           const candidateId = newHess[0].source.result.source.id;
@@ -346,13 +444,13 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         pendingFileDocument=value;
         const directSlots=validateDirect(useBase,value);
         await newDocument?.beforeFileCommit?.(value,directSlots);guard();
-        fileDocumentsRef.current={...fileDocumentsRef.current,[value.id]:value};setFileDocuments(fileDocumentsRef.current);
         // Source-specific restrictions are shown once beside their own slot.
         sourceNotices.current[value.id]=readNotice();
+        fileDocumentsRef.current={...fileDocumentsRef.current,[value.id]:value};setFileDocuments(fileDocumentsRef.current);
+        consumeDraft(wizardOwner(value.id,undefined));
         committed=true;owner.transferred=true;
         for(const [input,state]of owner.inputs)if(state.adopted||state.closed)owner.inputs.delete(input);for(const [id,state]of owner.sessions)if(state.adopted||state.closed)owner.sessions.delete(id);owner.targets.clear();
-        const canNavigate=newDocument?newDocument.canNavigate?.()!==false:fileOwnerRef.current===initialSelectedFileId&&activeDocumentRef.current===initialActiveDocumentId;
-        if(canNavigate){selectFile(value.id);portsRef.current.onFileDocument?.(value);portsRef.current.analyze();}
+        if(canPresent()){selectFile(value.id);portsRef.current.onFileDocument?.(value);portsRef.current.analyze();}
         newDocument?.onCreated?.(value.id);
         if(directSlots)direct?.onAttached?.(directSlots,readNotice());
         if(useBase){
@@ -412,7 +510,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       const destination = output ? postprocessDestination(output.source) : null;
       if (destination && !isUnifiedPostprocessSource(output!.source)) throw new Error(`识别为 ${describePostprocessSource(output!.source)}；此任务尚未接入当前统一工作区。`);
       const ordinary=incoming.length>0&&incoming.every(row=>['gaussian-output','orca-output','fchk','molden'].includes(row.source.kind));
-      const autoTarget=!direct&&!forceNew&&mode==='smart'&&ordinary&&Boolean(output)!==Boolean(wavefunction);
+      const autoTarget=!direct&&!forceNew&&!replacementSlot?.slotKey&&mode==='smart'&&ordinary&&Boolean(output)!==Boolean(wavefunction);
       let matching:PostprocessImportMatch=autoTarget?{reuse:false}:await matchingImportTargetForFrames(base,output,wavefunction,signal);guard();
       let useTarget = base && (direct||mode==='replace'||matching.reuse||(companions.length>0||auxiliaryOnly)&&!output) ? targetId! : null;
       if(autoTarget){
@@ -448,6 +546,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       }
       const companionOnly=companions.length>0&&!output;
       const verifiedCompanions=companions.filter(item=>!sourceWarnings.some(warning=>warning.sourceId===item.source.result.source.id));
+      if(matchedXyz&&!verifiedCompanions.some(item=>item.source.result.source.id===matchedXyz.input.id))throw Error('XYZ 与目标作业的配对已变化，未接入。');
       const occupiedCompanion=verifiedCompanions.some(next=>base?.companions?.some(old=>old.source.result.role===next.source.result.role));
       // Unknown Molden may use the counterpart's pairing proof, never a renamed
       // producer. Explicitly conflicting producer metadata still fails pairing.
@@ -459,7 +558,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       }
       const unknownMoldenPair=counterpartProof&&(actualEngine==='unknown'&&wavefunction?.source.kind==='molden'
         ||expectedEngine==='unknown'&&base?.wavefunction?.source.kind==='molden'&&(!base.wavefunction.source.software||base.wavefunction.source.software==='unknown'));
-      if (!mdAuxiliaryOnly && mode==='replace' && expectedEngine && actualEngine !== expectedEngine && !unknownMoldenPair) {
+      if (!mdAuxiliaryOnly && !companionOnly && mode==='replace' && expectedEngine && actualEngine !== expectedEngine && !unknownMoldenPair) {
         const name=actualEngine==='gaussian'?'Gaussian':actualEngine==='orca'?'ORCA':actualEngine==='cp2k'?'CP2K':'生产软件未确认的Molden';
         const answer = await ask('来源软件与当前页不同', `识别为 ${name} 来源。${counterpartReason??'与当前页软件不一致。'}原分析保持不变。`, [{ label: '新建对应分析', value: 'new' }, { label: '取消', value: 'cancel' }]); guard();
         if (answer !== 'new') return; useTarget = null;
@@ -502,7 +601,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       const directSlots=validateDirect(base,value);
       const {structure,identity:frameBondIdentity} = await readInitialPostprocessFrame(value,signal); guard();
       await newDocument?.beforeCommit?.(value);guard();
-      const canNavigate=newDocument?newDocument.canNavigate?.()!==false:fileOwnerRef.current===initialSelectedFileId&&activeDocumentRef.current===initialActiveDocumentId;
+      const canNavigate=canPresent();
       const documentId = useTarget ?? portsRef.current.add(value.result, value, { structure,frameBondIdentity,...(!canNavigate||forceNew?{activate:false}:{}),...(forceNew?{initialModule:'analysis' as const}:{}) });
       if (useTarget) portsRef.current.replace(documentId, value.result, value, structure,frameBondIdentity);
       if(canNavigate)selectFile(null);
@@ -510,14 +609,16 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       if(priorAssociation)setPostprocessTaskAssociation(value,priorAssociation);
       sourceNotices.current[documentId]=readNotice();
       documentsRef.current = { ...documentsRef.current, [documentId]: value }; setDocuments(documentsRef.current);
-      if(canNavigate){setEngine(sourceEngine(value));setTask(postprocessDocumentTask(value));setStage('files');setNotice(readNotice());}committed = true;owner.transferred=true;for(const [input,state]of owner.inputs)if(state.adopted||state.closed)owner.inputs.delete(input);for(const [id,state]of owner.sessions)if(state.adopted||state.closed)owner.sessions.delete(id);owner.targets.clear();
+      consumeDraft(wizardOwner(null,documentId));
+      committed = true;owner.transferred=true;for(const [input,state]of owner.inputs)if(state.adopted||state.closed)owner.inputs.delete(input);for(const [id,state]of owner.sessions)if(state.adopted||state.closed)owner.sessions.delete(id);owner.targets.clear();
       if(diagnostics.length){portsRef.current.onDiagnostics?.(diagnostics);diagnosticsCommitted=Boolean(portsRef.current.onDiagnostics);}
-      if(forceNew)forceNew.onCreated(documentId);else if(canNavigate){portsRef.current.activate(documentId);portsRef.current.analyze();}
+      if(forceNew){if(canNavigate)forceNew.onCreated(documentId);else forceNew.onCreated(documentId,false);}
+      else if(canNavigate){portsRef.current.activate(documentId);portsRef.current.analyze();}
       if(directSlots)direct?.onAttached?.(directSlots,readNotice());
       if (useTarget && base) {const retained=new Set(nextCompanions.map(value=>value.source.result.source.id));const issues=await dispose([output ? base.output : undefined, wavefunction ? base.wavefunction : undefined,...(base.companions??[]).filter(value=>!retained.has(value.source.result.source.id))],useTarget);if(issues.length)portsRef.current.onError(`新来源已接入；旧来源释放提示：${issues.join('；')}`);}
     } catch (error) { if(newDocument?.throwOnFailure)throw error;if (alive.current) portsRef.current.onError(textError(error)); }
     finally {
-      newDocument?.signal?.removeEventListener('abort',externalAbort);
+      upstreamSignal?.removeEventListener('abort',externalAbort);
       if(!committed)for(const extra of pendingFileDocument?.extraSources??[])if(!retainedFileExtras.has(extra)&&!owner.extras.has(extra))owner.extras.set(extra,{closed:false});
       try{
         if(!diagnosticsCommitted)await Promise.all(diagnostics.map(item=>Promise.resolve(item.dispose())));
@@ -533,7 +634,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
   function prepareClose(id:string){
     const transaction=retirement.prepareClose(id),owner=readOwnerRef.current;
     const pendingOwner=owner&&!owner.transferred&&owner.targets.has(id)?owner:null;let committed=false;
-    return{...transaction,commit(){transaction.commit();committed=true;},async release(){const released=transaction.release();if(!committed)return released;const stopped=pendingOwner?stopReadOwner(pendingOwner,new Error('分析来源已关闭、不可用或被替换，本次文件未覆盖它。')):Promise.resolve();await Promise.all([released,stopped,releases.retry(id)]);}};
+    return{...transaction,commit(){transaction.commit();clearDraft(wizardOwner(null,id));delete sourceNotices.current[id];committed=true;},async release(){const released=transaction.release();if(!committed)return released;const stopped=pendingOwner?stopReadOwner(pendingOwner,new Error('分析来源已关闭、不可用或被替换，本次文件未覆盖它。')):Promise.resolve();await Promise.all([released,stopped,releases.retry(id)]);}};
   }
   async function close(id: string) {
     const transaction=prepareClose(id);transaction.commit();
@@ -597,8 +698,7 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
         if (attachment) await dispose([attachment]);
         else if (opened) await closeNative(nativeSessionId).catch(() => {});
       }
-      if (alive.current && epoch === requestEpoch.current) setBusy(false);
-      busyRef.current = false;
+      releaseBusy();
     }
   }
   async function remove(role: 'output' | 'wavefunction'|'companions',slotKey?:PostprocessSlotKey,sourceId?:string) {
@@ -644,24 +744,20 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
       const displayedResult=await defaultPostprocessCompanion(preparedOutput,companions);
       if(closingIds.current.has(id)||documentsRef.current[id]!==value||!portsRef.current.exists(id))throw new Error('分析来源已关闭或切换，未重放移除操作。');
       let pair;
-      if(preparedOutput&&wavefunction){try{pair=await pairPostprocessSourcesForFrames(preparedOutput.source,wavefunction.source);guard();const conflict=postprocessMetadataConflict(pair);if(conflict)throw Error(conflict);}catch(error){guard();pair=undefined;setNotice(`${textError(error)} 波函数仍保留为独立来源。`);}}
+      if(preparedOutput&&wavefunction){try{pair=await pairPostprocessSourcesForFrames(preparedOutput.source,wavefunction.source);guard();const conflict=postprocessMetadataConflict(pair);if(conflict)throw Error(conflict);}catch(error){guard();pair=undefined;retainedWarnings.set(wavefunction.source.result.source.id,`${textError(error)} 波函数仍保留为独立来源。`);}}
       const next = composePostprocessDocument(value.id, preparedOutput, wavefunction,pair,{companions,displayedResult});
       if(remainingExtras.length)retainPostprocessSourceExtras(next,[...remainingExtras]);
       const {structure,identity:frameBondIdentity} = await readInitialPostprocessFrame(next);
       if(!alive.current||closingIds.current.has(id)||documentsRef.current[id]!==value||!portsRef.current.exists(id)||portsRef.current.available?.(id)===false)throw new Error('分析来源已关闭或切换，未重放移除操作。');
       // Register outgoing leases with the retry owner only after the metadata
       // replacement has committed successfully.
-      {
-        portsRef.current.replace(id, next.result, next, structure,frameBondIdentity); documentsRef.current = { ...documentsRef.current, [id]: next }; setDocuments(documentsRef.current);
-      }
-      if(retainedWarnings.size){
-        const notice=[...retainedWarnings.values()].join('；');
-        sourceNotices.current[id]=notice;setNotice(notice);
-      }
+      portsRef.current.replace(id, next.result, next, structure,frameBondIdentity);
+      if(retainedWarnings.size)sourceNotices.current[id]=[...retainedWarnings.values()].join('；');else delete sourceNotices.current[id];
+      documentsRef.current = { ...documentsRef.current, [id]: next }; setDocuments(documentsRef.current);
       const issues=await dispose([...outgoing,...(role==='output'?value.companions??[]:[])],id);
       if(issues.length)portsRef.current.onError(`来源已移除；native释放提示：${issues.join('；')}`);
     } catch (error) { portsRef.current.onError(textError(error)); }
-    finally { await Promise.allSettled([...temporaryAuxiliaries,...temporaryMdAuxiliaries].map(item=>item.diagnostic.dispose()));setBusy(false); busyRef.current = false; }
+    finally { await Promise.allSettled([...temporaryAuxiliaries,...temporaryMdAuxiliaries].map(item=>item.diagnostic.dispose()));releaseBusy(); }
   }
   async function readExcitationFiles(files:ScientificSourceFile[],slotKey:ExcitationSlotKey,targetId?:string|null,direct?:{replace:boolean;signal:AbortSignal;guard?():void}){
     const id=targetId??ownerId,before=id?documentsRef.current[id]:undefined;
@@ -692,46 +788,65 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
     }
   }
   function selectFile(id:string|null){
-    const value=id?fileDocumentsRef.current[id]:undefined;
-    if(id&&!value)return;
+    if((id&&!fileDocumentsRef.current[id])||id===fileOwnerRef.current)return;
     fileOwnerRef.current=id;setFileOwnerId(id);
-    if(value){
-      setEngine(value.output.source.software==='gaussian'?'gaussian':value.output.source.software==='orca'?'orca':value.output.source.kind==='gaussian-output'?'gaussian':'orca');
-      const tasks=postprocessFileJob(value.output.source)?.scientific?.tasks??value.output.source.tasks;
-      const task=tasks.includes('opt')&&tasks.includes('freq')?'optfreq':tasks.find(item=>['irc','neb','scan','ts','opt','freq','td','sp'].includes(item));
-      setTask((task??'trajectory') as PostprocessTask);setStage('files');setNotice(sourceNotices.current[value.id]??value.sourceWarnings?.map(row=>row.message).join('；')??'');
-    }
   }
-  async function selectFileJob(id:string,jobId:string){
-    const before=fileDocumentsRef.current[id];if(!before||busyRef.current)return;
+  function selectFileJob(id:string,jobId:string):Promise<void>{
+    const source=fileDocumentsRef.current[id]?.output.source;
+    if(!source?.jobs.some(job=>job.id===jobId))return Promise.resolve();
+    const navigation=portsRef.current.captureNavigation?.();
+    const previous=fileJobRequests.current.get(id);
+    previous?.finish();
+    const completion=new Promise<void>(finish=>fileJobRequests.current.set(id,{jobId,jobs:source.jobs,canNavigate:()=>navigation?.()!==false,finish}));
+    refreshFileJobRequests(value=>value+1);
+    void drainFileJobs();
+    return completion;
+  }
+  async function drainFileJobs(){
+    if(busyRef.current||!alive.current)return;
+    const item=fileJobRequests.current.entries().next().value;
+    if(!item)return;
+    const [id,request]=item, before=fileDocumentsRef.current[id];
     busyRef.current=true;setBusy(true);
-    const guard=()=>{if(!alive.current||fileDocumentsRef.current[id]!==before)throw Error('来源已关闭或替换，未切换旧作业。');};
+    const sameRequest=()=>fileJobRequests.current.get(id)===request;
+    const guard=()=>{if(!alive.current||!sameRequest()||fileDocumentsRef.current[id]!==before)throw new DOMException('旧阶段请求已结束。','AbortError');};
     try{
-      const output=selectPostprocessFileJob(before.output,jobId),base={...before,output};
+      if(!before)return;
+      if(before.output.source.jobs!==request.jobs)throw Error('主 OUT 已替换，请从新来源重新选择阶段。');
+      if(before.output.source.selectedJobId===request.jobId)return;
+      const output=selectPostprocessFileJob(before.output,request.jobId),base={...before,output};
       const prepared=await preparePostprocessFileIncoming([],base,guard);guard();
       const value=composePostprocessFileDocument(id,output,prepared.wavefunction,prepared) as PostprocessScientificFileDocument;
-      sourceNotices.current[id]='';
-      fileDocumentsRef.current={...fileDocumentsRef.current,[id]:value};setFileDocuments(fileDocumentsRef.current);if(fileOwnerRef.current===id){selectFile(id);portsRef.current.onFileDocument?.(value);}
-    }catch(error){portsRef.current.onError(textError(error));}finally{busyRef.current=false;setBusy(false);}
+      delete sourceNotices.current[id];
+      fileDocumentsRef.current={...fileDocumentsRef.current,[id]:value};setFileDocuments(fileDocumentsRef.current);
+      if(fileOwnerRef.current===id&&request.canNavigate())portsRef.current.onFileDocument?.(value);
+    }catch(error){if(alive.current&&sameRequest()&&fileDocumentsRef.current[id])portsRef.current.onError(`阶段切换未完成，原阶段已保留。${textError(error)}`);}
+    finally{
+      if(sameRequest()){fileJobRequests.current.delete(id);if(alive.current)refreshFileJobRequests(value=>value+1);}
+      request.finish();releaseBusy();
+    }
   }
   async function removeFileSlot(role:'output'|'wavefunction'|'companions',_slotKey?:PostprocessSlotKey,sourceId?:string){
     const id=fileOwnerRef.current,before=id?fileDocumentsRef.current[id]:undefined;if(!id||!before||busyRef.current)return;
     if(role==='output'){portsRef.current.onError('主 OUT 持有此文件的作业信息；请关闭此来源，或选择替换文件。');return;}
     const outgoing=role==='wavefunction'?before.wavefunction?[before.wavefunction]:[]:(before.companions??[]).filter(item=>!sourceId||item.source.result.source.id===sourceId);
     if(!outgoing.length)return;
+    const navigation=portsRef.current.captureNavigation?.();
     busyRef.current=true;setBusy(true);
     const guard=()=>{if(!alive.current||fileDocumentsRef.current[id]!==before)throw Error('来源已关闭或替换，未移除旧配套。');};
     try{
       const base={...before,wavefunction:role==='wavefunction'?undefined:before.wavefunction,companions:(before.companions??[]).filter(item=>!outgoing.includes(item))};
       const prepared=await preparePostprocessFileIncoming([],base,guard);guard();
       const value=composePostprocessFileDocument(id,base.output,base.wavefunction,prepared) as PostprocessScientificFileDocument;
-      fileDocumentsRef.current={...fileDocumentsRef.current,[id]:value};setFileDocuments(fileDocumentsRef.current);if(fileOwnerRef.current===id)portsRef.current.onFileDocument?.(value);
+      fileDocumentsRef.current={...fileDocumentsRef.current,[id]:value};setFileDocuments(fileDocumentsRef.current);if(fileOwnerRef.current===id&&navigation?.()!==false)portsRef.current.onFileDocument?.(value);
       const issues=await dispose(outgoing,id);if(issues.length)portsRef.current.onError(`来源已移除；释放提示：${issues.join('；')}`);
-    }catch(error){portsRef.current.onError(textError(error));}finally{busyRef.current=false;setBusy(false);}
+    }catch(error){portsRef.current.onError(textError(error));}finally{releaseBusy();}
   }
   async function closeFile(id:string){
     const value=fileDocumentsRef.current[id]??pendingFileCloses.current.get(id);if(!value){try{await releases.retry(id);return[];}catch(error){return[textError(error)];}}
     closingIds.current.add(id);pendingFileCloses.current.set(id,value);
+    fileJobRequests.current.get(id)?.finish();fileJobRequests.current.delete(id);
+    clearDraft(wizardOwner(id,undefined));delete sourceNotices.current[id];
     const next={...fileDocumentsRef.current};delete next[id];fileDocumentsRef.current=next;setFileDocuments(next);if(fileOwnerRef.current===id)selectFile(null);
     try{
       const owner=readOwnerRef.current;if(owner?.targets.has(id)){await stopReadOwner(owner,new Error('文件来源已关闭，本次读取已取消。'));await owner.done;}
@@ -743,27 +858,32 @@ export function usePostprocessWorkspace(ports: Ports, activeDocumentId: string |
     if(busyRef.current)throw Error('来源正在读取，不能恢复另一项目。');
     fileDocumentsRef.current={...next};setFileDocuments(fileDocumentsRef.current);selectFile(selectedId&&next[selectedId]?selectedId:null);
   }
-  function selectEngine(value: PostprocessEngine) { if (value === 'cp2k') return; setEngine(value); setTask('sp'); setStage('tasks'); }
-  function selectTask(value: PostprocessTask) { setTask(value); setStage('files'); }
-  const current = ownerId ? documents[ownerId] ?? null : null;
+  function setStage(value:WizardStage){updateDraft({stage:value});}
+  function selectEngine(value: PostprocessEngine) { if(value==='gaussian'||value==='orca')updateDraft({engine:value,task:'sp',stage:'tasks'}); }
+  function selectTask(value: PostprocessTask) { updateDraft({task:value,stage:'files'}); }
+  function captureWizardDrafts(){
+    return Object.fromEntries(Object.entries(draftsRef.current).filter(([key])=>key==='workspace'||(key.startsWith('file:')?Boolean(fileDocumentsRef.current[key.slice(5)]):portsRef.current.exists(key.slice(6)))));
+  }
   function extract(): Structure | null {
     if (!current) return null;
     return extractPostprocessModel((current.output ?? current.wavefunction)!.source, current.output ? current.wavefunction?.source : undefined);
   }
-  function restoreProjectDocuments(next:Record<string,PostprocessDocument>,nextGenerated:Record<string,{document:PostprocessDocument;ownerId:string;bindingId:string}>={}) {
+  function restoreProjectDocuments(next:Record<string,PostprocessDocument>,nextGenerated:Record<string,{document:PostprocessDocument;ownerId:string;bindingId:string}>={},savedDrafts?:unknown) {
     if(busyRef.current)throw new Error('来源正在读取，不能恢复另一项目。');
-    requestEpoch.current++;closingIds.current.clear();sourceNotices.current={};documentsRef.current=next;generatedRef.current=nextGenerated;setDocuments(next);setGenerated(nextGenerated);setNotice('');
+    requestEpoch.current++;closingIds.current.clear();sourceNotices.current={};documentsRef.current=next;generatedRef.current=nextGenerated;setDocuments(next);setGenerated(nextGenerated);changeDrafts(readWizardDrafts(savedDrafts));
     for(const [id,document]of Object.entries(next)){const identity=initialPostprocessFrameBondIdentity(document);if(identity)portsRef.current.bindFrameBondOrigin?.(id,document.id,identity);}
     for(const row of Object.values(nextGenerated)){const identity=initialPostprocessFrameBondIdentity(row.document);if(identity)portsRef.current.bindFrameBondOrigin?.(row.ownerId,row.bindingId,identity);}
   }
-  return { documents, generated, ownerId, current, fileDocuments,fileOwnerId,currentFile:fileOwnerId?fileDocuments[fileOwnerId]??null:null,selectFile,selectFileJob,closeFile,captureFileDocuments,restoreFileDocuments,
+  const pendingJob=currentFile&&fileJobRequests.current.get(currentFile.id);
+  const pendingFileJobId=pendingJob&&pendingJob.jobs===currentFile?.output.source.jobs?pendingJob.jobId:undefined;
+  return { documents, generated, ownerId, current, fileDocuments,fileOwnerId,currentFile,fileSelectionMatches,pendingFileJobId,selectFile,selectFileJob,closeFile,captureFileDocuments,restoreFileDocuments,wizardDrafts,captureWizardDrafts,
     pendingFileCloses:()=>[...new Set([...pendingFileCloses.current.keys(),...releases.pending().map(item=>item.id)])],releasePendingFileCloses:async()=>{
       // Replacement cleanup can share the id of a still-live new document.
       // Retry only its retired resources; never close that current document.
       const outcomes=await Promise.allSettled([releases.retry(),...[...pendingFileCloses.current.keys()].map(async id=>{const issues=await closeFile(id);if(issues.length)throw Error(issues.join('；'));})]);
       const failed=outcomes.filter((row):row is PromiseRejectedResult=>row.status==='rejected');if(failed.length)throw new AggregateError(failed.map(row=>row.reason),'仍有文件来源资源待收尾。');
     },
-    engine, task, stage, setStage, selectEngine, selectTask, busy,readState,isBusy:()=>busyRef.current, notice, read,readExcitationFiles, cancelRead, addGeneratedXtb,restoreProjectDocuments,
+    engine, task, stage, setStage, selectEngine, selectTask, busy,readState,isBusy:()=>busyRef.current, notice, read,captureXyzDrop,readExcitationFiles, cancelRead, addGeneratedXtb,restoreProjectDocuments,
     getDocument:(id:string)=>documentsRef.current[id]??generatedRef.current[id]?.document,
     addArchivedGeneratedXtb:(value:GeneratedXtbSourcePackage,options?:{guard?():void;throwOnFailure?:boolean;beforeCommit?(document:PostprocessDocument):Promise<void>;onCreated?(id:string):void})=>addGeneratedXtb(value.bundle,value.expected,undefined,value,options),
     attachGeneratedToExisting:(bundle:XtbElectronicArtifactBundle,expected:GeneratedXtbExpected,id:string,guard:()=>void)=>addGeneratedXtb(bundle,expected,{id,guard}),close,prepareClose,describeClose:retirement.describeClose,pendingCloses:()=>[...retirement.pendingCloses(),...releases.pending()],releasePendingCloses:async(id?:string)=>{const outcomes=await Promise.allSettled([retirement.releasePendingCloses(id),releases.retry(id)]);const failed=outcomes.filter((row):row is PromiseRejectedResult=>row.status==='rejected');if(failed.length)throw new AggregateError(failed.map(row=>row.reason),'仍有分析来源资源待收尾。');}, remove, extract,

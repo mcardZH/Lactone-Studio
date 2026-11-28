@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {XtbResourceOverrideField} from '../TaskResourceFields';
+import {validXtbResourceOverride} from '../../modeling/resource-preferences';
 import { baseElectronicStateParameterError as baseElectronicStateError, initialBaseElectronicState, pairEditedElectronicState, type BaseElectronicStateValues } from '../../core/base-electronic-state';
 import {electronicStateWarning} from '../../core/elements';
 import type { SharedModelConstraints } from '../../core/modeling/contracts';
@@ -13,8 +15,9 @@ import {isPesTrainedStateNetMethod} from '../../modeling/pes/contracts';
 import type { PesController } from '../../modeling/pes/controller';
 import { PES_ALGORITHMS, PES_CONVERGENCE_OPTIONS, defaultPesMethod, effectivePesScanAlgorithm, projectedForcePreset, pesId, pesParameterSections, isSellaTsAlgorithm, usesPesExecutionProfile, sellaPresetParameters, withTsSellaCoordinates } from '../../modeling/pes/defaults';
 import { cardSource, mergePesConstraintEdit, projectPesConstraintDefinitions, resolvePesConstraintTarget } from '../../modeling/pes/request';
-import {pesElectronicConfirmed,PesCompositionChange,pesElectronicSourceKey} from '../../modeling/pes/input-state';
+import {pesElectronicConfirmed,pesElectronicDraft,PesCompositionChange,pesElectronicSourceKey} from '../../modeling/pes/input-state';
 import {samePesScanSource} from '../../modeling/pes/scan-source';
+import {pesTabAdmissionIssue} from '../../modeling/pes/tab-admission';
 import BaseElectronicStateFields from '../BaseElectronicStateFields';
 import { DismissibleNotice } from '../DismissibleNotice';
 import { InputSettingsCard, InputSettingsRow, InputSettingsStack } from '../InputSettingsFields';
@@ -42,7 +45,6 @@ export interface PesWorkspaceProps {
   selectionOwner:PesSelectionScope['owner'];
   onRequestSelection:PesSelectionScope['request'];
   onSelectionHighlight?:PesSelectionScope['highlight'];
-  onElectronicStateChange?(values: BaseElectronicStateValues): void;
   onConstraintsChange?(constraints: SharedModelConstraints): SharedModelConstraints|void;
   additionalSources?: readonly PesTabSnapshotSource[];
 }
@@ -161,8 +163,6 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
   const identities=useRef(new WeakMap<Structure,string>());
   if (!group) return null;
   const groupNode = group.nodes.find(node => node.id === activeNodeId);
-  const activeSelection=groupNode?.selection;
-  const activeFollow=groupNode?.followRunId;
   const nodeRun = group.runs[groupNode?.runIds.at(-1) ?? ''];
   const latestEditableRun = groupNode && (groupNode.kind === 'workbench' || groupNode.kind === 'initial') || nodeRun?.request.operation === 'irc' ? nodeRun : undefined;
   const latestWorkbenchRun = latestEditableRun?.request.operation === 'opt' ? undefined : latestEditableRun;
@@ -171,31 +171,42 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
   const currentSourceActions=sourceReady&&!props.captureActive;
   const workbenchLive = isPesRunLive(latestEditableRun);
   const calculationLocked = controller.calculationCardLocked(groupId);
-  const browsedRun=group.runs[activeSelection?.runId??activeFollow??''];
   const scanGeometry=group.cards.some(card=>card.kind==='scan')
     ? props.readCurrentScanGeometry?props.readCurrentScanGeometry():sourceReady?geometry:undefined
     : undefined;
-  let electronicGeometry=browsedRun?.source??geometry;
+  let electronicGeometry=geometry;
   if(scanGeometry)electronicGeometry=scanGeometry;
   if(electronicContext?.groupId===groupId&&electronicContext.nodeId===activeNodeId){
     if(electronicContext.cardId){const card=group.cards.find(row=>row.id===electronicContext.cardId);if(card)try{electronicGeometry=cardSource(group,card,scanGeometry);}catch{/* The card source field keeps its missing-source error. */}}
-    else if(electronicContext.geometry)electronicGeometry=electronicContext.geometry;
+    else electronicGeometry=geometry;
   }
   const sharedMethod = group.sharedMethod ?? defaultPesMethod();
   let methodGeometry:PesGeometry|undefined=sourceReady?geometry:undefined;
   if(electronicContext?.groupId===groupId&&electronicContext.nodeId===activeNodeId&&electronicContext.geometry)
-    methodGeometry=electronicContext.geometry;
+    methodGeometry=geometry;
   else if(group.cards[0]?.kind==='path'||group.cards[0]?.kind==='scan'){
     try{methodGeometry=cardSource(group,group.cards[0],scanGeometry);}catch{methodGeometry=undefined;}
   }
   const trainedState = isPesTrainedStateNetMethod(sharedMethod.method);
-  const q = group.electronic.charge, m = group.electronic.multiplicity;
+  const {charge: q, multiplicity: m} = pesElectronicDraft(group,electronicGeometry);
   const validQ = /^[+-]?\d+$/.test(q) && Number.isSafeInteger(Number(q));
   const validM = /^\+?\d+$/.test(m) && Number.isSafeInteger(Number(m)) && Number(m) > 0;
   const electronicIssue = validQ && validM ? baseElectronicStateError(electronicGeometry.structure, { charge: Number(q), multiplicity: Number(m) }) : '电荷必须为整数，自旋多重度必须为正整数。';
   const electronicKey=pesElectronicSourceKey(group,electronicGeometry);
-  const electronicOwnerKey=JSON.stringify([groupId,electronicKey]);
-  if(lastElectronic.current?.key!==electronicOwnerKey){lastElectronic.current={key:electronicOwnerKey,values:validQ&&validM?{charge:Number(q),multiplicity:Number(m)}:initialBaseElectronicState(electronicGeometry.structure)};editedElectronic.current.clear();}
+  const {charge:sourceCharge,multiplicity:sourceMultiplicity}=electronicGeometry.structure;
+  const electronicOwnerKey=JSON.stringify([electronicKey,sourceCharge,sourceMultiplicity]);
+  if(lastElectronic.current?.key!==electronicOwnerKey){
+    lastElectronic.current={key:electronicOwnerKey,values:validQ&&validM?{charge:Number(q),multiplicity:Number(m)}:initialBaseElectronicState(electronicGeometry.structure)};
+    editedElectronic.current.clear();
+  }else if(!editedElectronic.current.size&&validQ&&validM){
+    lastElectronic.current.values={charge:Number(q),multiplicity:Number(m)};
+  }
+  const sourceMismatch=validQ&&validM&&Number.isSafeInteger(sourceCharge)&&Number.isSafeInteger(sourceMultiplicity)&&
+    (Number(q)!==sourceCharge||Number(m)!==sourceMultiplicity);
+  const electronicWarning=[
+    sourceMismatch?`本次设置与此来源的电荷 ${sourceCharge}、多重度 ${sourceMultiplicity} 不同。`:null,
+    !trainedState&&validQ&&validM?electronicStateWarning(electronicGeometry.structure.atoms,Number(q),Number(m)):null,
+  ].filter(Boolean).join(' ');
   function sourceIdentity(structure:Structure){
     const cached=identities.current.get(structure);
     if(cached!==undefined)return cached;
@@ -251,7 +262,7 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
     if(paired.error){report(paired.error);return;}
     lastElectronic.current={key:electronicOwnerKey,values:paired.values};editedElectronic.current.delete(field);
     const values={charge:String(paired.values.charge),multiplicity:String(paired.values.multiplicity)};
-    if(values.charge!==q||values.multiplicity!==m)controller.editElectronicPair(groupId,values);
+    if(values.charge!==q||values.multiplicity!==m)controller.editElectronicPair(groupId,values,electronicGeometry);
   }
   const stop = (runId: string) => { void controller.stop(groupId, runId).catch(report); };
   const ts = group.ts, values = ts.parametersByAlgorithm[ts.algorithm] ?? {};
@@ -266,7 +277,9 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
     && (!irc.mode || irc.mode === 'auto' || validPositive(irc.mode, true));
   const additionalSources = props.additionalSources ?? [];
   const isLocalSource = (choice: PesTabSnapshotSource) => choice.pesNode?.groupId === groupId;
-  const pathTabSources = additionalSources.filter(choice => !isLocalSource(choice));
+  const groupCandidates = additionalSources.filter(choice => choice.ordinaryCandidate?.groupId === groupId);
+  const candidateIds = new Set(groupCandidates.map(choice => choice.ordinaryCandidate!.documentId));
+  const pathTabSources = additionalSources.filter(choice => !isLocalSource(choice) && !choice.ordinaryCandidate);
   const chooserSources = group.cards.some(card => card.kind === 'path' && !card.collapsed)
     ? [...(currentSourceActions ? [{
       key: JSON.stringify(['current-pes-structure', groupId, activeNodeId]), label: '当前结构',
@@ -275,12 +288,12 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
         const source=readCurrentGeometry(true);
         return { ...source, label: '当前结构 · 快照', inputSnapshotId: pesId('tab-snapshot'), source: source.source ?? { groupId, nodeId: activeNodeId } };
       },
-    }] : []), ...pesGroupSnapshotSources(group, controller, additionalSources)]
+    }] : []), ...pesGroupSnapshotSources(group, controller, additionalSources), ...groupCandidates]
     : [];
   async function selectCardSource(cardId:string,slot:string,key:string){
     const selectedGroup=controller.getSnapshot().groups.find(row=>row.id===groupId),card=selectedGroup?.cards.find(row=>row.id===cardId);
     if(!selectedGroup||!card)return;
-    const tab=chooserSources.find(row=>row.key===key)??latest.current.additionalSources?.find(row=>row.key===key);
+    const tab=chooserSources.find(row=>row.key===key)??pathTabSources.find(row=>row.key===key);
     if(!tab)return;
     sourceRequest.current?.abort();
     const request=new AbortController();
@@ -292,7 +305,14 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
       if(request.signal.aborted||sourceRequest.current!==request||latest.current.groupId!==groupId||latest.current.activeNodeId!==activeNodeId)return;
       if(!current||!currentCard||currentCard.algorithm!==card.algorithm||currentCard.slots!==card.slots)
         throw Error('来源读取期间已变化，请重新选择。');
-      controller.setSlot(groupId,cardId,slot,source);setElectronicContext({groupId,nodeId:activeNodeId,cardId});setIssue(previous=>({...previous,text:''}));
+      if(tab.ordinaryCandidate){
+        const retained = latest.current.additionalSources?.find(row => row.key === key);
+        if(retained?.ordinaryCandidate?.groupId!==groupId)throw Error('来源标签已移出本组，请重新选择。');
+        const issue=pesTabAdmissionIssue(current,source.structure);
+        if(issue)throw Error(issue);
+      }
+      controller.setSlot(groupId,cardId,slot,tab.ordinaryCandidate?{...source,groupTabReference:groupId}:source);
+      setElectronicContext({groupId,nodeId:activeNodeId,cardId});setIssue(previous=>({...previous,text:''}));
     }catch(error){if(!request.signal.aborted&&sourceRequest.current===request&&latest.current.groupId===groupId&&latest.current.activeNodeId===activeNodeId)report(error);}
     finally{if(sourceRequest.current===request){sourceRequest.current=null;setLoadingSource(null);}}
   }
@@ -317,19 +337,18 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
       {trainedState&&<small className="muted-note">模型使用训练态，电荷和多重度用于记录结构来源。</small>}
       <BaseElectronicStateFields embedded charge={Number(q)} multiplicity={Number(m)} confirmed={pesElectronicConfirmed(group,electronicGeometry)}
         rawText={{ charge: q, multiplicity: m }} rawInvalid={{ charge: !validQ, multiplicity: !validM }} error={electronicIssue}
-        warning={!trainedState&&validQ&&validM?electronicStateWarning(electronicGeometry.structure.atoms,Number(q),Number(m)):null}
-        onChargeChange={value => controller.editElectronic(groupId, 'charge', String(value))}
-        onMultiplicityChange={value => controller.editElectronic(groupId, 'multiplicity', String(value))}
-        onRawTextChange={(field, value) => {editedElectronic.current.add(field);controller.editElectronic(groupId, field, value);}} onRawTextCommit={commitElectronic} confirmButtonText="确认"
+        warning={electronicWarning||null}
+        onChargeChange={value => controller.editElectronic(groupId, 'charge', String(value),electronicGeometry)}
+        onMultiplicityChange={value => controller.editElectronic(groupId, 'multiplicity', String(value),electronicGeometry)}
+        onRawTextChange={(field, value) => {editedElectronic.current.add(field);controller.editElectronic(groupId, field, value,electronicGeometry);}} onRawTextCommit={commitElectronic} confirmButtonText="确认"
         confirmationDisabled={!electronicGeometry.structure.atoms.length} onConfirm={() => perform(() => {
-          const values = controller.confirmElectronic(groupId, electronicGeometry);
-          if(!Object.values(group.runs).some(isPesRunLive)&&!activeSelection&&!activeFollow&&electronicKey===pesElectronicSourceKey(group,geometry))props.onElectronicStateChange?.(values);
+          controller.confirmElectronic(groupId,electronicGeometry,undefined,true);
         })}/>
     </InputSettingsCard>
     <GlobalConstraints scope={currentSelection} geometry={geometry} value={projectPesConstraintDefinitions(group,geometry.structure).constraints} change={changeConstraints} perform={perform} disabled={!sourceReady||workbenchLive}
       targets={group.constraintTargets ?? {}} editTarget={(id, text) => controller.editConstraintTarget(groupId, id, text)}/>
     <InputSettingsRow>
-      <button type="button" className="button button-primary" disabled={calculationLocked} aria-expanded={adding} onClick={() => setAdding(value => !value)}>选择计算卡</button>
+      <button type="button" className="button pes-button-tonal" disabled={calculationLocked} aria-expanded={adding} onClick={() => setAdding(value => !value)}>选择计算卡</button>
       {adding && !calculationLocked && [
         {kind:'scan' as const,algorithm:'sella-scan',label:'内坐标扫描'},
         {kind:'path' as const,algorithm:'ci-neb',label:'CI-NEB'},
@@ -346,7 +365,7 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
       let source:PesGeometry,sourceIssue='';
       try{source=cardSource(group,card,scanGeometry);}catch(error){sourceIssue=pesMessage(error);source=card.kind==='scan'?geometry:group.nodes.find(node=>node.id===group.initialNodeId)?.geometry??geometry;}
       const slot=card.kind==='path'?'reactant':'start';
-      const periodicSupported=!!sourceIssue||!source.structure.cell?.pbc.some(Boolean)||periodicPesOperationAvailable(sharedMethod.method,card.kind,card.kind==='scan'?effectivePesScanAlgorithm(card.algorithm,true):card.algorithm);
+      const periodicSupported=sharedMethod.method!=='gxtb'&&(!!sourceIssue||!source.structure.cell?.pbc.some(Boolean)||periodicPesOperationAvailable(sharedMethod.method,card.kind,card.kind==='scan'?effectivePesScanAlgorithm(card.algorithm,true):card.algorithm));
       let constraintIssue: string | undefined;
       if(!sourceIssue&&group.constraints.enabled!==false&&(group.constraints.frozenAtomIds.length||group.constraints.coordinates.some(row=>row.action==='freeze'))){
         const {unmatchedAtomIds,unmatchedCoordinates}=projectPesConstraintDefinitions(group,source.structure,source.documentId);
@@ -362,6 +381,7 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
       });
       return <div key={card.id} className="pes-card-input-owner" data-pes-card-id={card.id} onFocusCapture={()=>setElectronicContext({groupId,nodeId:activeNodeId,cardId:card.id})}>
       <PesCalculationCard card={card} method={sharedMethod.method} source={source} sources={chooserSources} tabSources={pathTabSources} scope={scope} run={run}
+        outsideGroup={geometry=>geometry.groupTabReference===groupId&&!candidateIds.has(geometry.documentId)}
         available={controller.available&&methodAvailable&&periodicSupported&&(card.kind!=='scan'||!!scanGeometry&&!props.captureActive)} canCapture={currentSourceActions}
         unavailableReason={!methodAvailable?'请先选择此版本提供的 xTB 计算级别。':periodicSupported?undefined:'当前计算级别或算法暂不支持此固定晶胞任务。'}
         constraintIssue={constraintIssue} sourceIssue={sourceIssue} sourceLoading={loadingSource===card.id}
@@ -394,20 +414,25 @@ export default function PesWorkspace(props: PesWorkspaceProps) {
         onChange={value => controller.updateTs(groupId, draft => ({ ...draft, parametersByAlgorithm: { ...draft.parametersByAlgorithm,
           [draft.algorithm]: sellaPresetParameters(draft.algorithm, draft.parametersByAlgorithm[draft.algorithm] ?? {}, value as PesConvergencePreset) } }))}/>}
       {tsAlgorithmSelected && <PesParameterSections sections={pesParameterSections(ts.algorithm,tsSettings).filter(section=>section.title!=='收敛设置'||tsPreset==='custom')} values={tsSettings} method={sharedMethod.method} onChange={setTsParameter}/>}
+      {!isPesNetMethod(sharedMethod.method)&&<details className="xtb-constraint-results"><summary>任务资源</summary><InputSettingsRow>
+        <XtbResourceOverrideField label="TS、Hessian、IRC 的 xTB 线程" disabled={workbenchLive} value={ts.resourceOverrides?.xtbSingleTaskThreads}
+          onChange={xtbSingleTaskThreads=>controller.updateTs(groupId,draft=>({...draft,resourceOverrides:xtbSingleTaskThreads===undefined?undefined:{xtbSingleTaskThreads}}))}/>
+      </InputSettingsRow></details>}
       {!workbenchLive && sourceReady && !pesElectronicConfirmed(group,geometry) &&
         <p className="pes-method-fact" role="status">请先在基础设置确认当前结构的电荷和自旋多重度。</p>}
       {!workbenchLive && periodic && Object.keys(tsAlgorithms).length===0 &&
         <p className="pes-method-fact">当前计算级别未开放固定晶胞过渡态搜索。</p>}
       {!workbenchLive && <InputSettingsRow variant="actions">{(['ts', 'hessian', 'irc'] as const).map(operation => {
         const periodicSupported=!periodic||periodicPesOperationAvailable(sharedMethod.method,operation,operation==='ts'?ts.algorithm:undefined);
-        const reason=!methodAvailable?'请先选择此版本提供的 xTB 计算级别'
+        const reason=sharedMethod.method==='gxtb'?'本工程的 g-xTB 计算级别尚未开放此操作'
+          :!methodAvailable?'请先选择此版本提供的 xTB 计算级别'
           :!periodicSupported?'当前计算级别或算法暂不支持此固定晶胞任务'
           :!sourceReady?'等待当前帧准备'
           :props.captureActive?'请先结束当前选区操作'
           :operation==='irc'&&sharedMethod.method==='gfnff'?'请选择支持 IRC 的计算级别'
           :!pesElectronicConfirmed(group,geometry)?'请先确认当前结构的电荷和自旋多重度':undefined;
-        return <button key={operation} type="button" className="button button-primary" title={reason}
-          disabled={!controller.available || !currentSourceActions || !methodAvailable || !periodicSupported || (operation === 'irc' && !canStartIrc)} onClick={() => perform(() => {
+        return <button key={operation} type="button" className={operation === 'ts' ? 'button button-primary' : 'button pes-button-tonal'} title={reason}
+          disabled={!controller.available || !currentSourceActions || !methodAvailable || !periodicSupported || (operation === 'irc' && !canStartIrc)||!validXtbResourceOverride(ts.resourceOverrides?.xtbSingleTaskThreads)} onClick={() => perform(() => {
             const source=readCurrentGeometry();
             setElectronicContext({groupId,nodeId:activeNodeId,geometry:source});
             props.onActivateNode(controller.startWorkbench(groupId,activeNodeId,source,operation));

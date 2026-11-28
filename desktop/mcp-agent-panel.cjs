@@ -1,11 +1,12 @@
 'use strict';
 
 const { createAssistantHost } = require('./mcp-assistant.cjs');
+const { assistantSkillRoot } = require('./mcp-assistant-skill.cjs');
 const { createTerminalHost } = require('./mcp-terminal.cjs');
 
-function registerMcpAgentPanel({ handle, safeStorage, userDataPath, getWindowContext }) {
-  const terminal = createTerminalHost({ userDataPath });
-  const assistant = createAssistantHost({ userDataPath, safeStorage });
+function registerMcpAgentPanel({ handle, safeStorage, userDataPath, getWindowContext, trackTerminalWorker, skillLocation }) {
+  const terminal = createTerminalHost({ userDataPath, trackWorker: trackTerminalWorker });
+  const assistant = createAssistantHost({ userDataPath, safeStorage, skillRoot: assistantSkillRoot(skillLocation) });
   const owner = window => window.webContents.id;
   const publish = (window, channel) => payload => {
     if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send(channel, payload);
@@ -37,14 +38,18 @@ function registerMcpAgentPanel({ handle, safeStorage, userDataPath, getWindowCon
   handle('mcp-agent:assistant-reset', window => assistant.reset(owner(window)));
   return {
     closeOwner(id) {
-      assistant.closeOwner(id);
-      return terminal.closeOwner(id);
+      return settle(assistant.closeOwner(id), terminal.closeOwner(id));
     },
     close() {
-      assistant.close();
-      return terminal.close();
+      return settle(assistant.close(), terminal.close());
     },
   };
+}
+
+async function settle(...tasks) {
+  const results = await Promise.allSettled(tasks);
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed) throw failed.reason;
 }
 
 module.exports = { registerMcpAgentPanel };

@@ -223,6 +223,28 @@ export async function preparePostprocessIncoming(incoming:readonly PostprocessAt
   return{output,enrichedOutput,wavefunction,companions,sourceWarnings};
 }
 
+/** A workspace-level drop can use only a unique, scientifically paired OUT.
+ * An active tab, basename or classified XYZ role alone supplies no match. */
+export async function findPostprocessXyzTarget(
+  attachment:PostprocessAttachment,candidates:readonly {id:string;document:PostprocessFileDocument}[],signal?:AbortSignal,
+):Promise<{id:string;document:PostprocessFileDocument}|undefined>{
+  const sourceId=attachment.source.result.source.id;
+  let match:typeof candidates[number]|undefined;
+  for(const candidate of candidates){
+    signal?.throwIfAborted();
+    const {document}=candidate;
+    if(!document.output?.source.kind.endsWith('-output'))continue;
+    const prepared=isScientificFileDocument(document)
+      ?await preparePostprocessFileIncoming([attachment],{...document,wavefunction:undefined},undefined,{signal})
+      :await preparePostprocessIncoming([attachment],document,undefined,{signal});
+    if(!prepared.companions.some(item=>item.source.result.source.id===sourceId)
+      ||prepared.sourceWarnings.some(warning=>warning.sourceId===sourceId))continue;
+    if(match)return undefined;
+    match=candidate;
+  }
+  return match;
+}
+
 export function postprocessDocumentEngine(document:PostprocessDocument):'gaussian'|'orca'|'cp2k'|'xtb'|'unknown' {
   const source=document.output?.source??document.wavefunction?.source;
   if(!source)return 'unknown';

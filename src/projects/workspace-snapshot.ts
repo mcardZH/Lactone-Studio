@@ -2,6 +2,7 @@ import type {WorkspaceRegistry,WorkspaceProjectState} from '../modeling/workspac
 import {isScientificFileDocument,type PostprocessDocument,type PostprocessScientificFileDocument} from '../results/postprocess-document';
 import type {TrajectoryResult} from '../results/contracts';
 import {encodeResult,decodeResult,encodePostprocessDocument,decodePostprocessDocument,encodePostprocessFileDocument,decodePostprocessFileDocument,nativeMDRequiresFormat8,structureRequiresXtbFormat8,trajectorySnapshotRequiresFormat8,postprocessSnapshotRequiresFormat8,type PostprocessFileDocumentSnapshot,type TrajectoryResultSnapshot,type PostprocessDocumentSnapshot,type ProjectAssetWriter,type ProjectAssetReader} from './result-snapshot';
+import {postprocessSnapshotRequiresFormat19,prepareProjectPostprocessNumerics,prepareProjectResultNumerics,trajectorySnapshotRequiresFormat19} from './result-snapshot';
 import {captureAnalysisProjectState,prepareAnalysisProjectRestore,type AnalysisProjectState} from './analysis-state';
 import {ProjectUiStore,type ProjectUiSnapshot} from './ui-state';
 import type {AdvancedProjectSnapshot} from './advanced-snapshot';
@@ -120,6 +121,7 @@ let lastAdvancedRequiresFormat15=false;
 let lastAdvancedRequiresFormat17=false;
 let lastAdvancedRequiresFormat18=false;
 let unreadableRequiresFormat15=false;
+let unreadableRequiresFormat19=false;
 interface AdvancedAssetReference {assetId?:string;formatVersion?:number}
 interface AdvancedReaderState {current:AdvancedAssetReference;reader:ProjectAssetReader;retained?:RetainedAdvancedTasks}
 let restoredAdvancedReader:AdvancedReaderState|undefined;
@@ -278,7 +280,7 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  const {writer}=input,registry=input.registry.exportProjectState({saved:true}),dependencies=new Set<string>();
  const afterCommit:(()=>void)[]=[];
  const advancedReader=restoredAdvancedReader;
- const preparedPes=input.pes===undefined?undefined:preparePesIndex(input.pes);
+ const preparedPes=input.pes===undefined?undefined:preparePesIndex(input.pes,{numeric:Boolean(writer.writeRange)});
  for(const [id,value]of snapshots){
   const target=registry.documents.find(entry=>entry.id===id);
   if(!target||target.model.document.revision!==value.sourceRevision||value.document.id!==id)throw Error('项目保存期间MD工作源修订已变化。');
@@ -294,8 +296,8 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  const retain=(id:string)=>{dependencies.add(id);projectWriter.retainAsset?.(id);};
  let payloadRequiresFormat15=false;
  const asset=async(name:string,value:unknown,category='results')=>{assertSnapshotsCurrent();if(requiresProjectFormat15(value))payloadRequiresFormat15=true;const id=(await writer.write(category,name,JSON.stringify(value))).assetId;assertSnapshotsCurrent();retain(id);return id;};
- let requiresFormat5=false,resultRequiresFormat6=false,resultRequiresFormat8=false;
- const saveResult=async(value:TrajectoryResult)=>{if(conformerDisplayRestorationRequiresFormat5(value))requiresFormat5=true;if(conformerDisplayRestorationRequiresFormat6((value as TrajectoryResult&{displayRestoration?:ConformerDisplayRestoration}).displayRestoration))resultRequiresFormat6=true;let pending=encodedResults.get(value);if(!pending){const cached=input.reuse?resultCache.get(value):undefined;pending=cached?Promise.resolve(cached):encodeResult(value,writer);encodedResults.set(value,pending);}const dto=await pending;if(trajectorySnapshotRequiresFormat8(dto))resultRequiresFormat8=true;afterCommit.push(()=>{resultCache.set(value,dto);});refs(dto,dependencies);return asset('trajectory-index.json',dto);};
+ let requiresFormat5=false,resultRequiresFormat6=false,resultRequiresFormat8=false,resultRequiresFormat19=false;
+ const saveResult=async(value:TrajectoryResult)=>{if(conformerDisplayRestorationRequiresFormat5(value))requiresFormat5=true;if(conformerDisplayRestorationRequiresFormat6((value as TrajectoryResult&{displayRestoration?:ConformerDisplayRestoration}).displayRestoration))resultRequiresFormat6=true;let pending=encodedResults.get(value);if(!pending){const cached=input.reuse?resultCache.get(value):undefined;pending=cached?Promise.resolve(cached):encodeResult(value,writer);encodedResults.set(value,pending);}const dto=await pending;if(trajectorySnapshotRequiresFormat8(dto))resultRequiresFormat8=true;if(trajectorySnapshotRequiresFormat19(dto))resultRequiresFormat19=true;afterCommit.push(()=>{resultCache.set(value,dto);});refs(dto,dependencies);return asset('trajectory-index.json',dto);};
  let requiresFormat3=false;
  const saveSource=async(value:PostprocessDocument)=>{
   const version=projectCompanionVersion(value.output),associationVersion=getPostprocessTaskAssociationVersion(value),fileVersion=postprocessFileDocumentVersion(value);
@@ -304,6 +306,7 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
   if(!cached)afterCommit.push(()=>{sourceCache.set(value,dto);sourceCompanionVersions.set(value,version);sourceAssociationVersions.set(value,associationVersion);sourceFileVersions.set(value,fileVersion);});
   if(dto.schema===4)requiresFormat3=true;
   if(postprocessSnapshotRequiresFormat8(dto))resultRequiresFormat8=true;
+  if(postprocessSnapshotRequiresFormat19(dto))resultRequiresFormat19=true;
   refs(dto,dependencies);return asset('source-index.json',dto);
  };
  const saveFileSource=async(value:PostprocessScientificFileDocument)=>{
@@ -312,6 +315,7 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
   if(dto.schema!==4||!('kind'in dto)||dto.kind!=='scientific-file')throw Error('文件级来源未取得对应的完整保存格式。');
   if(!cached)afterCommit.push(()=>{fileSourceCache.set(value,dto);fileSourceVersions.set(value,version);});
   if(postprocessSnapshotRequiresFormat8(dto))resultRequiresFormat8=true;
+  if(postprocessSnapshotRequiresFormat19(dto))resultRequiresFormat19=true;
   requiresFormat3=true;refs(dto,dependencies);return asset('scientific-file-index.json',dto);
  };
  const results:SyWorkspaceSnapshot['results']={},sources:Record<string,string>={},fileSources:Record<string,string>={},generated:SyWorkspaceSnapshot['generated']={};
@@ -389,7 +393,9 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  const requiresFormat15=Boolean(payloadRequiresFormat15||pesCapture?.requiresFormat15||input.pes===undefined&&input.retainedPes?.requiresFormat15||
    advancedAsset&&advancedFormat15||preservingUnreadable&&unreadableRequiresFormat15||requiresProjectFormat15([registry,shell,input.ui]));
  const requiresFormat16=Boolean(pesCapture?.requiresFormat16||input.pes===undefined&&input.retainedPes?.requiresFormat16||requiresProjectFormat16([registry,shell,input.ui]));
- const computedFormat=advancedAsset&&advancedFormat18?18:advancedAsset&&advancedFormat17?17:requiresFormat16?16:requiresFormat15?15:requiresFormat14?14:requiresFormat13?13:requiresFormat12?12:requiresFormat11?11:requiresFormat10?10:pesAsset?9:requiresFormat8?8:requiresRecoveryFormat7(registry,shell)?7:requiresFormat6?6:
+ const pesRequiresFormat19=Boolean(pesCapture?.requiresFormat19||input.pes===undefined&&input.retainedPes?.requiresFormat19);
+ const requiresFormat19=pesRequiresFormat19||resultRequiresFormat19||preservingUnreadable&&unreadableRequiresFormat19;
+ const computedFormat=requiresFormat19?19:advancedAsset&&advancedFormat18?18:advancedAsset&&advancedFormat17?17:requiresFormat16?16:requiresFormat15?15:requiresFormat14?14:requiresFormat13?13:requiresFormat12?12:requiresFormat11?11:requiresFormat10?10:pesAsset?9:requiresFormat8?8:requiresRecoveryFormat7(registry,shell)?7:requiresFormat6?6:
    requiresFormat5||advancedAsset&&advancedFormat5?5:advancedAsset&&advancedFormat4?4:requiresFormat3?3:advancedAsset&&advancedFormat2?2:undefined;
  const retainedFormat=retained&&recovery?.current.formatVersion;
  const requiredProjectFormatVersion=retainedFormat&&retainedFormat>(computedFormat??1)
@@ -401,7 +407,7 @@ export async function captureWorkspaceProject(input:{registry:WorkspaceRegistry;
  pendingCaptures.set(data,()=>{
   for(const publish of afterCommit)publish();
   pesCapture?.commit?.();
-  if(input.retainedPes&&(!input.reuse||input.retainedPes.assetId!==pesAsset))input.retainedPes.rebind(pesAsset,pesAssetReferences,requiresFormat11,requiresFormat12,requiresFormat13,requiresFormat15,requiresFormat16);
+  if(input.retainedPes&&(!input.reuse||input.retainedPes.assetId!==pesAsset))input.retainedPes.rebind(pesAsset,pesAssetReferences,requiresFormat11,requiresFormat12,requiresFormat13,requiresFormat15,requiresFormat16,pesRequiresFormat19);
   if(historyArchives)historyOwner?.commit(historyArchives);
   lastImportedSources=importedSources;lastAdvancedAsset=advancedAsset;lastAdvancedReferences=advancedReferences;
   lastAdvancedRequiresFormat2=advancedFormat2;lastAdvancedRequiresFormat4=advancedFormat4;
@@ -461,7 +467,7 @@ export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetRe
   throw Error('项目恢复状态缺少格式 7 写入保护声明，原项目未改变。');
  if((data.requiredProjectFormatVersion??0)<8&&workspaceRequiresXtbFormat8(registry,data.shell,data.ui))
   throw Error('xTB配置或模型来源缺少格式 8 写入保护声明，原项目未改变。');
- const pesAsset=data.pesAsset?new WorkspacePesAsset(data.pesAsset,reader,data.pesAssetReferences,(data.requiredProjectFormatVersion??0)>=11,(data.requiredProjectFormatVersion??0)>=12,(data.requiredProjectFormatVersion??0)>=13,(data.requiredProjectFormatVersion??0)>=15,(data.requiredProjectFormatVersion??0)>=16):undefined;
+ const pesAsset=data.pesAsset?new WorkspacePesAsset(data.pesAsset,reader,data.pesAssetReferences,(data.requiredProjectFormatVersion??0)>=11,(data.requiredProjectFormatVersion??0)>=12,(data.requiredProjectFormatVersion??0)>=13,(data.requiredProjectFormatVersion??0)>=15,(data.requiredProjectFormatVersion??0)>=16,(data.requiredProjectFormatVersion??0)>=19):undefined;
  // These validations must finish before the Shell releases or replaces its
  // current graph. The prepared owner functions only publish validated data.
  if(!record(data.ui?.values))throw Error('项目界面状态版本或数据无效。');
@@ -488,6 +494,12 @@ export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetRe
  const decodedResults=new Map<string,TrajectoryResult>();
  let foundUnprotectedFormat8=false;
  let foundUnprotectedFormat15=false;
+ let foundUnprotectedFormat19=false;
+ const checkResultFormat19=(required:boolean)=>{
+  if(!required||(data.requiredProjectFormatVersion??0)>=19)return;
+  foundUnprotectedFormat19=true;
+  throw Error('项目二进制数值或轨迹缺少格式 19 写入保护声明，原资产引用已保留。');
+ };
  const checkResultFormat15=(dto:unknown)=>{
   if(!requiresProjectFormat15(dto)||(data.requiredProjectFormatVersion??0)>=15)return;
   foundUnprotectedFormat15=true;
@@ -498,11 +510,11 @@ export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetRe
   foundUnprotectedFormat8=true;
   throw Error('xTB结果或构象显示缺少格式 8 写入保护声明，原资产引用已保留。');
  };
- const loadResult=async(id:string)=>{const cached=decodedResults.get(id);if(cached)return cached;const dto=await read<TrajectoryResultSnapshot>(id);checkResultFormat15(dto);checkResultFormat8(trajectorySnapshotRequiresFormat8(dto));const result=decodeResult(dto,reader);if(conformerDisplayRestorationRequiresFormat6((result as TrajectoryResult&{displayRestoration?:ConformerDisplayRestoration}).displayRestoration)&&(data.requiredProjectFormatVersion??0)<6)throw Error("分类型构象显示缺少项目写入保护声明。");if(conformerDisplayRestorationRequiresFormat5(result)&&(data.requiredProjectFormatVersion??0)<5)throw Error('构象显示恢复缺少项目写入保护声明。');resultCache.set(result,dto);decodedResults.set(id,result);return result;};
- const loadSource=async(id:string)=>{const dto=await read<PostprocessDocumentSnapshot>(id);checkResultFormat15(dto);if(dto.schema===4&&(data.requiredProjectFormatVersion??0)<3)throw Error('科学来源角色缺少项目写入保护声明。');checkResultFormat8(postprocessSnapshotRequiresFormat8(dto));const result=decodePostprocessDocument(dto,reader);sourceCache.set(result,dto);sourceCompanionVersions.set(result,projectCompanionVersion(result.output));sourceAssociationVersions.set(result,getPostprocessTaskAssociationVersion(result));sourceFileVersions.set(result,postprocessFileDocumentVersion(result));return result;};
+ const loadResult=async(id:string)=>{const cached=decodedResults.get(id);if(cached)return cached;const dto=await read<TrajectoryResultSnapshot>(id);checkResultFormat15(dto);checkResultFormat8(trajectorySnapshotRequiresFormat8(dto));checkResultFormat19(trajectorySnapshotRequiresFormat19(dto));const result=decodeResult(dto,reader,await prepareProjectResultNumerics([dto],reader));if(conformerDisplayRestorationRequiresFormat6((result as TrajectoryResult&{displayRestoration?:ConformerDisplayRestoration}).displayRestoration)&&(data.requiredProjectFormatVersion??0)<6)throw Error("分类型构象显示缺少项目写入保护声明。");if(conformerDisplayRestorationRequiresFormat5(result)&&(data.requiredProjectFormatVersion??0)<5)throw Error('构象显示恢复缺少项目写入保护声明。');resultCache.set(result,dto);decodedResults.set(id,result);return result;};
+ const loadSource=async(id:string)=>{const dto=await read<PostprocessDocumentSnapshot>(id);checkResultFormat15(dto);if(dto.schema===4&&(data.requiredProjectFormatVersion??0)<3)throw Error('科学来源角色缺少项目写入保护声明。');checkResultFormat8(postprocessSnapshotRequiresFormat8(dto));checkResultFormat19(postprocessSnapshotRequiresFormat19(dto));const result=decodePostprocessDocument(dto,reader,await prepareProjectPostprocessNumerics(dto,reader));sourceCache.set(result,dto);sourceCompanionVersions.set(result,projectCompanionVersion(result.output));sourceAssociationVersions.set(result,getPostprocessTaskAssociationVersion(result));sourceFileVersions.set(result,postprocessFileDocumentVersion(result));return result;};
  for(const [id,row]of Object.entries(data.results)){const target:{result?:TrajectoryResult;legacyResult?:TrajectoryResult;analysisBinding?:{id:string;result:TrajectoryResult}}={};for(const kind of ['result','legacyResult','analysisBinding']as const){const asset=kind==='analysisBinding'?row.analysisBinding?.result:row[kind];if(!asset)continue;try{const value=await loadResult(asset);if(kind==='analysisBinding')target.analysisBinding={id:row.analysisBinding!.id,result:value};else target[kind]=value;}catch(error){missingResults.set(keyFor(id),row);issues.push({assetId:asset,message:error instanceof Error?error.message:String(error)});}}results.set(id,target);}
  for(const [id,asset]of Object.entries(data.sources))try{sources[id]=await loadSource(asset);}catch(error){missingSources.set(keyFor(id),asset);issues.push({assetId:asset,message:error instanceof Error?error.message:String(error)});}
- for(const [id,asset]of Object.entries(data.fileSources??{}))try{const dto=await read<PostprocessFileDocumentSnapshot>(asset);checkResultFormat15(dto);if(dto.schema!==4||!('kind'in dto)||dto.kind!=='scientific-file')throw Error('文件级来源索引格式不一致。');checkResultFormat8(postprocessSnapshotRequiresFormat8(dto));const source=decodePostprocessFileDocument(dto,reader);if(!isScientificFileDocument(source)||source.id!==id)throw Error('文件级来源索引身份不一致。');fileSourceCache.set(source,dto);fileSourceVersions.set(source,postprocessFileDocumentVersion(source));fileSources[id]=source;}catch(error){missingFileSources.set(id,asset);issues.push({assetId:asset,message:error instanceof Error?error.message:String(error)});}
+ for(const [id,asset]of Object.entries(data.fileSources??{}))try{const dto=await read<PostprocessFileDocumentSnapshot>(asset);checkResultFormat15(dto);if(dto.schema!==4||!('kind'in dto)||dto.kind!=='scientific-file')throw Error('文件级来源索引格式不一致。');checkResultFormat8(postprocessSnapshotRequiresFormat8(dto));checkResultFormat19(postprocessSnapshotRequiresFormat19(dto));const source=decodePostprocessFileDocument(dto,reader,await prepareProjectPostprocessNumerics(dto,reader));if(!isScientificFileDocument(source)||source.id!==id)throw Error('文件级来源索引身份不一致。');fileSourceCache.set(source,dto);fileSourceVersions.set(source,postprocessFileDocumentVersion(source));fileSources[id]=source;}catch(error){missingFileSources.set(id,asset);issues.push({assetId:asset,message:error instanceof Error?error.message:String(error)});}
  for(const [id,row]of Object.entries(data.generated))try{generated[id]={document:await loadSource(row.assetId),ownerId:row.ownerId,bindingId:row.bindingId};}catch(error){missingGenerated.set(id,row);issues.push({assetId:row.assetId,message:error instanceof Error?error.message:String(error)});}
  let publication:Promise<void>|undefined;
  const boundArchives=new WeakSet<WorkspaceRegistry>();
@@ -518,6 +530,7 @@ export async function decodeWorkspaceProject(value:unknown,reader:ProjectAssetRe
   unreadableRequiresFormat5=(data.requiredProjectFormatVersion??0)>=5;unreadableRequiresFormat6=(data.requiredProjectFormatVersion??0)>=6;
   unreadableRequiresFormat8=foundUnprotectedFormat8||(data.requiredProjectFormatVersion??0)>=8;
   unreadableRequiresFormat15=foundUnprotectedFormat15||(data.requiredProjectFormatVersion??0)>=15;
+  unreadableRequiresFormat19=foundUnprotectedFormat19||(data.requiredProjectFormatVersion??0)>=19;
   lastAdvancedAsset=data.advancedAsset;lastAdvancedRequiresFormat2=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=2);lastAdvancedRequiresFormat4=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=4);lastAdvancedRequiresFormat5=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=5);lastAdvancedRequiresFormat6=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=6);lastAdvancedReferences=data.advancedAsset?(data.assetReferences??[]).filter(id=>id!==data.pesAsset&&!archiveIds.has(id)):[];lastImportedSources=data.importedSources;
   lastAdvancedRequiresFormat8=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=8);
   lastAdvancedRequiresFormat10=Boolean(data.advancedAsset&&(data.requiredProjectFormatVersion??0)>=10);

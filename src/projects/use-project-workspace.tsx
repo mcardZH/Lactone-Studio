@@ -22,6 +22,7 @@ export function createProjectReaderRouter(invoke:SyProjectInvoke,sessionId:strin
  const track=<T,>(pending:Promise<T>)=>{active.add(pending);void pending.then(()=>active.delete(pending),()=>active.delete(pending));return pending;};
  return{reader:{
   read:(assetId:string)=>{const cached=verifiedBatchBytes.get(assetId);if(cached){verifiedBatchBytes.delete(assetId);verifiedBatchBytes.set(assetId,cached);return Promise.resolve(cached.slice());}return track(createProjectAssetIO(selected,'reader',invoke).reader.read(assetId));},
+  readRange:(assetId:string,offset:number,length:number,expectedBytes:number)=>track(createProjectAssetIO(selected,'reader',invoke).reader.readRange!(assetId,offset,length,expectedBytes)),
   // One-pass consumers already keep the verified, decoded science. Hand them
   // the fresh batch buffer without making a second retained bytes cache.
   readManyTransient:(assetIds:readonly string[])=>track(createProjectAssetIO(selected,'reader',invoke).reader.readMany!(assetIds)),
@@ -46,7 +47,7 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
  const saving=useRef(false),savedRevision=useRef<string|null>(p.revision),automaticRevision=useRef<string|null>(null),alive=useRef(true),baselinePending=useRef(false),claimed=useRef(false),claiming=useRef(false);
  const formatFloor=useRef<ProjectFormatVersion>(1),writeBlocked=useRef(false);
  const [,setBaselineEpoch]=useState(0),routers=useRef(new Map<string,ReturnType<typeof createProjectReaderRouter>>()),closePending=useRef<Promise<boolean>|null>(null);
- const [closeChoice,setCloseChoice]=useState<{force:boolean;notice?:string;clean:boolean;resolve(value:'save'|'discard'|'cancel'):void}|null>(null);
+ const [closeChoice,setCloseChoice]=useState<{force:boolean;notice?:string;clean:boolean;stopOwnedWork:boolean;stopping?:boolean;resolve(value:'save'|'discard'|'cancel'):void}|null>(null);
  const [nameChoice,setNameChoice]=useState<{name:string;location?:{locationToken:string;label:string};choosing:boolean;resolve(value:{name:string;locationToken:string}|null):void}|null>(null);
  const dirty=savedRevision.current!==p.revision;
  useLayoutEffect(()=>{if(baselinePending.current&&!p.restoring){baselinePending.current=false;savedRevision.current=p.revision;automaticRevision.current=p.revision;setBaselineEpoch(value=>value+1);}},[project,p.revision,p.restoring]);
@@ -54,6 +55,12 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
  const save=useCallback(async(asNew=false,automatic=false,providedTarget?:{name:string;locationToken:string},throwOnError=false)=>{
   if(!invoke||saving.current||claiming.current||current.current.restoring||baselinePending.current){if(throwOnError)throw Object.assign(new Error('项目正在保存或载入，请在当前操作完成后再保存。'),{code:'SY_SAVE_BUSY'});return false;}
   if(writeBlocked.current||live.current?.writeProtection){if(!automatic){current.current.onError('项目恢复点由较新版本保存，当前项目只读；未覆盖保存或回收资产。');setStatus('项目只读');}if(throwOnError)throw Object.assign(new Error('项目由较新版本保存，当前项目只读。'),{code:'SY_SCHEMA_UNSUPPORTED'});return false;}
+  if(live.current?.readOnly&&!asNew){
+   const message='原项目有写入保护。可用“另存为”保存副本。';
+   if(!automatic){current.current.onError(message);setStatus('项目只读');}
+   if(throwOnError)throw Object.assign(new Error(message),{code:'SY_READ_ONLY'});
+   return false;
+  }
   if(automatic&&(!live.current?.manifest||automaticRevision.current===current.current.revision))return true;
   saving.current=true;setBusy(true);setStatus(automatic?'自动保存项目…':'保存项目…');
   const previous=live.current;let selected=previous,transactionId:string|undefined;
@@ -106,7 +113,7 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
    for(const router of routers.current.values())router.clearBatchCache();
    await current.current.restore(value.state,readerFor(value));
    formatFloor.current=floor;writeBlocked.current=!!value.writeProtection;live.current=value;
-   baselinePending.current=true;setProject(value);setStatus('项目已重新打开');
+   baselinePending.current=true;setProject(value);setStatus(value.readOnly?'项目已只读重开':'项目已重新打开');
    return value;
   }finally{claiming.current=false;if(alive.current)setBusy(false);}
  },[invoke,readerFor,save]);
@@ -123,7 +130,7 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
     await current.current.restore(value.state,readerFor(value));
     formatFloor.current=restoredFormatFloor;writeBlocked.current=!!value.writeProtection;live.current=value;
     baselinePending.current=!value.recovered;savedRevision.current=value.recovered?null:savedRevision.current;
-    setProject(value);setStatus(value.writeProtection?'项目只读：恢复点需要较新版本':value.recovered?'已恢复项目副本，请保存':'项目已打开');
+    setProject(value);setStatus(value.writeProtection?'项目只读：恢复点需要较新版本':value.readOnly?'项目只读：可另存为副本':value.recovered?'已恢复项目副本，请保存':'项目已打开');
    }catch(error){
     const message=(error instanceof Error?error.message:String(error)).slice(0,2000);
     if(openRequestId)await invokeProject(invoke,{action:'settle-open',sessionId:value.sessionId,openRequestId,status:'failed',message}).catch(()=>{});
@@ -141,14 +148,20 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
   const stopNative=invoke?window.sciyueDesktop?.onProjectAction?.(action=>listener(new CustomEvent('sciyue-project-action',{detail:action}))):undefined;
   const key=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'&&!event.altKey){event.preventDefault();event.stopImmediatePropagation();void save(event.shiftKey);}};
   if(invoke)window.addEventListener('keydown',key,true);return()=>{stopNative?.();window.removeEventListener('sciyue-project-action',listener);window.removeEventListener('keydown',key,true);};},[invoke,save]);
- const prepareClose=useCallback((force=false,notice?:string)=>{
+ const prepareClose=useCallback((force=false,notice?:string,stopOwnedWork?:()=>Promise<void>)=>{
   if(closePending.current)return closePending.current;
   const pending=(async()=>{
   if(saving.current)throw new Error('项目正在保存，请完成后关闭。');
   const clean=projectCloseSaveIsCurrent(savedRevision.current,current.current.revision);
   if(!force&&clean&&!notice)return true;
-  const choice=await new Promise<'save'|'discard'|'cancel'>(resolve=>setCloseChoice({force,notice,clean,resolve}));setCloseChoice(null);
-  if(choice==='cancel')return false;if(choice==='save'){if(!await save())return false;if(!projectCloseSaveIsCurrent(savedRevision.current,current.current.revision)){current.current.onError('保存期间项目又有修改，已保留窗口；请检查后重新关闭。');return false;}return true;}return true;})();
+  const choice=await new Promise<'save'|'discard'|'cancel'>(resolve=>setCloseChoice({force,notice,clean,stopOwnedWork:!!stopOwnedWork,resolve}));
+  try {
+   if(choice!=='cancel'&&stopOwnedWork){
+    setCloseChoice(previous=>previous?{...previous,stopping:true}:null);
+    await stopOwnedWork();
+   }
+  } finally { setCloseChoice(null); }
+  if(choice==='cancel')return false;if(choice==='save'){if(!await save(!!live.current?.readOnly))return false;if(!projectCloseSaveIsCurrent(savedRevision.current,current.current.revision)){current.current.onError('保存期间项目又有修改，已保留窗口；请检查后重新关闭。');return false;}return true;}return true;})();
   closePending.current=pending;void pending.finally(()=>{if(closePending.current===pending)closePending.current=null;}).catch(()=>{});return pending;
  },[save]);
  const chooseLocation=async()=>{if(!invoke||!nameChoice||nameChoice.choosing)return;setNameChoice(value=>value?{...value,choosing:true}:value);try{const value=await invokeProject(invoke,{action:'choose-location'});if(!('cancelled'in value))setNameChoice(previous=>previous?{...previous,location:value}:previous);}catch(error){current.current.onError(error instanceof Error?error.message:String(error));}finally{setNameChoice(value=>value?{...value,choosing:false}:value);}};
@@ -175,15 +188,15 @@ export function useProjectWorkspace(p:ProjectWorkspacePorts){
           onClick={()=>nameChoice.resolve({name:nameChoice.name,locationToken:nameChoice.location!.locationToken})}>保存项目</InputSettingsAction>
       </InputSettingsRow>
     </InputSettingsStack></InputSettingsLayout>
-  </DialogShell>:closeChoice?<DialogShell aria-label="项目关闭确认" className="modal workspace-import-choice" backdropClassName="modal-backdrop" onCancel={()=>closeChoice.resolve('cancel')}>
+  </DialogShell>:closeChoice?<DialogShell aria-label="项目关闭确认" className="modal workspace-import-choice" backdropClassName="modal-backdrop" onCancel={()=>{if(!closeChoice.stopping)closeChoice.resolve('cancel');}}>
     <header><h2>{closeChoice.force?'关闭项目':closeChoice.clean?'关闭窗口':'项目有未保存的修改'}</h2></header>
     <InputSettingsLayout><InputSettingsStack>
-      {closeChoice.force?<p>关闭将结束本项目任务。</p>:null}
+      {closeChoice.stopping?<p role="status">正在停止本项目任务，等待结束回执。</p>:closeChoice.force?<p>关闭将停止本项目正在运行的任务。</p>:null}
       {closeChoice.notice?<p>{closeChoice.notice}</p>:null}
       <InputSettingsRow variant="actions">
-        <InputSettingsAction onClick={()=>closeChoice.resolve('cancel')}>取消</InputSettingsAction>
-        <InputSettingsAction onClick={()=>closeChoice.resolve('discard')}>不保存并关闭</InputSettingsAction>
-        <InputSettingsAction variant="primary" onClick={()=>closeChoice.resolve('save')}>保存并关闭</InputSettingsAction>
+        <InputSettingsAction disabled={closeChoice.stopping} onClick={()=>closeChoice.resolve('cancel')}>取消</InputSettingsAction>
+        <InputSettingsAction disabled={closeChoice.stopping} onClick={()=>closeChoice.resolve('discard')}>{closeChoice.stopOwnedWork?'停止并关闭':'不保存并关闭'}</InputSettingsAction>
+        {(!closeChoice.stopOwnedWork||!closeChoice.clean)&&<InputSettingsAction variant="primary" disabled={closeChoice.stopping} onClick={()=>closeChoice.resolve('save')}>{closeChoice.stopOwnedWork?'停止、保存并关闭':'保存并关闭'}</InputSettingsAction>}
       </InputSettingsRow>
     </InputSettingsStack></InputSettingsLayout>
   </DialogShell>:null};

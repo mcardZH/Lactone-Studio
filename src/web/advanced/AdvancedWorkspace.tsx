@@ -104,12 +104,16 @@ export interface AdvancedWorkspaceProps {
  onError(message:string):void;
 }
 /** Progress-only snapshots do not change a fixed result collection. */
+const conformerCollectionRevisions = new WeakMap<AdvancedTaskRecord,string>();
 export function conformerCollectionRevision(task:AdvancedTaskRecord|undefined):string {
  if(!task)return '';
+ const retained=conformerCollectionRevisions.get(task);if(retained!==undefined)return retained;
  const workflow=task.conformerWorkflow;
- return JSON.stringify([task.id,workflow?.candidateSet?.id,workflow?.candidateSet?.producerRunId,workflow?.candidateSet?.revision,workflow?.candidateSet?.valid,
+ const revision=JSON.stringify([task.id,workflow?.candidateSet?.id,workflow?.candidateSet?.producerRunId,workflow?.candidateSet?.revision,workflow?.candidateSet?.valid,
   workflow?.candidateSet?.frameIds,workflow?.stages.map(stage=>[stage.stageId,stage.producerRunId,stage.stageRunId,stage.collectionId,stage.revision,stage.valid,stage.completed,stage.representativeFrameIds,stage.resultFrameIds]),
   task.runs.flatMap(run=>run.stages.flatMap(stage=>stage.results.filter(result=>result.status==='unconverged').map(result=>result.frameId)))]);
+ if(Object.isFrozen(task))conformerCollectionRevisions.set(task,revision);
+ return revision;
 }
 /** Activate only this run's published nonempty result, including a real stop.
  * An empty optimization stage must not redirect to a different stage/run. */

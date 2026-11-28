@@ -87,6 +87,10 @@ async function prepareReceipt(artifacts, raw, image, name) {
     ...(raw.error.data.completion ? { completion: raw.error.data.completion } : {}),
     ...(raw.error.data.recovery ? { recovery: raw.error.data.recovery } : {}),
   };
+  for (const key of ['next', 'recovery']) {
+    const action = raw.result?.[key];
+    if (typeof action?.tool === 'string' && Buffer.byteLength(JSON.stringify(action)) < inlineBytes) compact.result[key] = action;
+  }
   receipt = { ...compact, artifact, fullReceipt: `Use ${readName} and the exact artifactRef when more fields are needed.` };
   return { receipt, text: JSON.stringify(receipt), image };
 }

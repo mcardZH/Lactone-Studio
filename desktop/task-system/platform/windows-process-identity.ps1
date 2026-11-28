@@ -15,6 +15,10 @@ try {
   Add-Type -LiteralPath (Join-Path $PSScriptRoot 'windows-process-identity.cs')
   $machine = (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name MachineGuid).MachineGuid
   if($request.action -eq 'host') { @{ hostId=$machine; bootId=[ESProcessOwner]::BootId() } | ConvertTo-Json -Compress; exit 0 }
+  if($request.action -eq 'writer-owners') {
+    $processes=@($request.pids | ForEach-Object { [ESProcessOwner]::InspectWriter([uint32]$_) })
+    @{hostId=$machine;computerName=[Environment]::MachineName;bootId=[ESProcessOwner]::BootId();processes=$processes} | ConvertTo-Json -Depth 8 -Compress; exit 0
+  }
   if($request.action -eq 'inspect') { $result=[ESProcessOwner]::Inspect([uint32]$request.pid); $result['hostId']=$machine; $result | ConvertTo-Json -Depth 24 -Compress; exit 0 }
   if($request.action -eq 'owned-windows') {
     $expected=$request.identity

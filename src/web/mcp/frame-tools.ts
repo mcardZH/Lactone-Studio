@@ -30,10 +30,13 @@ export interface FrameOwner {
   currentIndex?: number;
   outputJob?: AdvancedFrameRef['outputJob'];
   selectOutputJob?: boolean;
+  retainedPesSeries?: boolean;
   advancedFrame?(index: number): AdvancedFrameSource | undefined;
 }
 
 export interface FrameToolContext {
+  referenceEpoch?(): string | number;
+  frameReferences?: FrameReferences;
   owner(targetId?: string, collectionId?: string): FrameOwner;
   prepareOwner?(targetId?: string, collectionId?: string, signal?: AbortSignal):
     { targetId: string; collectionId: string } | Promise<{ targetId: string; collectionId: string }> | void;
@@ -52,6 +55,47 @@ type FrameIdentity = readonly [
   outputJobRevision: string | null, outputJobIndex: number | null, collectionRevision: string | null,
   frameIdentity: string | null,
 ];
+
+const frameReferencePrefix = 'esfr-';
+
+interface FrameReferences {
+  issue(identity: FrameIdentity): string;
+  lookup(reference: string): FrameIdentity | undefined;
+}
+
+function createFrameReferences(getEpoch: () => string | number | undefined): FrameReferences {
+  let epoch: string | number | undefined;
+  let namespace: string | undefined;
+  let sequence = 0;
+  const identities = new Map<string, FrameIdentity>();
+  const references = new Map<string, string>();
+  function synchronize() {
+    const current = getEpoch();
+    if (current === epoch) return;
+    epoch = current;
+    namespace = undefined;
+    sequence = 0;
+    identities.clear();
+    references.clear();
+  }
+  return {
+    issue(identity) {
+      synchronize();
+      const key = JSON.stringify(identity);
+      const previous = references.get(key);
+      if (previous) return previous;
+      namespace ??= crypto.randomUUID().replaceAll('-', '');
+      const reference = frameReferencePrefix + namespace + '-' + (++sequence).toString(36);
+      identities.set(reference, identity);
+      references.set(key, reference);
+      return reference;
+    },
+    lookup(reference) {
+      synchronize();
+      return identities.get(reference);
+    },
+  };
+}
 
 function identity(owner: FrameOwner, index?: number): FrameIdentity {
   const { result, outputJob, collection } = owner;
@@ -85,12 +129,13 @@ function rangeOf(value: unknown): TrajectoryRange {
   return { start, end, stride };
 }
 
-function descriptor(owner: FrameOwner, index?: number) {
+function descriptor(owner: FrameOwner, index?: number, references?: FrameReferences) {
   const result = owner.result, frame = index === undefined ? undefined : result?.frames[index];
   const advanced = index === undefined ? undefined : owner.advancedFrame?.(index)?.ref;
   const pes = frame?.pesOrigin;
+  const frameIdentity = identity(owner, index);
   return {
-    frameRef: JSON.stringify(identity(owner, index)), targetId: owner.targetId,
+    frameRef: references?.issue(frameIdentity) ?? JSON.stringify(frameIdentity), targetId: owner.targetId,
     documentId: owner.document.id, documentEpoch: owner.documentEpoch, revision: owner.document.revision,
     collectionId: owner.collection?.collectionId ?? result?.id ?? null, collectionRevision: owner.collection?.revision ?? null,
     index: index ?? null, frameNumber: index === undefined ? null : index + 1,
@@ -137,22 +182,25 @@ function selectedIndices(owner: FrameOwner, args: Record<string, unknown>): numb
   const stage = stageId && attachTrajectoryStages(result).stages?.find(value => value.id === stageId);
   const stageFrames = stageId ? stage ? stage.frameIndices : result.frames.flatMap((frame, index) => frame.stageId === stageId ? [index] : []) : undefined;
   if (stageId && !stageFrames?.length) throw Error('当前来源没有指定阶段。');
-  if ([args.indices, args.range, args.frameIds].filter(value => value !== undefined).length > 1)
-    throw Error('请使用 indices、range 或 frameIds 指定帧。');
-  let indices: number[];
+  const selectors:number[][]=[];
   const seriesId = optionalText(args.seriesId, 'seriesId');
   if (args.frameIds !== undefined) {
     if (!Array.isArray(args.frameIds)) throw Error('frameIds 需为原生帧引用数组。');
-    indices = indicesForFrameIds(owner, args.frameIds.map(id => nonempty(id, 'frameIds')), seriesId);
-  } else if (args.indices !== undefined) {
+    selectors.push(indicesForFrameIds(owner, args.frameIds.map(id => nonempty(id, 'frameIds')), seriesId));
+  }
+  if (args.indices !== undefined) {
     if (!Array.isArray(args.indices)) throw Error('indices 需为帧索引数组。');
-    indices = args.indices.map(index => frameIndex(index, 'indices'));
-  } else if (args.range !== undefined) {
+    selectors.push(args.indices.map(index => frameIndex(index, 'indices')));
+  }
+  if (args.range !== undefined) {
     const { start, end, stride } = rangeOf(args.range);
     if (!result.frames[start] || !result.frames[end]) throw Error('范围端点超出当前集合。');
     const direction = start <= end ? 1 : -1;
-    indices = Array.from({ length: Math.floor(Math.abs(end - start) / stride) + 1 }, (_, position) => start + position * stride * direction);
-  } else indices = stageFrames ? [...stageFrames] : result.frames.map((_frame, index) => index);
+    selectors.push(Array.from({ length: Math.floor(Math.abs(end - start) / stride) + 1 }, (_, position) => start + position * stride * direction));
+  }
+  let indices = selectors[0] ?? (stageFrames ? [...stageFrames] : result.frames.map((_frame, index) => index));
+  if(selectors.slice(1).some(other=>other.length!==indices.length||other.some((index,i)=>index!==indices[i])))
+    throw toolError('frame_id_conflict','提供的帧选择必须指向同一组有序科学帧。',{targetId:owner.targetId,collectionId:owner.collection?.collectionId});
   if (indices.some(index => !result.frames[index]) || new Set(indices).size !== indices.length)
     throw Error('帧索引须存在且不得重复。');
   if (stageFrames && (args.indices !== undefined || args.range !== undefined || args.frameIds !== undefined)) {
@@ -167,7 +215,7 @@ function selectedIndices(owner: FrameOwner, args: Record<string, unknown>): numb
 }
 
 const units = ['hartree', 'eV', 'kJ/mol', 'kcal/mol'] as const;
-function selection(owner: FrameOwner, args: Record<string, unknown>) {
+function selection(owner: FrameOwner, args: Record<string, unknown>, references?: FrameReferences) {
   const indices = selectedIndices(owner, args);
   const offset=args.offset===undefined?0:frameIndex(args.offset,'offset');
   const limit=args.limit===undefined?undefined:frameIndex(args.limit,'limit');
@@ -179,7 +227,7 @@ function selection(owner: FrameOwner, args: Record<string, unknown>) {
   const energySort = requested === 'energy-ascending' || requested === 'energy-descending';
   if (!owner.result) {
     const available = owner.document.draft.structure.atoms.length > 0;
-    return { frames: !energyFilter && available && offset===0 ? [descriptor(owner)] : [], total:!energyFilter&&available?1:0, nextOffset:null, excludedMissingEnergy: energyFilter && available ? 1 : 0 };
+    return { frames: !energyFilter && available && offset===0 ? [descriptor(owner, undefined, references)] : [], total:!energyFilter&&available?1:0, nextOffset:null, excludedMissingEnergy: energyFilter && available ? 1 : 0 };
   }
   let ranked = indices.map(index => ({ index, energy: null as number | null }));
   let excludedMissingEnergy = 0;
@@ -206,7 +254,7 @@ function selection(owner: FrameOwner, args: Record<string, unknown>) {
       : (a.energy - b.energy) * (requested === 'energy-descending' ? -1 : 1));
   }
   const selected=ranked.slice(offset,limit===undefined?undefined:offset+limit);
-  return { frames: selected.map(({ index }) => descriptor(owner, index)), total:ranked.length, nextOffset:offset+selected.length<ranked.length?offset+selected.length:null, excludedMissingEnergy };
+  return { frames: selected.map(({ index }) => descriptor(owner, index, references)), total:ranked.length, nextOffset:offset+selected.length<ranked.length?offset+selected.length:null, excludedMissingEnergy };
 }
 
 function stageSubset(result: TrajectoryResult, indices: readonly number[]) {
@@ -273,16 +321,23 @@ function frameSelection(targetId: string, collectionId?: string, index?: number)
 function invalidFrameRef(reason: string, parsed?: unknown[]) {
   const targetId = typeof parsed?.[1] === 'string' && parsed[1] ? parsed[1] : undefined;
   const collectionId = typeof parsed?.[2] === 'string' && parsed[2] ? parsed[2] : undefined;
-  return toolError('invalid_frame_ref', '帧引用的格式有误，请原样使用工具返回的完整 frameRef。', {
+  const message = reason === 'reference-unavailable' ? '这个窗口没有该帧引用，请从原集合重新选择所需帧。'
+    : '帧引用的格式有误，请原样使用工具返回的 frameRef。';
+  return toolError('invalid_frame_ref', message, {
     reason, committed: false, recovery: targetId ? frameSelection(targetId, collectionId) : { tool: 'es_targets', arguments: { kind: 'collection' } },
   });
 }
 export function isFrameReference(ref: string) {
-  return /^\s*\[\s*"es-frame(?:-v\d+)?"/.test(ref);
+  return ref.startsWith(frameReferencePrefix) || /^\s*\[\s*"es-frame(?:-v\d+)?"/.test(ref);
 }
-function frameReference(ref: string) {
+function frameReference(context: FrameToolContext, ref: string) {
   let parsed: unknown;
-  try { parsed = JSON.parse(ref); } catch { throw invalidFrameRef('invalid-json'); }
+  if (ref.startsWith(frameReferencePrefix)) {
+    parsed = context.frameReferences?.lookup(ref);
+    if (!parsed) throw invalidFrameRef('reference-unavailable');
+  } else {
+    try { parsed = JSON.parse(ref); } catch { throw invalidFrameRef('invalid-json'); }
+  }
   if (!Array.isArray(parsed)) throw invalidFrameRef('invalid-shape');
   const stringAt = (position: number, nullable = false) => nullable && parsed[position] === null ||
     typeof parsed[position] === 'string' && Boolean(parsed[position].trim());
@@ -302,12 +357,12 @@ function frameReference(ref: string) {
 
 async function prepareFrameReference(context: FrameToolContext, ref: string, signal?: AbortSignal) {
   if (!context.prepareOwner) return;
-  const { targetId, collectionId } = frameReference(ref);
+  const { targetId, collectionId } = frameReference(context, ref);
   await context.prepareOwner(targetId, collectionId, signal);
 }
 
 function rawFrame(context: FrameToolContext, ref: string) {
-  const { targetId, collectionId, index, parsed } = frameReference(ref);
+  const { targetId, collectionId, index, parsed } = frameReference(context, ref);
   function conflict(reason: string, fields?: string[], current?: FrameOwner) {
     const available = current?.result && index !== undefined && current.result.frames[index];
     return toolError('frame_ref_conflict', '选定帧的文档、来源或集合已经变化，请重新选择。', {
@@ -333,13 +388,39 @@ function rawFrame(context: FrameToolContext, ref: string) {
   return { owner, index, guard };
 }
 
-function ownerArguments(args: Record<string, unknown>) {
-  if (args.targetId !== undefined && args.targetRef !== undefined) throw Error('请用 targetId 或 targetRef 指定轨迹归属。');
-  return { targetId: optionalText(args.targetId ?? args.targetRef, 'targetRef'), collectionId: optionalText(args.collectionId, 'collectionId') };
+export function isStageCollectionId(ref: string) {
+  return !ref.startsWith('[') && ref.includes(':stage:');
 }
-function argsOwner(context: FrameToolContext, args: Record<string, unknown>) {
-  const { targetId, collectionId } = ownerArguments(args);
-  return context.owner(targetId, collectionId);
+
+function ownerArguments(args: Record<string, unknown>) {
+  const collectionRef = optionalText(args.collectionRef, 'collectionRef');
+  const targetRef = optionalText(args.targetRef, 'targetRef');
+  const targetId = optionalText(args.targetId, 'targetId');
+  const collectionId = optionalText(args.collectionId, 'collectionId');
+  if (collectionRef && isStageCollectionId(collectionRef) && (targetRef || targetId)) {
+    if (collectionId && collectionId !== collectionRef)
+      throw toolError('collection_conflict', 'collectionRef 和 collectionId 指向不同集合。', { collectionRef, collectionId });
+    return { targetId: targetRef ?? targetId, refs: [...new Set([targetRef, targetId, collectionRef].filter((ref): ref is string => !!ref))], collectionId: collectionRef };
+  }
+  const refs = [...new Set([collectionRef, targetRef, targetId].filter((ref): ref is string => !!ref))];
+  return { targetId:refs[0], refs, collectionId };
+}
+function assertOwnerAliases(context:FrameToolContext,args:Record<string,unknown>,owner:FrameOwner,aliases:string[]){
+  const collectionId=owner.collection?.collectionId??owner.result?.id;
+  if(args.collectionId!==undefined&&args.collectionId!==collectionId)throw toolError('collection_conflict','指定的 collectionId 与对象实际集合不同。',{collectionId,supplied:args.collectionId});
+  for(const ref of aliases){
+    if(ref===owner.targetId || ref===collectionId && isStageCollectionId(ref))continue;
+    const other=context.owner(ref,collectionId);
+    if(other.targetId!==owner.targetId||other.documentEpoch!==owner.documentEpoch||other.sourceEpoch!==owner.sourceEpoch||other.result!==owner.result)
+      throw toolError('collection_conflict','提供的引用不属于同一轨迹集合。',{targetId:owner.targetId,collectionId,conflictingRef:ref});
+  }
+}
+type PreparedFrameOwner={targetId:string;collectionId:string};
+function argsOwner(context: FrameToolContext, args: Record<string, unknown>,prepared?:PreparedFrameOwner) {
+  const { targetId, collectionId, refs } = ownerArguments(args);
+  const owner=context.owner(prepared?.targetId??targetId,prepared?.collectionId??collectionId);
+  assertOwnerAliases(context,args,owner,refs.slice(1));
+  return owner;
 }
 function prepareArgsOwner(context: FrameToolContext, args: Record<string, unknown>, signal?: AbortSignal) {
   const { targetId, collectionId } = ownerArguments(args);
@@ -354,21 +435,25 @@ async function readScientificFrame(context: FrameToolContext, ref: string, signa
   const source = owned ?? await captureWorkspaceElectronicSourceContext(captureParameters(owner, index, guard, signal));
   guard();
   signal?.throwIfAborted();
-  return { source: owned ?? sourced(source, owner, index), descriptor: descriptor(owner, index), guard };
+  return { owner, source: owned ?? sourced(source, owner, index), descriptor: descriptor(owner, index, context.frameReferences), guard };
 }
 
 /** Observe raw coordinates without preparing a display graph or creating a model. */
+function rawTrajectoryGeometry(result: TrajectoryResult, index: number, signal?: AbortSignal) {
+  return getPreparedTrajectoryFrame(result, index)?.raw ?? result.getFrame(index, signal);
+}
+
 async function readFrame(context: FrameToolContext, ref: string, signal?: AbortSignal) {
   signal?.throwIfAborted();
   await prepareFrameReference(context, ref, signal);
   const { owner, index, guard } = rawFrame(context, ref);
   const result = owner.result;
   const structure = result && index !== undefined
-    ? getPreparedTrajectoryFrame(result, index)?.raw ?? await result.getFrame(index, signal)
+    ? await rawTrajectoryGeometry(result, index, signal)
     : owner.document.draft.structure;
   guard();
   signal?.throwIfAborted();
-  return { frame: descriptor(owner, index), coordinateUnit: 'angstrom' as const, structure: structuredClone(structure) };
+  return { frame: descriptor(owner, index, context.frameReferences), coordinateUnit: 'angstrom' as const, structure: structuredClone(structure) };
 }
 
 export function confirmFrameElectronicState(
@@ -397,13 +482,15 @@ export interface FrameAccess {
   reference(frameRef: string, signal?: AbortSignal): Promise<{owner: FrameOwner; index?: number; guard(): void}>;
   readAdvancedFrame(frameRef?: string, signal?: AbortSignal, electronic?: { charge: number; multiplicity: number }): Promise<AdvancedFrameSource>;
   readScientificFrame(frameRef: string, signal?: AbortSignal): Promise<ElectronicStateSourceContext>;
+  captureFrame(frameRef: string, signal?: AbortSignal): ReturnType<typeof readScientificFrame>;
   readFrame(frameRef: string, signal?: AbortSignal): ReturnType<typeof readFrame>;
 }
 export function createFrameAccess(getContext: () => FrameToolContext): FrameAccess {
-  const context = (): FrameToolContext => ({ ...getContext(), owner: (...args) => getContext().owner(...args) });
+  const references = createFrameReferences(() => getContext().referenceEpoch?.());
+  const context = (): FrameToolContext => ({ ...getContext(), frameReferences: references, owner: (...args) => getContext().owner(...args) });
   const access: FrameAccess = {
     context,
-    describe: descriptor,
+    describe: (owner, index) => descriptor(owner, index, references),
     readFrame: (frameRef, signal) => readFrame(context(), frameRef, signal),
     async reference(frameRef, signal) {
       const ctx = context();
@@ -412,8 +499,9 @@ export function createFrameAccess(getContext: () => FrameToolContext): FrameAcce
       return rawFrame(ctx, frameRef);
     },
     current: owner => owner.result
-      ? owner.currentIndex === undefined ? null : descriptor(owner, owner.currentIndex)
-      : owner.document.draft.structure.atoms.length ? descriptor(owner) : null,
+      ? owner.currentIndex === undefined ? null : descriptor(owner, owner.currentIndex, references)
+      : owner.document.draft.structure.atoms.length ? descriptor(owner, undefined, references) : null,
+    captureFrame: (frameRef, signal) => readScientificFrame(context(), frameRef, signal),
     async readScientificFrame(frameRef, signal) {
       return (await readScientificFrame(context(), frameRef, signal)).source;
     },
@@ -442,7 +530,7 @@ export function createFrameAccess(getContext: () => FrameToolContext): FrameAcce
 
 const string = { type: 'string', minLength: 1 };
 const index = { type: 'integer', minimum: 0 };
-const ownerProperties = { targetId: string, targetRef: string, collectionId: string };
+const ownerProperties = { targetId: string, targetRef: string, collectionRef: string, collectionId: string };
 const rangeProperties = properties({ start: index, end: index, stride: { type: 'integer', minimum: 1 } }, ['start', 'end']);
 const filterProperties = {
   indices: { type: 'array', items: index, uniqueItems: true },
@@ -459,16 +547,44 @@ const measurementSchema = properties({
   images: { type:'array', minItems: 2, maxItems: 4,
     items: { type:'array', minItems: 3, maxItems: 3, items: { type:'integer' } } },
 }, ['atomIds']);
+const measurementFrameSelectors = {
+  ...ownerProperties, ...referenceSelection,
+  indices: filterProperties.indices, range: filterProperties.range, frameIds: filterProperties.frameIds,
+  stageId: filterProperties.stageId, seriesId: filterProperties.seriesId,
+};
+const measurementArguments = properties({
+  frameRef: { ...string, description: 'Exact reference for a single-frame measurement. Omit to use a trajectory selector.' },
+  ...measurementFrameSelectors, detail: { enum: ['frames', 'summary'] },
+  measurements: { type: 'array', items: measurementSchema, minItems: 1 },
+}, ['measurements']);
+
+function measureCoordinates(structure: Structure, requests: readonly unknown[]) {
+  return requests.map((item, index) => {
+    let id: string | undefined;
+    try {
+      const row = record(item, 'measurement');
+      id = optionalText(row.id, 'measurement.id');
+      if (!Array.isArray(row.atomIds)) throw Error('请选择有序原子 ID。');
+      const atomIds = row.atomIds.map(value => nonempty(value, 'atomIds'));
+      const images = row.images as Vector3[] | undefined;
+      const measured = confirmCoordinateSelection(structure, atomIds, images);
+      return { index, id, status: 'measured' as const, ...measured, ...(images ? { images } : {}) };
+    } catch (error) {
+      return { index, id, status: 'failed' as const, reason: error instanceof Error ? error.message : String(error) };
+    }
+  });
+}
 
 async function selectedTrajectory(ctx: FrameToolContext, args: Record<string, unknown>, signal?: AbortSignal) {
   if (args.frameRefs !== undefined && (!Array.isArray(args.frameRefs) || !args.frameRefs.length
-    || [...Object.keys(ownerProperties), ...Object.keys(filterProperties)].some(key => args[key] !== undefined))) throw Error('请单独提供明确的 frameRefs，或按所属集合筛选。');
+    || Object.keys(filterProperties).some(key => args[key] !== undefined))) throw Error('请提供明确的 frameRefs，或按所属集合筛选。');
   const refs = Array.isArray(args.frameRefs) ? args.frameRefs.map(ref => nonempty(ref, 'frameRefs')) : undefined;
   if (refs?.length) await prepareFrameReference(ctx, refs[0], signal);
   const prepared = refs ? undefined : await prepareArgsOwner(ctx, args, signal);
   const selected = refs?.map(ref => rawFrame(ctx, ref));
-  const owner = selected?.[0]?.owner ?? (prepared ? ctx.owner(prepared.targetId, prepared.collectionId) : argsOwner(ctx, args)), result = owner.result;
+  const owner = selected?.[0]?.owner ?? argsOwner(ctx,args,prepared||undefined), result = owner.result;
   if (!result) throw Error('当前模型没有轨迹集合。');
+  if(selected)assertOwnerAliases(ctx,args,owner,ownerArguments(args).refs);
   const version = (target: FrameOwner) => JSON.stringify(identity(target, 0).slice(4, -1));
   const baseline = version(owner);
   if (selected?.some(item => item.index === undefined || !item.owner.result || item.owner.targetId !== owner.targetId || version(item.owner) !== baseline))
@@ -481,6 +597,73 @@ async function selectedTrajectory(ctx: FrameToolContext, args: Record<string, un
     if (version(ctx.owner(owner.targetId, collectionId)) !== baseline) throw Error('读取期间轨迹来源或集合版本已变化。');
   };
   return { owner, result, indices, collectionId, assertCurrent };
+}
+
+type MeasuredFrame = { frameRef: string; index: number; sourceFrameIndex: number };
+type MeasureExtremum = { index: number; value: number };
+type CompactMeasurementRow = MeasuredFrame & {
+  values: Array<number | null>;
+  failures?: { index: number; reason: string }[];
+  reason?: string;
+};
+
+async function measureTrajectory(ctx: FrameToolContext, args: Record<string, unknown>, requests: readonly unknown[], signal?: AbortSignal) {
+  const picked = await selectedTrajectory(ctx, args, signal);
+  const { owner, result, indices, collectionId, assertCurrent } = picked;
+  const includeFrames = args.detail !== 'summary';
+  const frames: CompactMeasurementRow[] = [];
+  const readIdentity = (index: number): MeasuredFrame => {
+    const frameIdentity = identity(owner, index);
+    return { frameRef: ctx.frameReferences?.issue(frameIdentity) ?? JSON.stringify(frameIdentity),
+      index, sourceFrameIndex: result.frames[index].sourceFrameIndex ?? index };
+  };
+  const describeExtremum = (extremum: MeasureExtremum | null) =>
+    extremum && { ...readIdentity(extremum.index), value: extremum.value };
+  const measurements = requests.map((item, index) => ({
+    index,
+    id: item && typeof item === 'object' && 'id' in item && typeof item.id === 'string' ? item.id : undefined,
+    unit: null as string | null, measured: 0, missing: 0, min: null as MeasureExtremum | null, max: null as MeasureExtremum | null,
+  }));
+  let measured = 0;
+  let unreadableFrames = 0;
+  assertCurrent();
+  for (const index of indices) {
+    let structure: Structure;
+    try {
+      structure = await rawTrajectoryGeometry(result, index, signal);
+    } catch (error) {
+      assertCurrent();
+      unreadableFrames++;
+      for (const summary of measurements) summary.missing++;
+      if (includeFrames) frames.push({ ...readIdentity(index), values: measurements.map(() => null),
+        reason: error instanceof Error ? error.message : String(error) });
+      continue;
+    }
+    assertCurrent();
+    const values: Array<number | null> = [], failures: NonNullable<CompactMeasurementRow['failures']> = [];
+    for (const item of measureCoordinates(structure, requests)) {
+      const summary = measurements[item.index];
+      if (item.status === 'failed') {
+        summary.missing++;
+        values.push(null);
+        failures.push({ index: item.index, reason: item.reason });
+        continue;
+      }
+      measured++;
+      summary.measured++;
+      summary.unit = item.unit;
+      values.push(item.value);
+      if (summary.min === null || item.value < summary.min.value) summary.min = { index, value: item.value };
+      if (summary.max === null || item.value > summary.max.value) summary.max = { index, value: item.value };
+    }
+    if (includeFrames) frames.push({ ...readIdentity(index), values, ...(failures.length ? { failures } : {}) });
+  }
+  return {
+    status: measured === measurements.length * indices.length ? 'measured' : measured ? 'partial' : 'failed',
+    targetId: owner.targetId, collectionId, coordinateUnit: 'angstrom', frameCount: indices.length, unreadableFrames,
+    measurements: measurements.map(({min, max, ...summary}) => ({ ...summary, min: describeExtremum(min), max: describeExtremum(max) })),
+    ...(includeFrames ? { frames } : {}),
+  };
 }
 
 function geometryOrigin(result: TrajectoryResult, source: number) {
@@ -616,15 +799,23 @@ export function frameTools(access: FrameAccess): McTool[] {
   return [
     {
       name: 'frames_select',
-      description: 'Get stable scientific frame references from a model or trajectory. Select native frameIds or zero-based indices/range in the named collection. frameNumber is the one-based number within that collection. Copy frameRef verbatim for the next operation. Energy sorting is stable with missing values last.',
-      inputSchema: properties({ ...ownerProperties, ...filterProperties,offset:index,limit:{type:'integer',minimum:1} }),
+      description: 'Select scientific frames from a model or collection. Pass collectionRef from the run unchanged, or use a model targetRef. Choose zero-based indices, range or native frameIds. Pass each short frameRef unchanged to read, show, compute or export. Use limit and detail=summary for a compact list. frameNumber is one-based in the scientific collection. Energy sorting puts missing values last.',
+      inputSchema: properties({ ...ownerProperties, ...filterProperties,offset:index,limit:{type:'integer',minimum:1},detail:{enum:['summary','full']} }),
       call(args, call) {
         const ctx = access.context();
         const finish = (target?: {targetId: string; collectionId: string}) => {
-          const owner = target ? ctx.owner(target.targetId, target.collectionId) : argsOwner(ctx, args);
-          const selected = selection(owner, args);
-          return { targetId: owner.targetId, collectionId: owner.collection?.collectionId ?? owner.result?.id ?? null,
-          current: access.current(owner), ...selected };
+          const owner = argsOwner(ctx,args,target);
+          const selected = selection(owner, args, ctx.frameReferences);
+          const frames = args.detail === 'summary' ? selected.frames.map(
+            ({ frameRef, frameId, index, frameNumber, sourceFrameIndex, stageId, label, energy, energyQuantity, time }) =>
+              ({ frameRef, frameId, index, frameNumber, sourceFrameIndex, stageId, label, energy, energyQuantity, time }),
+          ) : selected.frames;
+          const first = frames.length === 1 ? frames[0] : undefined;
+          const collectionId = owner.collection?.collectionId ?? owner.result?.id ?? null;
+          return { targetId: owner.targetId, collectionId,
+          ...(collectionId && isStageCollectionId(collectionId) ? { collectionRef: collectionId } : {}),
+          current: access.current(owner), ...selected, frames,
+          ...(first ? { next: { tool: 'frame_read', arguments: { frameRef: first.frameRef } } } : {}) };
         };
         const prepared = prepareArgsOwner(ctx, args, call?.signal);
         return prepared instanceof Promise ? prepared.then(finish) : finish(prepared || undefined);
@@ -652,32 +843,29 @@ export function frameTools(access: FrameAccess): McTool[] {
     },
     {
       name: 'frame_measure',
-      description: 'Measure one or more ordered distances, angles or dihedrals in one exact frame. Measurements share an original geometry read and return independently. Use batch_apply for multiple frames.',
-      inputSchema: properties({ frameRef: string, measurements: { type: 'array', items: measurementSchema, minItems: 1 } }, ['frameRef', 'measurements']),
+      description: 'Measure ordered distances, angles or dihedrals on original geometry. For one frame pass frameRef. For a trajectory pass frameRefs or use collectionRef/targetRef with a zero-based range, indices or native frameIds. Batch values correspond to measurements in order, with null for unavailable readings. Min/max retain the exact source frame and the signed native value. Use detail=summary to omit the per-frame rows.',
+      inputSchema: measurementArguments,
+      argumentValidationSchema: {
+        ...measurementArguments,
+        anyOf: ['frameRef', ...Object.keys(measurementFrameSelectors)].map(field => ({ required: [field] })),
+      },
       async call(args, call) {
-        const { frame, structure, coordinateUnit } = await access.readFrame(nonempty(args.frameRef, 'frameRef'), call?.signal);
         if (!Array.isArray(args.measurements) || !args.measurements.length) throw Error('请选择至少一项测量。');
-        const measurements = args.measurements.map((item, index) => {
-          let id: string | undefined;
-          try {
-            const row = record(item, 'measurement');
-            id = optionalText(row.id, 'measurement.id');
-            if (!Array.isArray(row.atomIds)) throw Error('请选择有序原子 ID。');
-            const atomIds = row.atomIds.map(value => nonempty(value, 'atomIds'));
-            const images = row.images as Vector3[] | undefined;
-            const measured = confirmCoordinateSelection(structure, atomIds, images);
-            return { index, id, status: 'measured', ...measured, ...(images ? { images } : {}) };
-          } catch (error) {
-            return { index, id, status: 'failed', reason: error instanceof Error ? error.message : String(error) };
-          }
-        });
+        const hasBatchSelection = Object.keys(measurementFrameSelectors).some(key => args[key] !== undefined);
+        if (args.frameRef === undefined) {
+          if (!hasBatchSelection) throw Error('请选择帧引用或轨迹集合。');
+          return measureTrajectory(access.context(), args, args.measurements, call?.signal);
+        }
+        if (hasBatchSelection || args.detail !== undefined) throw Error('请使用一个 frameRef 或一组轨迹帧选择。');
+        const { frame, structure, coordinateUnit } = await access.readFrame(nonempty(args.frameRef, 'frameRef'), call?.signal);
+        const measurements = measureCoordinates(structure, args.measurements);
         const count = measurements.filter(item => item.status === 'measured').length;
         return { status: count === measurements.length ? 'measured' : count ? 'partial' : 'failed', frame, coordinateUnit, measurements };
       },
     },
     {
       name: 'trajectory_view',
-      description: 'Read or command the native trajectory player. Seek via frameRef, native frameId, zero-based index or one-based frameNumber in the named collection. The response separates pending reads, native player frame number and viewport submission.',
+      description: 'Read or command the native trajectory player. Pass collectionRef unchanged. Seek by exact frameRef, native frameId, zero-based collection index or one-based collection frameNumber. Equivalent selectors are accepted. The current.playerFrameNumber describes the visible player position in its own order.',
       inputSchema: properties({ ...ownerProperties, frameRef: string, frameId: string, seriesId: string, index, frameNumber: { type: 'integer', minimum: 1 }, requestId: string, waitFor: { enum: ['selected', 'scene'] },
         action: { enum: ['status', 'seek', 'play', 'pause', 'prepare', 'cancel-preparation', 'step', 'direction', 'mode', 'range', 'fps'] },
         range: rangeProperties, direction: { enum: [-1, 1] }, mode: { enum: ['once', 'loop', 'bounce'] }, fps: { type: 'number', exclusiveMinimum: 0 } }),
@@ -686,23 +874,22 @@ export function frameTools(access: FrameAccess): McTool[] {
         const ctx = access.context();
         const ref = optionalText(args.frameRef, 'frameRef');
         const requestId = optionalText(args.requestId, 'requestId');
-        if (ref && (args.targetId !== undefined || args.targetRef !== undefined || args.collectionId !== undefined ||
-          args.index !== undefined || args.frameNumber !== undefined || args.frameId !== undefined || args.seriesId !== undefined))
-          throw Error('frameRef 已指定具体帧及归属。');
-        if ([args.frameId, args.index, args.frameNumber].filter(value => value !== undefined).length > 1)
-          throw Error('请指定 frameId、index 或 frameNumber 中的一项。');
-        if (args.seriesId !== undefined && args.frameId === undefined) throw Error('定位指定 seriesId 时须传入 frameId。');
         if (ref) await prepareFrameReference(ctx, ref, call?.signal);
         const prepared = ref ? undefined : await prepareArgsOwner(ctx, args, call?.signal);
         const resolved = ref ? rawFrame(ctx, ref) : undefined;
-        const owner = resolved?.owner ?? (prepared ? ctx.owner(prepared.targetId, prepared.collectionId) : argsOwner(ctx, args));
+        const owner = resolved?.owner ?? argsOwner(ctx,args,prepared||undefined);
+        if(resolved)assertOwnerAliases(ctx,args,owner,ownerArguments(args).refs);
         if (!owner.result) throw Error('当前模型没有轨迹播放器。');
         const requestedNumber = args.frameNumber === undefined ? undefined : frameIndex(args.frameNumber, 'frameNumber');
         if (requestedNumber === 0) throw Error('frameNumber 需为从 1 开始的帧号。');
-        const frame = resolved?.index ?? (args.frameId !== undefined
-          ? indicesForFrameIds(owner, [nonempty(args.frameId, 'frameId')], optionalText(args.seriesId, 'seriesId'))[0]
-          : requestedNumber !== undefined ? requestedNumber - 1
-            : args.index === undefined ? undefined : frameIndex(args.index, 'index'));
+        const seriesId=optionalText(args.seriesId,'seriesId');
+        const nativeIndex=args.frameId===undefined?undefined:indicesForFrameIds(owner,[nonempty(args.frameId,'frameId')],seriesId)[0];
+        const requestedIndex=args.index===undefined?undefined:frameIndex(args.index,'index');
+        const selections=[resolved?.index,nativeIndex,requestedIndex,requestedNumber===undefined?undefined:requestedNumber-1]
+          .filter((value):value is number=>value!==undefined);
+        const frame=selections[0];
+        if(selections.some(value=>value!==frame)||seriesId&&owner.result.frames[frame]?.pesOrigin?.seriesId!==seriesId)
+          throw toolError('frame_id_conflict','提供的帧定位必须指向同一科学帧。',{targetId:owner.targetId,collectionId:owner.collection?.collectionId});
         if (frame !== undefined && !owner.result.frames[frame]) throw Error('帧索引超出当前集合。');
         const command = viewCommand(args, frame);
         if (command && requestId) throw Error('requestId 用于读取已发出的定位状态。');
@@ -710,7 +897,7 @@ export function frameTools(access: FrameAccess): McTool[] {
         if (waitFor !== undefined && waitFor !== 'selected' && waitFor !== 'scene') throw Error('等待阶段无效。');
         const outcome = await ctx.view(owner, command, requestId, call?.signal, waitFor);
         return frame === undefined || !outcome || typeof outcome !== 'object'
-          ? outcome : { ...outcome, requestedFrame: descriptor(owner, frame) };
+          ? outcome : { ...outcome, requestedFrame: access.describe(owner, frame) };
       },
     },
     {
@@ -722,8 +909,9 @@ export function frameTools(access: FrameAccess): McTool[] {
         const ctx = access.context(), label = optionalText(args.label, 'label');
         const { owner, result, indices, assertCurrent } = await selectedTrajectory(ctx, args, call?.signal);
         const derived = await deriveResult(result, indices, assertCurrent, label, call?.signal);
-        const sourceFrames = indices.map(index => descriptor(owner, index));
-        return { status: 'derived', sourceFrames, resultId: derived.id, frameCount: derived.frames.length, derived: await access.context().derive(derived) };
+        const sourceFrames = indices.map(index => access.describe(owner, index));
+        return { status: 'derived', sourceFrames, resultId: derived.id, collectionRef: derived.id, frameCount: derived.frames.length,
+          derived: await access.context().derive(derived), next: { tool: 'frames_select', arguments: { collectionRef: derived.id } } };
       },
     },
     {
@@ -749,7 +937,7 @@ export function frameTools(access: FrameAccess): McTool[] {
           resultId: picked.result.id, source: picked.result.source, coordinateUnit: 'angstrom',
           frameCount: picked.indices.length,
           frames: picked.indices.map((index, position) => ({
-            frameRef: JSON.stringify(identity(picked.owner, index)), outputFrameIndex: position,
+            frameRef: access.describe(picked.owner, index).frameRef, outputFrameIndex: position,
             frameNumber: index + 1,
             ...origins[position], energy: picked.result.frames[index].energy,
           })),
@@ -777,6 +965,7 @@ export function viewTrajectoryCanvas(canvas: AnalysisCanvas | null | undefined, 
   const playerIndex = canvas.frameIndex === undefined ? -1 : state.sourceOrder?.indexOf(canvas.frameIndex) ?? canvas.frameIndex;
   const current = {
     index: canvas.frameIndex ?? null, frameNumber: playerIndex < 0 ? null : playerIndex + 1,
+    playerFrameNumber: playerIndex < 0 ? null : playerIndex + 1,
     frameId: frame?.pesOrigin?.frameId ?? state.frameId ?? null,
     pesOrigin: frame?.pesOrigin ?? null, scientificFrameReady: canvas.scientificFrameReady === true,
     requestedIndex: navigation?.status === 'pending' ? navigation.index
@@ -784,7 +973,9 @@ export function viewTrajectoryCanvas(canvas: AnalysisCanvas | null | undefined, 
     sceneSubmitted: scene, preparation: state.preparation ?? null, loading: state.loading === true, playing: state.playing,
   };
   const { sourceOrder, ...playerState } = state;
-  const base = { resultId: canvas.result.id, collection: state.collectionIdentity ?? null, current, player: playerState };
+  const base = { resultId: canvas.result.id,
+    ...(isStageCollectionId(canvas.result.id) ? { collectionRef: canvas.result.id } : {}),
+    collection: state.collectionIdentity ?? null, current, player: playerState };
   if (requestId) {
     if (navigation?.id !== requestId) return { status: 'superseded', requestId, ...base };
     if (navigation.status === 'failed') return { status: 'failed', requestId, reason: navigation.error, ...base };

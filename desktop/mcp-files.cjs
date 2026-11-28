@@ -4,26 +4,29 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 const { createBinaryExportStore } = require('./binary-export-store.cjs');
 const { atomicWriteStream, currentStreamFile, describeFile, fileChunks } = require('./stream-file-publication.cjs');
-const { directoryIdentity } = require('./portable-storage.cjs');
+const { checkDirectory, directoryIdentity } = require('./portable-storage.cjs');
 const { harnessExportDirectory, harnessWorkDirectory } = require('./portable-export.cjs');
 const { isProjectIndexPath } = require('./sy-project-store.cjs');
 const { isRecord, failure } = require('./mcp/wire.cjs');
+const { structureSource } = require('./mcp/structure-source.cjs');
 
 const sourceTools = new Set(['es_import', 'source_attach', 'job_preview', 'job_resubmit_plan', 'job_environment_transfer', 'input_assets']);
 const destinationTools = new Set(['es_export', 'plot_export', 'view_export', 'input_generate', 'input_save', 'citation_export', 'trajectory_derive', 'trajectory_export', 'analysis_export', 'job_environment_transfer']);
 const directoryTools = new Set(['input_generate', 'input_save', 'input_batch', 'trajectory_derive']);
 const singleFileDirectoryTools = new Set(['es_export', 'plot_export', 'view_export', 'trajectory_export', 'analysis_export']);
 const saveTools = new Set(['es_export', 'input_save', 'file_write_text']);
-const batchActions = new Set(['es_project', 'file_write_text', 'job_file_export', ...sourceTools, ...destinationTools, ...directoryTools]);
+const batchActions = new Set(['es_project', 'file_write_text', 'file_list', 'file_inspect', 'job_file_export', 'structure_source', ...sourceTools, ...destinationTools, ...directoryTools]);
 const fieldsByAction = {
-  sources: [], new: [], open: [], 'open-status': [], recover: [], close: [], 'save-location': [],
+  sources: [], 'structure-source': [], 'list-files': [], 'inspect-file': [], new: [], open: [], 'open-status': [], recover: [], close: [], 'save-location': [],
   write: ['name', 'fileName', 'group', 'bytes'],
   'export-group': ['names', 'group'],
   'write-text': [],
   'task-file-copy': [],
   'write-export': ['assetId', 'fileName'],
   'write-analysis': ['assetId', 'domainAssetId', 'fileName'],
+  'capture-workbench': ['rect'],
 };
+const maxPreviewBytes = 65536;
 
 function location(value) {
   if (typeof value !== 'string' || value.includes('\0')) throw failure('invalid_path', '需要绝对文件路径。');
@@ -47,6 +50,67 @@ function leafName(value) {
     throw failure('invalid_file_name', '需要单个合法的导出文件名。');
   }
   return value;
+}
+
+async function listFiles(args, active) {
+  const directory = location(args.directory);
+  const { cursor = 0, limit = 100, query = '', extension: filter } = args;
+  if (!Number.isSafeInteger(cursor) || cursor < 0 || !Number.isSafeInteger(limit) || limit < 1 || typeof query !== 'string') {
+    throw failure('invalid_file_list_options', '请提供有效文件名查询、列表页大小及游标。');
+  }
+  const extension = typeof filter === 'string' ? filter.trim().replace(/^\./, '').toLowerCase() : '';
+  if (filter !== undefined && (!extension || /[./\\\0]/.test(extension))) {
+    throw failure('invalid_file_extension', '请指定单个扩展名，例如 out 或 .out。');
+  }
+  const parent = await directoryIdentity(directory);
+  active();
+  const term = query.toLowerCase();
+  const candidates = (await fs.readdir(directory, { withFileTypes: true })).filter(entry => entry.isFile() &&
+    (!extension || path.extname(entry.name).toLowerCase() === '.' + extension) && entry.name.toLowerCase().includes(term))
+    .map(entry => entry.name).sort();
+  const items = [], issues = [];
+  for (const name of candidates.slice(cursor, cursor + limit)) {
+    active();
+    const file = path.join(directory, name);
+    try {
+      const selected = await fs.lstat(file);
+      if (!selected.isFile() || selected.isSymbolicLink()) throw failure('source_changed', '列表项目已变化，请重新列出。');
+      items.push({ name, path: file, bytes: selected.size });
+    } catch (error) {
+      issues.push({ name, code: error.code ?? 'source_unavailable', message: error.message });
+    }
+  }
+  await checkDirectory(directory, parent);
+  active();
+  const total = candidates.length;
+  return { status: issues.length ? 'partial' : 'listed', directory, items, total,
+    nextCursor: cursor + limit < total ? cursor + limit : null, ...(issues.length ? { issues } : {}) };
+}
+
+async function inspectFile(args, owner, active, signal, launchSources) {
+  const file = location(args.path);
+  const { headBytes = 0, tailBytes = 0, sha256 = false } = args;
+  if ([headBytes, tailBytes].some(bytes => !Number.isSafeInteger(bytes) || bytes < 0 || bytes > maxPreviewBytes) || typeof sha256 !== 'boolean') {
+    throw failure('invalid_file_inspection', `请将文本预览范围指定为 0 至 ${maxPreviewBytes} 字节，sha256 使用布尔值。`);
+  }
+  const selected = await fs.lstat(file);
+  if (!selected.isFile() || selected.isSymbolicLink()) throw failure('invalid_source', '请选择普通文件。');
+  active();
+  const [{ token, name, size }] = await launchSources.open(owner, [file]);
+  try {
+    active();
+    const preview = async (start, end) => {
+      const bytes = await launchSources.read(owner, token, start, end);
+      active();
+      return { start, end, text: new TextDecoder('utf-8').decode(bytes) };
+    };
+    const head = headBytes ? await preview(0, Math.min(headBytes, size)) : undefined;
+    const tail = tailBytes ? await preview(Math.max(0, size - tailBytes), size) : undefined;
+    const checksum = sha256 ? await launchSources.describe(owner, token, { signal }) : undefined;
+    active();
+    return { status: 'inspected', name, path: file, bytes: size, ...(head ? { head } : {}), ...(tail ? { tail } : {}),
+      ...(checksum ? { sha256: checksum.revision } : {}) };
+  } finally { await launchSources.close(owner, token); }
 }
 
 function authorizedOperation(request, spec) {
@@ -149,7 +213,7 @@ async function publicationReceipt(error, destination, isDefault, companions = []
       ...(error.temporaryCleanupFailed ? { cleanupPending: true } : {}) } };
 }
 
-function createMcpFiles({ assertRequest, launchSources, projectIPC, createWindow, publicTarget, requestClose, assertDestination, takeBinaryAsset, saveAnalysisCube, copyTaskFile, bundleRoot = () => undefined }) {
+function createMcpFiles({ assertRequest, launchSources, projectIPC, createWindow, publicTarget, requestClose, assertDestination, takeBinaryAsset, saveAnalysisCube, copyTaskFile, fetchStructureSource, bundleRoot = () => undefined }) {
   const reserved = new Set();
   const groups = new WeakMap();
   const groupKey = spec => `${spec.batchIndex ?? ''}:${spec.group ?? ''}`;
@@ -176,7 +240,7 @@ function createMcpFiles({ assertRequest, launchSources, projectIPC, createWindow
     }
     permitsDefault(name, args);
     const names = spec.names.map(leafName);
-    if (args.fileName !== undefined && (names.length !== 1 || names[0] !== args.fileName)) {
+    if (args.fileName !== undefined && (names[0] !== args.fileName || (name !== 'input_generate' && names.length !== 1))) {
       throw failure('destination_not_authorized', '导出文件组和选中的输入不符。');
     }
     if (new Set(names.map(name => name.toLowerCase())).size !== names.length) {
@@ -250,6 +314,34 @@ function createMcpFiles({ assertRequest, launchSources, projectIPC, createWindow
     }
   }
 
+  async function writeBytes(owner, bytes, destination, overwrite, active, extension) {
+    let receipt, cause;
+    const store = createBinaryExportStore({
+      chooseDestination: async () => ({ path: destination, overwriteConfirmed: overwrite }),
+      assertDestination, ownerAlive: active,
+    });
+    try {
+      const { token } = await store.begin(owner, { name: path.basename(destination), extension });
+      const chunk = 1024 * 1024;
+      for (let offset = 0; offset < bytes.length; offset += chunk) {
+        await store.append(owner, token, bytes.subarray(offset, offset + chunk));
+      }
+      receipt = { ...await store.commit(owner, token), path: destination };
+    } catch (error) {
+      cause = error;
+      if (error.publicationPerformed) error.publishedFiles = [{
+        path: destination, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'),
+      }];
+    }
+    try { await store.dispose(); }
+    catch (error) {
+      if (!cause) return { ...receipt, warning: { code: 'export_cleanup_pending', message: error.message } };
+      cause.temporaryCleanupFailed = true;
+    }
+    if (cause) throw cause;
+    return receipt;
+  }
+
   async function writeSealed(owner, assetId, destination, overwrite, active) {
     if (typeof assetId !== 'string' || !assetId) throw failure('invalid_export_asset', '导出需要完整的 ES 二进制资源。');
     assertDestination(destination);
@@ -289,7 +381,9 @@ function createMcpFiles({ assertRequest, launchSources, projectIPC, createWindow
     try {
       for (const [index, item] of items.entries()) {
         active();
+        if (isRecord(item) && typeof item.text === 'string' && !Object.hasOwn(item, 'path')) continue;
         try {
+          if (isRecord(item) && Object.hasOwn(item, 'text')) throw failure('invalid_source', '路径与结构正文须为独立导入成员。');
           const file = location(typeof item === 'string' ? item : item?.path);
           const [source] = await launchSources.open(owner, [file]);
           retained.push(source);
@@ -315,7 +409,59 @@ function createMcpFiles({ assertRequest, launchSources, projectIPC, createWindow
     }
     const owner = window.webContents.id;
     const active = () => assertRequest(owner, spec.requestId);
-    const { name, arguments: args } = authorizedOperation(active(), spec);
+    const request = active();
+    const { name, arguments: args } = authorizedOperation(request, spec);
+    if (spec.action === 'list-files' && name === 'file_list') return listFiles(args, active);
+    if (spec.action === 'inspect-file' && name === 'file_inspect') return inspectFile(args, owner, active, request.signal, launchSources);
+    if (spec.action === 'capture-workbench' && name === 'view_export' && ['workbench', 'analysis-panel'].includes(args.scope)) {
+      const contents = window.webContents;
+      if (!window.isVisible() || window.isMinimized()) throw failure('workbench_capture_unavailable', '请先显示已连接的 ES 工作台。');
+      let rect;
+      if (args.scope === 'analysis-panel') {
+        const bounds = spec.rect, factor = contents.getZoomFactor(), content = window.getContentBounds();
+        if (!isRecord(bounds) || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(bounds[key]) && bounds[key] >= 0)) {
+          throw failure('invalid_capture_region', '缺少当前分析面板的原生范围。');
+        }
+        const x = Math.floor(bounds.x * factor), y = Math.floor(bounds.y * factor);
+        const width = Math.min(content.width, Math.ceil((bounds.x + bounds.width) * factor)) - x;
+        const height = Math.min(content.height, Math.ceil((bounds.y + bounds.height) * factor)) - y;
+        if (!(width > 0 && height > 0)) throw failure('invalid_capture_region', '分析面板在当前工作台中不可见。');
+        rect = { x, y, width, height };
+      } else if (spec.rect !== undefined) {
+        throw failure('invalid_capture_region', '工作台抓取使用当前完整内容范围。');
+      }
+      const image = await contents.capturePage(rect, { stayHidden: true });
+      active();
+      if (image.isEmpty() || !window.isVisible() || window.isMinimized())
+        throw failure('workbench_capture_unavailable', '没有取得当前工作台的可见图像。');
+      const { width, height } = image.getSize();
+      return { bytes: new Uint8Array(image.toPNG()), width, height };
+    }
+    if (spec.action === 'structure-source' && name === 'structure_source') {
+      const { destination, ...lookup } = args;
+      if (destination !== undefined && lookup.action !== 'import') {
+        throw failure('file_action_not_authorized', '仅导入结构库条目可指定原件保存位置。');
+      }
+      const result = await structureSource(lookup, request.signal, fetchStructureSource);
+      active();
+      if (destination === undefined) return result;
+      let outputPath, original;
+      try {
+        outputPath = location(destination);
+        const receipt = await writeBytes(owner, result.bytes, outputPath, false, active, result.source.format);
+        original = { status: 'written', ...receipt, sha256: result.source.sha256 };
+      } catch (cause) {
+        if (outputPath && (cause.publicationPerformed || cause.publishedFiles?.length)) {
+          original = await publicationReceipt(cause, outputPath, false);
+        } else {
+          active();
+          const error = outputPath ? portableWriteError(cause, outputPath, false) : cause;
+          const code = error.message?.startsWith('EXPORT_OVERWRITE:') ? 'destination_conflict' : error.code ?? 'export_failed';
+          original = { status: 'failed', path: outputPath ?? destination, error: { code, message: error.message, data: error.data } };
+        }
+      }
+      return { ...result, original };
+    }
     if (spec.action === 'export-group') return planGroup(name, args, spec, active);
     if (spec.action === 'sources' && name === 'es_import') return openImportItems(owner, args.items, active);
     if (spec.action === 'sources' && sourceTools.has(name)) {
@@ -390,6 +536,12 @@ function createMcpFiles({ assertRequest, launchSources, projectIPC, createWindow
       }
       return publish(name, args, spec, active, async (destination, overwrite) => {
         const extension = path.extname(destination).toLowerCase();
+        if (args.assetId === 'original-molden') {
+          if (spec.domainAssetId !== undefined || !/\.molden(?:\.input)?$/i.test(path.basename(destination))) {
+            throw failure('invalid_export_format', '原始 Molden 导出需要 .molden 或 .molden.input 路径。');
+          }
+          return writeSealed(owner, spec.assetId, destination, overwrite, active);
+        }
         if (extension === '.cube' || extension === '.cub') {
           assertDestination(destination);
           if (spec.domainAssetId) assertDestination(destination + '.sciyue-domain.json');
@@ -414,32 +566,8 @@ function createMcpFiles({ assertRequest, launchSources, projectIPC, createWindow
       const bytes = textWrite ? Buffer.from(args.text, 'utf8') : spec.bytes;
       if (!(bytes instanceof Uint8Array)) throw failure('invalid_export_bytes', '导出数据无效。');
       return publish(name, args, spec, active, async (destination, overwrite) => {
-        let receipt, cause;
-        const store = createBinaryExportStore({
-          chooseDestination: async () => ({ path: destination, overwriteConfirmed: overwrite }),
-          assertDestination, ownerAlive: active,
-        });
-        try {
-          const extension = textWrite ? 'txt' : path.extname(destination).slice(1) || 'dat';
-          const { token } = await store.begin(owner, { name: path.basename(destination), extension });
-          const chunk = 1024 * 1024;
-          for (let offset = 0; offset < bytes.length; offset += chunk) {
-            await store.append(owner, token, bytes.subarray(offset, offset + chunk));
-          }
-          receipt = { ...await store.commit(owner, token), path: destination };
-        } catch (error) {
-          cause = error;
-          if (error.publicationPerformed) error.publishedFiles = [{
-            path: destination, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'),
-          }];
-        }
-        try { await store.dispose(); }
-        catch (error) {
-          if (!cause) return { ...receipt, warning: { code: 'export_cleanup_pending', message: error.message } };
-          cause.temporaryCleanupFailed = true;
-        }
-        if (cause) throw cause;
-        return receipt;
+        const extension = textWrite ? 'txt' : path.extname(destination).slice(1) || 'dat';
+        return writeBytes(owner, bytes, destination, overwrite, active, extension);
       });
     }
     throw failure('file_action_not_authorized', '当前调用未授权此文件操作。');

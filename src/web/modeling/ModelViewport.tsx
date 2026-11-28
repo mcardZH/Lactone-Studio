@@ -11,7 +11,8 @@ import type { ViewportOrbitalLayer } from '../../results/orbital-contracts';
 import { getFrozenAtomIds } from '../../core/modeling';
 import {ScientificEditCancelledError} from '../../core/modeling/analysis-binding';
 import type { ViewerHighlights } from '../../core/display-highlights';
-import { createRenderAdapter,requiresCooperativeDisplay, type RenderAdapter, type RenderFeedbackOptions, type ViewportVibrationVector, type ViewportAtomScalarValue, type ViewportDipoleVector, type CameraZoomControls } from './render/adapter';
+import { createRenderAdapter,requiresCooperativeDisplay, type RenderAdapter, type RenderFeedbackOptions, type ViewportVibrationVector, type ViewportAtomScalarValue, type ViewportDipoleVector, type ViewportCameraControls } from './render/adapter';
+import { CAMERA_ROTATION_DEGREES_PER_PIXEL } from './render/camera';
 import {cameraRotationDrag} from './render/display-settings';
 import {viewportSamplingSphere} from './render/sampling-sphere-preview';
 import type {CipDisplayUsage,CipLabelWarning} from './render/stereochemistry';
@@ -274,7 +275,7 @@ export interface ModelViewportProps extends CalculationRangeFeedback {
   onCameraViewChange?: (view: number[]) => void;
   /** Read-only camera access for isolated image export, never a model command. */
   onViewReady?: (getView: (() => number[]) | null) => void;
-  onCameraZoomReady?: (controls:CameraZoomControls|null)=>void;
+  onCameraZoomReady?: (controls:ViewportCameraControls|null)=>void;
   active?: boolean;
   /** Workspace presentation gate, independent of the user's display.legend. */
   legendVisible?: boolean;
@@ -320,7 +321,7 @@ interface Gesture {
 }
 const DRAG_THRESHOLD = 4;
 const EMPTY: ViewerHighlights = {};
-export interface ViewportFailure { kind: 'projection' | 'interaction' | 'fatal'; message: string }
+export interface ViewportFailure { kind: 'projection' | 'interaction' | 'context' | 'fatal'; message: string }
 export function viewportEmptyHint(readOnly?:boolean):string {
   return readOnly?'导入结构或计算结果以查看三维模型':'选择元素后点击空白添加原子，或导入结构';
 }
@@ -345,6 +346,13 @@ type PointerMoveSample = Pick<ReactPointerEvent<HTMLDivElement>, 'pointerId' | '
 /** Per-view lifetime latch: undefined keeps the existing enabled-view default. */
 export function viewportInitializationRequested(requested: boolean, active?: boolean): boolean {
   return requested || active !== false;
+}
+// Match the orbital mesh's 500 ms warm period for a rapid return to a tab.
+// Only the rebuildable physical renderer expires. The document stays mounted.
+const VIEWPORT_HIDDEN_GRACE_MS = 500;
+function hasViewportArea(node: Element | null): boolean {
+  const bounds = node?.getBoundingClientRect();
+  return !!bounds && bounds.width > 0 && bounds.height > 0;
 }
 export function successfulFirstPointerPlacement(before: ModelDocument, after: ModelDocument | void, command: ModelCommand): after is ModelDocument {
   return ['place-element', 'place-fragment'].includes(command.type) && before.draft.structure.atoms.length === 0 && Boolean(after && after.id === before.id && after.revision > before.revision && after.draft.structure.atoms.length > 0);
@@ -392,6 +400,10 @@ export default function ModelViewport(props: ModelViewportProps) {
   if (props.multiframeDisplay && !props.readOnly) props = { ...props, readOnly: true };
   const latest = useRef(props); latest.current = props;
   const container = useRef<HTMLDivElement>(null), hitSurface = useRef<HTMLDivElement>(null), adapter = useRef<RenderAdapter | null>(null);
+  const recoveryFront = useRef<HTMLDivElement>(null);
+  const savedViewportCamera = useRef<{documentId:string;view:number[]} | null>(null);
+  const requestContextRecovery = useRef<((force?:boolean)=>void) | null>(null);
+  const recoveryAttempted = useRef(false);
   const viewportElement = useRef<HTMLElement>(null);
   const [narrowLegend, setNarrowLegend] = useState(false);
   const gesture = useRef<Gesture | null>(null), preview = useRef<Atom[] | undefined>(undefined);
@@ -400,6 +412,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   const [moveScheduler] = useState(() => createLatestMoveScheduler<PointerMoveSample>(callback => window.requestAnimationFrame(callback), id => window.cancelAnimationFrame(id), sample => applyMove(sample)));
   const rawCameraMove = useRef<{ gesture: Gesture; at: number; immediateAt: number } | null>(null);
   const lastDraw = useRef<string | null>(null), lastProjectionView = useRef<string | null>(null);
+  const lastDrawDocument = useRef<string | null>(null);
   const acknowledgedScene = useRef<ViewportRenderIdentity|undefined>(undefined);
   const renderSource = useRef<{owner:string; source:string}|undefined>(undefined);
   const asynchronousDraw=useRef<{signature:string;controller:AbortController}|null>(null);
@@ -426,6 +439,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   const [overlayTick,setOverlayTick]=useState(0);
   const failureRef = useRef<ViewportFailure | null>(null);
   const [initializationRequested, setInitializationRequested] = useState(() => viewportInitializationRequested(false, props.active));
+  const [rendererGeneration, setRendererGeneration] = useState(0);
   const projectionCounters=useRef<ProjectionCounters>({attempts:0,commits:0,plans:0});
   const sceneUnavailable=useRef(false);
   const projectionPlans=useRef(createProjectionPlanCache(projectionCounters.current));
@@ -536,8 +550,7 @@ export default function ModelViewport(props: ModelViewportProps) {
     if(latest.current.cellEditorDraft||latest.current.samplingSphereDraft)setOverlayTick(value=>value+1);
     const instance = adapter.current, surface = hitSurface.current;
     if (!instance || !surface || latest.current.active === false) return;
-    const viewportBounds = container.current?.getBoundingClientRect();
-    if (!viewportBounds || viewportBounds.width <= 0 || viewportBounds.height <= 0) return;
+    if (!hasViewportArea(container.current)) return;
     const p = { ...latest.current, document: documentOverride ?? latest.current.document }, bounds = surface.getBoundingClientRect(), offset = { x: bounds.left, y: bounds.top };
     const atoms = previewAtoms ?? vibrationAnimationFor(p.displayAtoms)?.readPresented()?.atoms ?? p.document.draft.structure.atoms;
     const plan=projectionPlans.current.read([p.document,p.display,p.measurement,p.resultHighlights,p.captureRequest,p.captureAtomIds,p.analysisAtomCapture,p.hiddenAtomIds,p.stateMarkers,p.effectiveFrozenAtomIds,p.displayFrozenAtomIds,p.resultBondValues,p.resultAtomLabels,p.readOnly,p.resultBondLabels,p.resultBondColor,p.highlights],()=>{
@@ -720,6 +733,12 @@ export default function ModelViewport(props: ModelViewportProps) {
   }
   function redraw(atoms?: Atom[], documentOverride?: ModelDocument) {
     const p = latest.current;
+    const instance = adapter.current;
+    if (p.active === false || !instance) return;
+    if (instance.presentationContextAvailable?.() === false) {
+      requestContextRecovery.current?.();
+      return;
+    }
     const document = documentOverride ?? p.document;
     const held = gesture.current;
     // The incremental presenter owns the visible geometry until this gesture
@@ -729,7 +748,6 @@ export default function ModelViewport(props: ModelViewportProps) {
     const samplingSphere=viewportSamplingSphere(document,p.samplingSphereDraft,p.samplingSphere);
     const vibration = vibrationAnimationFor(p.displayAtoms);
     atoms ??= vibration?.readPresented()?.atoms ?? p.displayAtoms;
-    if (p.active === false) return;
     const viewportBounds = container.current?.getBoundingClientRect();
     if (!viewportBounds || viewportBounds.width <= 0 || viewportBounds.height <= 0) return;
     const fixedCellView=Boolean(p.fixedCellView&&document.draft.structure.cell?.pbc.some(Boolean));
@@ -765,8 +783,8 @@ export default function ModelViewport(props: ModelViewportProps) {
       acknowledgedScene.current=identity;
       latest.current.onSceneSubmitted(identity);
     };
-    if(lastDraw.current===signature&&adapter.current?.presentationReady?.()!==false&&!sceneUnavailable.current){
-      adapter.current?.observeScene?.(document,p.renderIdentity,p.onRenderComplete);
+    if(lastDraw.current===signature&&instance.presentationReady?.()!==false&&!sceneUnavailable.current){
+      instance.observeScene?.(document,p.renderIdentity,p.onRenderComplete);
       acknowledge(p.renderIdentity);
       if(lastProjectionView.current===view&&sameResultProjectionInputs(lastResultProjectionInputs.current,resultInputs))return;
     }
@@ -776,13 +794,19 @@ export default function ModelViewport(props: ModelViewportProps) {
       const displayOwner=JSON.stringify([p.sceneOwnerEpoch??null,p.observationEpoch??null,document.id]);
       if(displayOwner&&p.renderIdentity)renderSource.current={owner:displayOwner,source:JSON.stringify([p.renderIdentity.sourceId,p.renderIdentity.sourceRevision,p.renderIdentity.generation??null])};
       const feedback:RenderFeedbackOptions={...viewportCaptureFeedback(document,p.captureRequest,p),sceneOwnerEpoch:JSON.stringify([displayOwner,renderSource.current?.owner===displayOwner?renderSource.current.source:null]),displayFrozenAtomIds:p.displayFrozenAtomIds,hiddenAtomIds:p.hiddenAtomIds,multiframeDisplay:p.multiframeDisplay,fixedCellView,initialFixedCellCamera:p.cameraView,samplingSphere,calculationRanges:p.calculationRanges,displayCaptureAtomIds:capture.active?capture.atomIds:undefined,previewGuides:p.previewGuides,previewCell:p.previewCell,cellGuides:p.cellGuides,displayHighlightAtomIds:analysis.atomIds,displayMeasurementRecords:analysis.records,renderIdentity:p.renderIdentity,onRenderComplete:p.onRenderComplete};
-      const instance=adapter.current,renderDocument=captureRenderDocument(document,p.captureRequest,p.captureAtomIds),renderDisplay=viewportRenderDisplay(captureViewportDisplay(p.display,p.captureRequest));
+      const renderDocument=captureRenderDocument(document,p.captureRequest,p.captureAtomIds),renderDisplay=viewportRenderDisplay(captureViewportDisplay(p.display,p.captureRequest));
       const activation=assignmentActivation.current.epoch,structure=renderDocument.draft.structure;
       const submitted=()=>{
         const identity=p.renderIdentity,live=latest.current,now=live.renderIdentity;
-        if(instance&&adapter.current===instance&&live.active!==false&&assignmentActivation.current.epoch===activation&&
+        if(adapter.current===instance&&live.active!==false&&assignmentActivation.current.epoch===activation&&
           live.document.id===p.document.id&&live.document.revision===p.document.revision&&live.document.draft.structure.atoms===p.document.draft.structure.atoms&&
           live.displayAtoms===p.displayAtoms){
+          if(instance.presentationReady?.()===false)return;
+          lastDrawDocument.current=document.id;
+          recoveryAttempted.current=false;
+          if(failureRef.current?.kind==='context')replaceFailure(null);
+          recoveryFront.current?.replaceChildren();
+          if(container.current)container.current.style.visibility='';
           if(atoms){
             vibration?.markPresented(atoms);
             if(atoms===live.displayAtoms)markStaticVibrationPresented(atoms);
@@ -798,9 +822,16 @@ export default function ModelViewport(props: ModelViewportProps) {
       const drawFailed=(error:unknown)=>{
         const live=latest.current;
         if(adapter.current===instance&&live.active!==false&&assignmentActivation.current.epoch===activation&&live.document.id===p.document.id&&live.document.draft.structure.atoms===p.document.draft.structure.atoms){
+          if(instance.presentationContextAvailable?.()===false)return;
           if(!sceneUnavailable.current){sceneUnavailable.current=true;live.onViewReady?.(null);}
           report(error);
         }
+      };
+      const restoreCamera = () => {
+        const saved=savedViewportCamera.current;
+        if(!saved)return;
+        if(saved.documentId===document.id)instance.setView(latest.current.cameraView??saved.view);
+        savedViewportCamera.current=null;
       };
       feedback.liveCip=true;
       feedback.cipStructure=cipStructure;
@@ -821,6 +852,8 @@ export default function ModelViewport(props: ModelViewportProps) {
         void instance.drawAsync(renderDocument,renderDisplay,p.highlights,atoms,drawTransform,p.measurement,feedback,own.controller.signal).then(()=>{
           if(!feedback.isCurrent?.())return;
           instance.updateSamplingSphere?.(viewportSamplingSphere(latest.current.document,latest.current.samplingSphereDraft,latest.current.samplingSphere),latest.current.document);
+          restoreCamera();
+          if(instance.presentationReady?.()===false)return;
           lastDraw.current=signature;observeSurfaceMesh(true);refreshProjection(atoms,atoms?{...document,draft:{...document.draft,structure:{...document.draft.structure,atoms}}}:document);
           lastResultProjectionInputs.current=resultInputs;lastProjectionView.current=viewportProjectionSignature(instance.getView(),latest.current);
           submitted();
@@ -831,8 +864,9 @@ export default function ModelViewport(props: ModelViewportProps) {
         try{moveScheduler.flush();}
         finally{cameraJoinsFrame.current=false;}
       }
-      try{instance?.draw(renderDocument,renderDisplay,p.highlights,atoms,drawTransform,p.measurement,feedback);}
+      try{instance.draw(renderDocument,renderDisplay,p.highlights,atoms,drawTransform,p.measurement,feedback);restoreCamera();}
       catch(error){drawFailed(error);return;}
+      if(instance.presentationReady?.()===false)return;
       observeSurfaceMesh(true);lastDraw.current=signature;
       submitted();
     }
@@ -955,24 +989,102 @@ export default function ModelViewport(props: ModelViewportProps) {
     if (!adapter.current) throw new ViewportProjectionError('viewport-unavailable', '视口尚未就绪。');
     const position = adapter.current.worldPoint(screen); recoverProjection(true); return position;
   }
+  function saveViewportCamera() {
+    if(!adapter.current||!lastDrawDocument.current)return;
+    try{savedViewportCamera.current={documentId:lastDrawDocument.current,view:adapter.current.getView()};}
+    catch{/* The controlled camera, if set, remains in the parent. */}
+  }
   useEffect(() => {
-    if (props.active !== false) setInitializationRequested(requested => viewportInitializationRequested(requested, props.active));
-  }, [props.active]);
+    const node=container.current!;
+    const win=node.ownerDocument.defaultView!;
+    let releaseTimer:number|undefined;
+    const cancelRelease=()=>{
+      if(releaseTimer!==undefined)win.clearTimeout(releaseTimer);
+      releaseTimer=undefined;
+    };
+    const updateResidence=()=>{
+      if(hasViewportArea(node)){
+        cancelRelease();
+        if(latest.current.active!==false){
+          setInitializationRequested(true);
+          if(adapter.current?.presentationContextAvailable?.()===false)requestContextRecovery.current?.();
+        }
+        return;
+      }
+      if(!initializationRequested||releaseTimer!==undefined)return;
+      if(!adapter.current){setInitializationRequested(false);return;}
+      releaseTimer=win.setTimeout(()=>{
+        releaseTimer=undefined;
+        if(hasViewportArea(node))return;
+        saveViewportCamera();
+        lastDraw.current=null;
+        lastDrawDocument.current=null;
+        lastProjectionView.current=null;
+        sceneUnavailable.current=true;
+        recoveryAttempted.current=false;
+        recoveryFront.current?.replaceChildren();
+        node.style.visibility='';
+        setReady(false);
+        setInitializationRequested(false);
+      },VIEWPORT_HIDDEN_GRACE_MS);
+    };
+    const Observer=(win as unknown as {ResizeObserver:typeof ResizeObserver}).ResizeObserver;
+    const visibility=new Observer(updateResidence);
+    visibility.observe(node);
+    updateResidence();
+    return ()=>{visibility.disconnect();cancelRelease();};
+  }, [props.active,initializationRequested]);
   useEffect(() => {
-    // Cold hidden owners keep their model/controller mounted without a GPU view.
-    // Once requested, this effect's lifetime no longer follows active: returning
-    // to a visited tab retains its adapter, camera and observation state.
-    if (!initializationRequested) return;
+    if (!initializationRequested||!hasViewportArea(container.current)) return;
     let cancelled = false, resize: ResizeObserver | undefined, resizeQueue:ReturnType<typeof createViewportResizeQueue>|undefined;
     let resizeRoots:HTMLElement[]=[],layoutResize:(()=>void)|undefined;
+    let recoveryFrame:number|undefined, preserveFront=false;
     const node = container.current!;
     const win = node.ownerDocument.defaultView!;
     const cancel = () => { analysisBoxHeld.current=false; latest.current.analysisAtomCapture?.onCancel(); cancelOverlayPress(); finishRope(false); finish(false); updateHover(null); latest.current.onStateMarkerHover?.(null); };
-    const contextLost = (event: Event) => { if (!cancelled) { event.preventDefault(); cancel(); report('WebGL上下文已失活，请重新打开此建模窗口。', true); } };
-    void createRenderAdapter(node,{asyncMeshes:true,onAsyncMeshState:()=>observeSurfaceMesh(),onAsyncMeshError:report}).then(instance => {
+    const recover = (force = false) => {
+      const live=latest.current;
+      if(cancelled||live.active===false||!hasViewportArea(node)||recoveryFrame!==undefined)return;
+      if(!sceneUnavailable.current)live.onViewReady?.(null);
+      sceneUnavailable.current=true;
+      if(recoveryAttempted.current&&!force) {
+        if(failureRef.current?.kind!=='context')replaceFailure({kind:'context',message:'WebGL 绘制环境未能恢复。'});
+        return;
+      }
+      recoveryAttempted.current=true;
+      preserveFront=Boolean(lastDrawDocument.current);
+      if(preserveFront)saveViewportCamera();
+      lastDraw.current=null;
+      lastProjectionView.current=null;
+      replaceFailure({kind:'context',message:'WebGL 绘制环境已失活，正在恢复当前结构。'});
+      recoveryFrame=win.requestAnimationFrame(()=>{
+        recoveryFrame=undefined;
+        if(cancelled)return;
+        setReady(false);
+        setRendererGeneration(value=>value+1);
+      });
+    };
+    requestContextRecovery.current=recover;
+    if(recoveryFront.current?.firstChild)node.style.visibility='hidden';
+    void createRenderAdapter(node,{asyncMeshes:true,onAsyncMeshState:()=>observeSurfaceMesh(),onAsyncMeshError:report,onContextLost:()=>recover()}).then(instance => {
       if (cancelled) { instance.dispose(); return; }
       adapter.current = instance;
-      latest.current.onCameraZoomReady?.({
+      if(instance.presentationContextAvailable?.()===false) {
+        recover();
+        return;
+      }
+      const requireCameraInput=()=>{
+        if(adapter.current!==instance||latest.current.active===false||sceneUnavailable.current||instance.cameraInputReady?.(latest.current.document.id)===false)
+          throw Object.assign(new Error('目标视口已切换或尚未准备就绪。'),{code:'CAMERA_UNAVAILABLE'});
+        if(gesture.current||bondRope.current)throw Object.assign(new Error('视口正在处理手势，请结束后再调整视角。'),{code:'CAMERA_BUSY'});
+      };
+      const finishCameraUpdate=()=>{const view=instance.getView();updateHover(null);refreshProjection();recoverProjection();latest.current.onCameraViewChange?.(view);return view;};
+      const controls:ViewportCameraControls={
+        read(){
+          if(adapter.current!==instance||latest.current.active===false||sceneUnavailable.current||!node.isConnected||
+            !node.checkVisibility({visibilityProperty:true,opacityProperty:true})||instance.cameraInputReady?.(latest.current.document.id)===false)return;
+          return {view:instance.getView(),perceivedDistance:instance.getZoomDistance()};
+        },
         getZoomDistance(){
           if(adapter.current!==instance||sceneUnavailable.current)throw Object.assign(new Error('目标视口尚未准备就绪。'),{code:'CAMERA_ZOOM_UNAVAILABLE'});
           return instance.getZoomDistance();
@@ -985,39 +1097,73 @@ export default function ModelViewport(props: ModelViewportProps) {
           latest.current.onCameraViewChange?.(receipt.view);
           return receipt;
         },
-      });
+        gesture(command){
+          requireCameraInput();
+          const previousView=instance.getView();
+          if(command.kind==='pan')instance.camera(previousView,command.dxPx,command.dyPx,'pan');
+          else{
+            const delta=command.degrees/CAMERA_ROTATION_DEGREES_PER_PIXEL;
+            instance.camera(previousView,command.axis==='screen-y'?delta:0,command.axis==='screen-x'?delta:0,'rotate');
+          }
+          return {previousView,view:finishCameraUpdate()};
+        },
+        apply(command){
+          requireCameraInput();
+          if(command.kind==='pan'||command.kind==='rotate')return controls.gesture!(command);
+          if(command.kind==='zoom')return controls.zoomByFactor(command.factor);
+          const previousView=instance.getView();
+          if(command.kind==='view')instance.setView(command.view);
+          else if(command.kind==='reset')instance.resetView();
+          else if(command.kind==='step'){if(command.direction)instance.step(command.direction);}
+          else instance.orient(command.kind,command.preset);
+          return {previousView,view:finishCameraUpdate()};
+        },
+      };
+      latest.current.onCameraZoomReady?.(controls);
       resizeRoots=[node.closest<HTMLElement>('[data-testid="model-document-deck"]'),node.closest<HTMLElement>('[data-testid="workspace-v18"]')].filter((value):value is HTMLElement=>Boolean(value));
       layoutResize=()=>{try{const active=resizeRoots.some(root=>root.dataset.layoutResizing==='true');instance.setLayoutResizing(active);if(!active&&latest.current.active!==false){refreshProjection();recoverProjection();}}catch(error){report(error);}};
       for(const root of resizeRoots)root.addEventListener(VIEWPORT_LAYOUT_RESIZE_EVENT,layoutResize);if(resizeRoots.length)layoutResize();
+      const waitingForScene=sceneUnavailable.current;
       redraw(); setReady(true);
       if(latest.current.fixedCellView&&asynchronousDraw.current)sceneUnavailable.current=true;
-      else latest.current.onViewReady?.(() => instance.getView());
+      else if(!waitingForScene&&!sceneUnavailable.current&&latest.current.active!==false)latest.current.onViewReady?.(() => instance.getView());
       const Observer = (win as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
       resizeQueue=createViewportResizeQueue(callback=>win.requestAnimationFrame(callback),id=>win.cancelAnimationFrame(id),()=>{try { instance.resize(true,error=>{try{if(error)throw error;if (latest.current.active === false) return; if (gesture.current) finish(false); finishRope(false); updateHover(null); refreshProjection(); recoverProjection();}catch(error){report(error);}}); } catch (error) { report(error); }});
       resize = new Observer(() => resizeQueue?.request()); resize.observe(node);
-      node.querySelector('canvas')?.addEventListener('webglcontextlost', contextLost);
-    }).catch(error => { if (!cancelled) { adapter.current?.dispose(); adapter.current = null; report(error, true); } });
+    }).catch(error => {
+      if(cancelled)return;
+      try{adapter.current?.dispose();}finally{adapter.current=null;}
+      if(recoveryAttempted.current)replaceFailure({kind:'context',message:'WebGL 绘制环境未能恢复。'});
+      else report(error,true);
+    });
     win.addEventListener('blur', cancel); win.addEventListener('pagehide', cancel);
     return () => {
       asynchronousDraw.current?.controller.abort();asynchronousDraw.current=null;container.current?.removeAttribute('data-render-preparing');
       cancelled = true; cancel(); resize?.disconnect();resizeQueue?.dispose();
+      if(requestContextRecovery.current===recover)requestContextRecovery.current=null;
+      if(recoveryFrame!==undefined)win.cancelAnimationFrame(recoveryFrame);
       if(layoutResize)for(const root of resizeRoots)root.removeEventListener(VIEWPORT_LAYOUT_RESIZE_EVENT,layoutResize);
       win.removeEventListener('blur', cancel); win.removeEventListener('pagehide', cancel);
-      node.querySelector('canvas')?.removeEventListener('webglcontextlost', contextLost);
       latest.current.onViewReady?.(null);
       latest.current.onCameraZoomReady?.(null);
-      adapter.current?.dispose(); adapter.current = null; observeSurfaceMesh();
+      const instance=adapter.current;
+      adapter.current=null;
+      try{instance?.dispose(preserveFront&&hasViewportArea(node)?recoveryFront.current??undefined:undefined);}
+      catch(error){if(!preserveFront)report(error);}
+      observeSurfaceMesh();
     };
-  }, [initializationRequested]);
+  }, [initializationRequested,rendererGeneration]);
     useEffect(() => { if (!ready) return; const rope = bondRope.current; if (rope && (rope.documentId !== model.id || rope.revision !== model.revision || props.structureLocked || viewportEditingBlocked(props))) finishRope(false); const own = gesture.current; if (own && (own.documentId !== model.id || ((own.kind !== 'camera' || own.analysisCapture) && own.revision !== model.revision) || (own.analysisCapture ? !analysisCaptureCurrent(own.analysisCapture,props.analysisAtomCapture) : (viewportEditingBlocked(props) && own.kind !== 'camera')))) finish(false); hoverScreen.current = null; redraw(preview.current); updateHover(null); }, [ready, model.id, model.revision, model.draft.structure, props.structureLocked, props.captureRequest, props.readOnly, props.allowModelEditing, props.viewTransform, props.multiframeDisplay, props.analysisAtomCapture?.requestId, props.analysisAtomCapture?.contextKey]);
   useEffect(()=>{if(!display.stereochemistry)dismissedCipWarnings.current.clear();},[display.stereochemistry]);
   useEffect(() => { if (ready) redraw(preview.current); }, [ready, display, highlights, model.selection, model.draft.assignments, props.observationReference, props.observationEpoch, props.observationFrame, props.observationFixedFrame, props.observationAnchorAtomIds, props.observationTransform, props.measurement, props.captureRequest, props.captureAtomIds, props.analysisAtomCapture, props.showAxes, props.viewTransform, props.fixedCellView, props.stateMarkers, props.effectiveFrozenAtomIds, props.displayFrozenAtomIds, props.linkedAtomsActive,  props.vibrationVectors, props.atomScalarValues, props.atomScalarColor, props.atomScalarLabels, props.dipoleVector,props.multiframeDisplay,props.calculationRanges,props.hiddenAtomIds,props.cipStructure]);
   useEffect(()=>{if(!ready||props.active===false)return;try{const p=latest.current,instance=adapter.current;if(!instance?.updateSamplingSphere){lastDraw.current=null;redraw(preview.current);}else if(!instance.updateSamplingSphere(viewportSamplingSphere(p.document,p.samplingSphereDraft,p.samplingSphere),p.document))redraw(preview.current);observeRenderCounters();}catch(error){report(error);}},[ready,props.active,props.samplingSphere,props.samplingSphereDraft]);
-  useEffect(() => { if (ready) redraw(preview.current); }, [ready, props.renderIdentity, props.onRenderComplete, props.sceneOwnerEpoch, props.displayAtoms]);
   const immediateObservation = Boolean(props.readOnly || props.observationFixedFrame || props.onSceneSubmitted);
   useLayoutEffect(() => {
     if (ready && props.active !== false && immediateObservation) redraw(preview.current);
-  }, [ready, props.active, model.draft.structure, props.renderIdentity?.requestId, immediateObservation]);
+  }, [ready, props.active, model.draft.structure, props.renderIdentity, props.onRenderComplete, props.sceneOwnerEpoch, props.displayAtoms, immediateObservation]);
+  useEffect(() => {
+    if(ready&&!immediateObservation)redraw(preview.current);
+  },[ready,immediateObservation,props.renderIdentity,props.onRenderComplete,props.sceneOwnerEpoch,props.displayAtoms]);
   useEffect(() => {
     const surface = hitSurface.current;
     if (!ready || !surface) return;
@@ -1353,6 +1499,7 @@ export default function ModelViewport(props: ModelViewportProps) {
   useLayoutEffect(()=>{props.onLegendSurfaceChange?.(legendNode);},[props.onLegendSurfaceChange,legendNode]);
   return <section ref={viewportElement} className="model-viewport" data-testid="model-viewport" data-document-id={model.id} data-capture-kind={props.captureRequest?.kind??''} data-capture-purpose={props.captureRequest?.purpose??''} data-color-mode={display.colorMode} data-region-highlights={display.regionHighlights} data-has-legend={hasLegend} data-legend-layout="attached" data-viewport-narrow={narrowLegend} data-ready={ready} data-active={props.active !== false} data-read-only={Boolean(props.readOnly || props.viewTransform)} data-multiframe-count={props.multiframeDisplay?.frameCount??0} data-multiframe-atom-instances={props.multiframeDisplay?.atomInstances??0} data-multiframe-fit={props.multiframeDisplay?.fitKind??''} data-sampling-sphere-radius={props.samplingSphere?.radiusAngstrom??''} aria-label="桌面三维建模视口">
     <div className="model-viewport-stage">
+      <div className="model-viewport-canvas" ref={recoveryFront} aria-hidden="true" />
       <div className="model-viewport-canvas" ref={container} data-testid="model-render-canvas" />
       {ready&&props.active!==false&&props.cellEditorDraft&&adapter.current&&<CellEditorOverlay draft={props.cellEditorDraft} cellGuides={props.cellGuides} fontSize={display.fontSize} project={adapter.current.project} viewport={container.current} projectionVersion={overlayTick}/>}
       {ready&&props.active!==false&&!props.cellEditorDraft&&(props.cellGuides||display.cell)&&model.draft.structure.cell&&adapter.current&&<ReadOnlyCellOverlay cell={model.draft.structure.cell} cellGuides={props.cellGuides} documentId={model.id} fontSize={display.fontSize} project={adapter.current.project} viewport={container.current} projectionVersion={overlayTick}/>}
@@ -1400,7 +1547,7 @@ export default function ModelViewport(props: ModelViewportProps) {
       </div>
       {!model.draft.structure.atoms.length && ready && <div className="model-empty-hint">{viewportEmptyHint(props.readOnly)}</div>}
       {!ready && !failure && <div className="model-empty-hint">正在载入三维视口…</div>}
-      <DismissibleNotice identity={failure} className="model-viewport-error" data-error-kind={failure?.kind}>{failure?.message}</DismissibleNotice>
+      <DismissibleNotice identity={failure} className="model-viewport-error" data-error-kind={failure?.kind}>{failure?.message}{failure?.kind==='context'&&<button type="button" style={{pointerEvents:'auto'}} onClick={()=>requestContextRecovery.current?.(true)}>重试绘制</button>}</DismissibleNotice>
       {display.stereochemistry&&cipWarning&&cipWarning.documentId===model.id&&cipWarning.structure.atoms===model.draft.structure.atoms&&cipWarning.structure.bonds===model.draft.structure.bonds&&cipWarning.structure.bondPerceptionIssues===model.draft.structure.bondPerceptionIssues&&cipWarning.projected===props.cipStructure&&<div className="model-stereochemistry-warning" data-testid="model-stereochemistry-warning"><details><summary aria-label={cipWarning.partial?'部分立体化学标注失败':'立体化学标注失败'} title="立体化学标注">⚠</summary><div><strong>{cipWarning.partial?'部分立体化学标注失败':'立体化学标注失败'}</strong><pre>{cipWarning.reason}</pre><button type="button" onClick={()=>adapter.current?.retryCip?.()}>重试标注</button></div></details><button type="button" aria-label="关闭立体化学标注警告" onClick={()=>{dismissedCipWarnings.current.add(cipWarning.identity);setCipWarning(null);}}>×</button></div>}
       {props.captureRequest && <output className="model-capture-status" data-testid="model-capture-status">输入选择 · {props.captureRequest.kind} · {(props.captureAtomIds ?? []).length} 个原子</output>}
       {props.analysisAtomCapture && <output className="model-capture-status" data-testid="analysis-atom-capture-status">{props.analysisAtomCapture.kind === 'coordinate' ? '有序内坐标选择' : '原子区域选择'} · {props.analysisAtomCapture.atomIds.length} 个原子</output>}

@@ -110,6 +110,17 @@ export function transitionTable(state: ExcitedState, decimals = 2,context?:{engi
     return { key: String(index), cells: [orbitalLabel(row.from,row.spin), orbitalLabel(row.to,row.spin), row.spin === 'alpha' ? 'α' : row.spin === 'beta' ? 'β' : row.spin === 'mixed' || context?.reference === 'restricted' ? 'α/β' : '—', number(row.amplitude), number(contribution)] };
   }) };
 }
+
+/** Preserve the source state's reported energy, oscillator strength and
+ * configuration rows independently of broadening, displayed units or range. */
+export function printedTransitionText(states:readonly ExcitedState[],source:unknown):string {
+  const cell=(value:string|number|null|undefined)=>String(value??'').replace(/[\r\n\t]+/g,' ');
+  const rows=states.flatMap(state=>(state.transitions.length?state.transitions:[undefined]).map(transition=>[
+    state.index,state.label,state.multiplicity,state.frameIndex,state.sourceLine,state.energyEv,state.wavelengthNm,state.oscillatorStrength,
+    transition?.from,transition?.direction,transition?.to,transition?.amplitude,transition?.weight,transition?.spin,transition?.sourceLine,
+  ].map(cell).join('\t')));
+  return [`# ${JSON.stringify(source)}`,'state\tlabel\tmultiplicity\tframe_index\tstate_source_line\tenergy_eV\twavelength_nm\toscillator_strength\tfrom\tdirection\tto\tamplitude\tnative_weight\tspin\ttransition_source_line',...rows].join('\n')+'\n';
+}
 export function vibrationModeTable(modes: readonly ProjectedVibrationMode[], scaled: boolean, decimals = 2): ScientificTableProjection {
   const number = (value: number | null | undefined) => formatResultValue(value, decimals);
   const units = [...new Set(modes.filter(mode => mode.irIntensity != null).map(mode => mode.irIntensityUnit ?? '单位未确认'))];

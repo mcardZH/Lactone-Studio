@@ -18,13 +18,14 @@ function startupFailure(error, root) {
   const classified = classifyStorageError(error), rawCode = error.code || 'UNKNOWN', step = error.portableStep || 'verify-directory', target = error.path || error.portablePath || root;
   let code = classified.code, reason = '便携目录检查失败。';
   if (['EISDIR', 'ENOTDIR', 'EEXIST'].includes(rawCode)) { code = 'PORTABLE_PATH_TYPE_CONFLICT'; reason = '路径类型或名称冲突，无法完成此步骤；不能据此判定磁盘类型或硬链接能力。'; }
+  else if (['EPERM', 'EBUSY'].includes(rawCode) && step === 'atomic-replace') reason = '系统拒绝原子替换探针。请检查同目录的文件占用和写入权限，再重新启动。';
   else if (['EACCES', 'EPERM', 'EROFS'].includes(rawCode)) reason = '当前目录没有此步骤所需的权限，或介质为只读。';
   else if (['ENOSPC', 'EDQUOT'].includes(rawCode)) reason = '磁盘空间或配额不足。';
   else if (['ENOTSUP', 'EOPNOTSUPP', 'ENOSYS', 'EXDEV'].includes(rawCode)) reason = '当前位置无法完成此安全存储步骤；尚不能确定具体磁盘类型。';
   else if (rawCode === 'PORTABLE_PATH_CHANGED') reason = '目录或文件身份发生变化，或路径经过链接；已停止便携目录准备。';
   else if (['ENOENT', 'ENODEV', 'EIO'].includes(rawCode)) reason = '存储路径不可用或发生读写故障。';
   return { ...classified, code, rawCode, step, path: target,
-    message: `${reason}\n失败步骤：${stepLabels[step] || step}\n原始错误代码：${rawCode}\n路径：${target}${error.dest ? '\n目标路径：' + error.dest : ''}${error.portableCleanupFailure ? '\n本次探针清理也未完成，原始故障信息已保留。' : ''}\n请保留原目录，将完整便携目录（包括程序、运行时及已有数据）复制到有足够空间、可写且支持硬链接与原子替换的位置。核对复制内容完整后，从新位置启动并确认已有设置和数据；确认前不要删除原目录。`,
+    message: `${reason}\n失败步骤：${stepLabels[step] || step}\n原始错误代码：${rawCode}\n路径：${target}${error.dest ? '\n目标路径：' + error.dest : ''}${error.portableCleanupFailure ? '\n本次探针清理也未完成，原始故障信息已保留。' : ''}${error.portableRetryFailure ? `\n重新验证失败：${error.portableRetryFailure.code}（${stepLabels[error.portableRetryFailure.step] || error.portableRetryFailure.step}）` : ''}\n请保留原目录，将完整便携目录（包括程序、运行时及已有数据）复制到有足够空间、可写且支持硬链接与原子替换的位置。核对复制内容完整后，从新位置启动并确认已有设置和数据；确认前不要删除原目录。`,
   };
 }
 function checkedDirectory(fs, target) {
@@ -61,6 +62,7 @@ function probeWritable(fs, directory) {
     atStep('atomic-replace', target, () => fs.renameSync(replacement, target));
     atStep('verify-file', target, () => { if (identity(fs.lstatSync(target)) !== owned.get(replacement)) throw Object.assign(new Error('Portable atomic replacement did not publish our file'), { code: 'PORTABLE_PATH_CHANGED' }); });
     owned.set(target, owned.get(replacement));
+    owned.delete(replacement);
     atStep('read', target, () => { const stat = fs.lstatSync(target); if (!stat.isFile() || stat.isSymbolicLink() || identity(stat) !== owned.get(target) || fs.readFileSync(target, 'utf8') !== 'portable-replacement') throw Object.assign(new Error('Portable writable probe identity changed'), { code: 'PORTABLE_PATH_CHANGED' }); });
     verifyParent();
     return { atomicReplace: true, exclusivePublish: true };
@@ -69,11 +71,33 @@ function probeWritable(fs, directory) {
     let cleanupFailure;
     if (descriptor !== undefined) { try { atStep('close', descriptorPath, () => fs.closeSync(descriptor)); } catch (error) { cleanupFailure = error; } }
     // Only remove this probe's exact, still-owned files. Never remove another owner's replacement.
-    for (const [file, token] of owned) { try { atStep('cleanup', file, () => { const stat = fs.lstatSync(file); if (stat.isFile() && !stat.isSymbolicLink() && identity(stat) === token && checkedDirectory(fs, directory) === parent) fs.unlinkSync(file); }); } catch (error) { if (error.code !== 'ENOENT') cleanupFailure ??= error; } }
+    for (const [file, token] of owned) { try { atStep('cleanup', file, () => {
+      const stat = fs.lstatSync(file);
+      if (!stat.isFile() || stat.isSymbolicLink() || identity(stat) !== token || checkedDirectory(fs, directory) !== parent)
+        throw Object.assign(new Error('Portable probe ownership changed before cleanup'), { code: 'PORTABLE_PATH_CHANGED' });
+      fs.unlinkSync(file);
+    }); } catch (error) { if (error.code !== 'ENOENT') cleanupFailure ??= error; } }
     if (cleanupFailure) {
       if (primaryFailure) primaryFailure.portableCleanupFailure = { code: cleanupFailure.code, path: cleanupFailure.path || cleanupFailure.portablePath };
       // eslint-disable-next-line no-unsafe-finally -- A cleanup failure vetoes success, but cannot hide the original failing step.
       else throw cleanupFailure;
+    }
+  }
+}
+function prepareWritableDirectory(fs, directory, retries) {
+  const expectedParent = checkedDirectory(fs, directory);
+  try { return probeWritable(fs, directory); }
+  catch (failure) {
+    // Windows can report a short-lived sharing conflict as EPERM. Only a
+    // failed replacement of our own, fully cleaned probe qualifies for retry.
+    if (!['EPERM', 'EBUSY'].includes(failure.code) || failure.portableStep !== 'atomic-replace' || failure.portableCleanupFailure) throw failure;
+    retries.push({ code: failure.code, step: failure.portableStep, path: failure.portablePath });
+    try {
+      if (checkedDirectory(fs, directory) !== expectedParent) throw Object.assign(new Error('Portable probe directory changed before retry'), { code: 'PORTABLE_PATH_CHANGED', portableStep: 'verify-directory' });
+      return probeWritable(fs, directory);
+    } catch (retry) {
+      failure.portableRetryFailure = { code: retry.code || 'UNKNOWN', step: retry.portableStep || 'verify-directory', path: retry.path || retry.portablePath || directory };
+      throw failure;
     }
   }
 }
@@ -89,7 +113,10 @@ function createPortableProfile({ app, fs = nativeFS, executable, version, revisi
     }
     const rootIdentity = checkedDirectory(fs, root), paths = { data: path.join(root, 'data'), profile: path.join(root, 'data', 'profiles', tag), cache: path.join(root, 'cache', tag), temp: path.join(root, 'temp', tag, runId), logs: path.join(root, 'logs', tag), crashDumps: path.join(root, 'logs', tag, 'crash-dumps') };
     for (const directory of Object.values(paths)) createDirectory(fs, root, directory);
-    const filesystem = probeWritable(fs, paths.profile); for (const key of ['cache', 'temp', 'logs', 'crashDumps']) probeWritable(fs, paths[key]);
+    const retries = [];
+    const filesystem = prepareWritableDirectory(fs, paths.profile, retries);
+    for (const key of ['cache', 'temp', 'logs', 'crashDumps']) prepareWritableDirectory(fs, paths[key], retries);
+    if (retries.length) filesystem.retries = retries;
     const identities = Object.fromEntries(Object.entries(paths).map(([key, directory]) => [key, checkedDirectory(fs, directory)]));
     if (checkedDirectory(fs, root) !== rootIdentity) throw Object.assign(new Error('Portable root changed during preparation'), { code: 'PORTABLE_PATH_CHANGED' });
     // Called by host before app.ready; no renderer-supplied paths are accepted.

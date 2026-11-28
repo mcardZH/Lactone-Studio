@@ -195,6 +195,7 @@ export interface OffscreenCaptureSnapshot extends CalculationRangeFeedback {
   resultAtomLabels?:readonly ViewportResultAtomLabel[];
   resultHighlights?:ViewportResultHighlights;
   resultColorbar?:AnalysisColorbar;
+  requireMappedSurfaceColorbar?:boolean;
   includeStateMarkers?: boolean;
   atomProperty?: AtomicProperty; atomicProperties?: readonly AtomicProperty[];
   /** Only derived display phases can share one confirmed parent geometry's property. */
@@ -205,12 +206,28 @@ export interface ViewportImageExportOptions {
   format: 'png' | 'svg';
   includeAnnotations: boolean;
   width?:number; height?:number; transparent?:boolean;
+  /** Visible scientific viewport region, with normalized left/top coordinates. */
+  crop?: ViewportImageCrop;
   /** Actual visible viewport size supplied by the canvas owner, not menu dimensions. */
   viewportWidth?: number; viewportHeight?: number;
   /** A shared canvas may own measurements independently of its analysis controls. */
   measurement?: MeasurementState;
   /** Scientific legend from the current stage, including a portal within it. */
   legend?: ViewportLegendSnapshot;
+}
+export interface ViewportImageCrop {x:number;y:number;width:number;height:number}
+
+export function viewportCropPixels(crop:ViewportImageCrop,sourceWidth:number,sourceHeight:number,width?:number,height?:number) {
+  const {x,y,width:spanX,height:spanY}=crop;
+  if(![x,y,spanX,spanY].every(Number.isFinite)||x<0||y<0||spanX<=0||spanY<=0||x+spanX>1||y+spanY>1||
+    ![sourceWidth,sourceHeight].every(value=>Number.isSafeInteger(value)&&value>0))throw Error('裁剪区域须落在当前视口内。');
+  const left=Math.min(sourceWidth-1,Math.floor(x*sourceWidth)),top=Math.min(sourceHeight-1,Math.floor(y*sourceHeight));
+  const regionWidth=Math.max(1,Math.min(sourceWidth,Math.ceil((x+spanX)*sourceWidth))-left);
+  const regionHeight=Math.max(1,Math.min(sourceHeight,Math.ceil((y+spanY)*sourceHeight))-top);
+  const outputWidth=width??(height===undefined?regionWidth:Math.max(1,Math.round(height*regionWidth/regionHeight)));
+  const outputHeight=height??(width===undefined?regionHeight:Math.max(1,Math.round(width*regionHeight/regionWidth)));
+  validateImageBudget({format:'png',width:outputWidth,height:outputHeight},1);
+  return {left,top,regionWidth,regionHeight,width:outputWidth,height:outputHeight};
 }
 /** Only remove annotation projections. Molecular topology, fields, colors and
  * camera remain the same immutable capture inputs. */
@@ -244,13 +261,24 @@ export function canvasEmbeddedSvg(canvas: HTMLCanvasElement): Blob {
 }
 /** Shared public capture path for modeling, analysis and their own renderer windows. */
 export async function exportViewportImage(input: OffscreenCaptureSnapshot, options: ViewportImageExportOptions, ownerDocument: Document, signal?: AbortSignal): Promise<Blob> {
-  const snapshot = viewportImageSnapshot({ ...currentViewportImageSnapshot(input,ownerDocument), width:options.width??input.width,height:options.height??input.height,exactDimensions:options.width!==undefined||options.height!==undefined,transparent:options.transparent??false, viewportWidth: options.viewportWidth ?? input.viewportWidth, viewportHeight: options.viewportHeight ?? input.viewportHeight, measurement: options.measurement ?? input.measurement, legend: options.legend ?? input.legend }, options.includeAnnotations);
+  const crop=options.crop;
+  const snapshot = viewportImageSnapshot({ ...currentViewportImageSnapshot(input,ownerDocument), width:crop?input.width:options.width??input.width,height:crop?input.height:options.height??input.height,exactDimensions:!crop&&(options.width!==undefined||options.height!==undefined),transparent:options.transparent??false, viewportWidth: options.viewportWidth ?? input.viewportWidth, viewportHeight: options.viewportHeight ?? input.viewportHeight, measurement: options.measurement ?? input.measurement, legend: options.legend ?? input.legend }, options.includeAnnotations);
   const structure=displayedImageStructure(snapshot.displayAtoms?{...snapshot,displayAtoms:structuredClone(snapshot.displayAtoms)}:snapshot);
   const capture = await createOffscreenCapture(snapshot, signal, ownerDocument);
   try {
     const canvas = await capture.capture(structure, snapshot.document.revision, signal);
     assertResultNotAborted(signal);
-    return options.format === 'svg' ? canvasEmbeddedSvg(canvas) : await canvasPng(canvas, signal);
+    if(!crop)return options.format === 'svg' ? canvasEmbeddedSvg(canvas) : await canvasPng(canvas, signal);
+    const area=viewportCropPixels(crop,canvas.width,canvas.height,options.width,options.height);
+    const cropped=ownerDocument.createElement('canvas');
+    try{
+      cropped.width=area.width;cropped.height=area.height;
+      const context=cropped.getContext('2d');
+      if(!context||cropped.width!==area.width||cropped.height!==area.height)throw Error('无法创建所选尺寸的裁剪画布。');
+      context.drawImage(canvas,area.left,area.top,area.regionWidth,area.regionHeight,0,0,cropped.width,cropped.height);
+      assertResultNotAborted(signal);
+      return options.format==='svg'?canvasEmbeddedSvg(cropped):await canvasPng(cropped,signal);
+    }finally{cropped.width=0;cropped.height=0;}
   } finally { await capture.dispose(); }
 }
 /** A trajectory's current PNG uses the same framing as its sequence export.
@@ -281,7 +309,7 @@ export async function createOffscreenCapture(input: OffscreenCaptureSnapshot, si
     atomProperty: input.atomProperty, atomicProperties: input.atomicProperties, scalarSourceFrameIndex: input.scalarSourceFrameIndex, annotation: input.annotation,
     orbitalLayer: input.orbitalLayer, ntoLayer: input.ntoLayer, surfaceLayer: input.surfaceLayer, surfaceLayers: input.surfaceLayers, surfaceExtrema: input.surfaceExtrema,
     atomScalarValues: input.atomScalarValues, atomScalarColor: input.atomScalarColor, atomScalarLabels: input.atomScalarLabels, dipoleVector: input.dipoleVector, viewTransform: input.fixedCellView?undefined:input.viewTransform,
-    resultBondValues:input.resultBondValues,resultBondLabels:input.resultBondLabels,resultBondColor:input.resultBondColor,resultAtomLabels:input.resultAtomLabels,resultHighlights:input.resultHighlights,resultColorbar:input.resultColorbar,includeStateMarkers:input.includeStateMarkers });
+    resultBondValues:input.resultBondValues,resultBondLabels:input.resultBondLabels,resultBondColor:input.resultBondColor,resultAtomLabels:input.resultAtomLabels,resultHighlights:input.resultHighlights,resultColorbar:input.resultColorbar,requireMappedSurfaceColorbar:input.requireMappedSurfaceColorbar,includeStateMarkers:input.includeStateMarkers });
   validateImageBudget({ format: 'png', width: snapshot.width, height: snapshot.height }, 1);
   const vibrationBase = snapshot.displayGeometry === 'vibration'
     ? snapshot.vibrationBaseStructure ?? snapshot.document.draft.structure : undefined;
@@ -349,6 +377,7 @@ export async function createOffscreenCapture(input: OffscreenCaptureSnapshot, si
           if (state?.status !== 'committed' || !state.submitted || state.fieldId !== snapshot.ntoLayer.field.id || state.attemptKey !== expected || state.committedKey !== expected || !(state.vertexCount > 0 && state.triangleCount > 0))
             throw new Error(state?.error || '当前NTO没有实际提交的网格，不能导出请求态图片。');
         }
+        let surfaceMapped=false;
         if (surfaceGeometry && snapshot.surfaceLayers !== undefined) {
           const states = adapter!.surfaceMeshStates?.() ?? [];
           for (const layer of snapshot.surfaceLayers.filter(layer => layer.visible)) {
@@ -360,6 +389,7 @@ export async function createOffscreenCapture(input: OffscreenCaptureSnapshot, si
           const state = adapter!.surfaceMeshState?.(), expected = surfaceMeshKey(snapshot.surfaceLayer, snapshot.viewTransform ?? identityTransform());
           if (state?.status !== 'committed' || !state.submitted || state.attemptKey !== expected || state.committedKey !== expected || !(state.vertexCount > 0 && state.triangleCount > 0))
             throw new Error(state?.error || '当前目标表面没有实际提交的分子网格，不能导出请求态图片。');
+          surfaceMapped=state.colored;
         }
         if (snapshot.surfaceExtrema !== undefined) adapter!.setSurfaceExtrema(surfaceGeometry ? snapshot.surfaceExtrema : null);
         // setView renders synchronously; copy immediately before WebGL buffer clear.
@@ -389,7 +419,7 @@ export async function createOffscreenCapture(input: OffscreenCaptureSnapshot, si
           for(const row of projectResultBondColors(renderedStructure,(snapshot.resultBondValues??[]).filter(row=>visible(row.atomIds)),adapter!.project,offset)){context.strokeStyle=row.color;context.lineWidth=4;context.beginPath();context.moveTo(row.x1,row.y1);context.lineTo(row.x2,row.y2);context.stroke();}
           context.restore();
         }
-        if(sameGeometry&&(!(snapshot.surfaceLayer||snapshot.surfaceLayers?.length||snapshot.surfaceExtrema)||surfaceGeometry)&&snapshot.resultColorbar){
+        if(sameGeometry&&(!(snapshot.surfaceLayer||snapshot.surfaceLayers?.length||snapshot.surfaceExtrema)||surfaceGeometry)&&snapshot.resultColorbar&&(!snapshot.requireMappedSurfaceColorbar||surfaceMapped)){
           drawAnalysisColorbar(context,snapshot.resultColorbar,{width,height},{width:snapshot.viewportWidth??width,height:snapshot.viewportHeight??height});
         }
         if(snapshot.includeStateMarkers!==false){

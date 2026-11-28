@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
 import {createPortal} from 'react-dom';
 import type {DisplaySettings} from '../../modeling/contracts';
+import type {TrajectoryResult} from '../../results/contracts';
 import type {SharedModelConstraints} from '../../core/modeling/contracts';
 import {projectPesConstraintDefinitions} from '../../modeling/pes/request';
 import type {WorkspaceDocumentEntry} from '../../modeling/workspace-registry';
@@ -44,7 +45,7 @@ interface Props {
   onCanvas(documentId:string,value:PesWorkspaceProjection|null):void;
   onActivateNode(node:PesNode):void;onEditFrame(geometry:PesGeometry):void;
   onOptimize?(geometry:PesGeometry,request:WorkspaceSpaceOptimizationRequest):Promise<PesRun|void>;
-  onElectronicStateChange(values:{charge:number;multiplicity:number}):void;onConstraintsChange(value:SharedModelConstraints):SharedModelConstraints|void;
+  onConstraintsChange(value:SharedModelConstraints):SharedModelConstraints|void;
   onOpenPlot(value:PostprocessPlotSnapshot):void;onError(message:string):void;
 }
 export default function PesWorkspaceDock(p:Props){
@@ -179,23 +180,28 @@ export default function PesWorkspaceDock(p:Props){
     const current=p.active&&pendingSurfaceSeek.sourceKey===sourceKey&&pendingSurfaceSeek.activationEpoch===p.activationEpoch;
     if(!current||seekSurfaceFrame(pendingSurfaceSeek.frameId))setPendingSurfaceSeek(null);
   },[p.active,p.activationEpoch,sourceKey,activeCanvas?.result,activeCanvas?.scientificFrameReady,activeCanvas?.trajectoryPlayback?.state.disabled,activeCanvas?.trajectoryPlayback?.state.seekDisabled,seekSurfaceFrame,pendingSurfaceSeek]);
+  const playbackFrameSource=useCallback((result:TrajectoryResult,index:number)=>{
+    if(!view||!run||result.source.id!==view.result.source.id)return;
+    const summary=result.frames[index],origin=summary?.pesOrigin;
+    const nativeFrame=view.result.frames[summary?.sourceFrameIndex??index]?.pesOrigin;
+    if(!origin||origin.groupId!==link.groupId||origin.nodeId!==link.nodeId||origin.runId!==run.request.runIdentity.runId
+      ||origin.taskId!==run.request.runIdentity.taskId||origin.recordId!==selectedRecord?.id
+      ||nativeFrame?.frameId!==origin.frameId||nativeFrame.seriesId!==origin.seriesId)return;
+    return {groupId:link.groupId,nodeId:link.nodeId,runId:run.request.id,seriesId:origin.seriesId,frameId:origin.frameId,recordId:origin.recordId};
+  },[view,run,link.groupId,link.nodeId,selectedRecord?.id]);
   const readSubmittedFrame=useCallback((includeDisplayPosition=false)=>{
     if(!p.active||ordinaryOptimizationRunning||!geometry||!group||!view||!run)return;
     const submitted=activeCanvas?.readSubmittedScientificFrame?.();
-    if(!submitted||submitted.result.source.id!==view.result.source.id)return;
+    if(!submitted)return;
     // Playback owns collection readiness and the submitted scene. PES owns
     // publication compatibility, the run and the native frame identity.
     const revision=submitted.publicationRevision;
     if(revision!==view.revision&&(!view.incremental||revision!==view.baseRevision))return;
-    const summary=submitted.result.frames[submitted.index],origin=summary?.pesOrigin;
-    const nativeFrame=view.result.frames[summary?.sourceFrameIndex??submitted.index]?.pesOrigin;
-    if(!origin||origin.groupId!==link.groupId||origin.nodeId!==link.nodeId||origin.runId!==run.request.runIdentity.runId
-      ||origin.taskId!==run.request.runIdentity.taskId||origin.recordId!==selectedRecord?.id
-      ||nativeFrame?.frameId!==origin.frameId||nativeFrame.seriesId!==origin.seriesId)return;
-    const source={groupId:link.groupId,nodeId:link.nodeId,runId:run.request.id,seriesId:origin.seriesId,frameId:origin.frameId,recordId:origin.recordId};
+    const source=playbackFrameSource(submitted.result,submitted.index);
+    if(!source)return;
     return {...geometry,structure:submitted.structure,source,ffModel:pesSourceFfModel(group,{...run.source,source}),
       ...(includeDisplayPosition?{label:`${geometry.label??geometry.structure.name} · 第 ${submitted.index+1} 帧`}:{})};
-  },[p.active,ordinaryOptimizationRunning,geometry,group,view,run,activeCanvas,link.groupId,link.nodeId,selectedRecord?.id]);
+  },[p.active,ordinaryOptimizationRunning,geometry,group,view,run,activeCanvas,playbackFrameSource]);
   const submittedGeometry=readSubmittedFrame();
   const visibleFrame=submittedGeometry?.source.frameId;
   const submittedIndex=visibleFrame===undefined?undefined:activeCanvas?.readSubmittedScientificFrame?.()?.index;
@@ -223,7 +229,7 @@ export default function PesWorkspaceDock(p:Props){
     if(visibleFrame!==completionLanding.frameId)setPendingSurfaceSeek(seekSurfaceFrame(completionLanding.frameId)?null:{sourceKey,frameId:completionLanding.frameId,activationEpoch:p.activationEpoch});
     setCompletionLanding(current=>current===completionLanding?{...current,seekPending:false}:current);
   },[completionLanding,p.active,p.activationEpoch,runId,view,visibleFrame,seekSurfaceFrame]);
-  const optRequest=ordinaryOptimizationRunning?activeOptimization.request:undefined;
+  const optRequest=p.active&&ordinaryOptimizationRunning?activeOptimization.request:undefined;
   const optPreview=useMemo(()=>optRequest?projectOrdinaryOptimizationStructure(optRequest,optFrame):undefined,[optRequest,optFrame]);
   const baseStructure=ordinaryOptimizationRunning ? optPreview??model.draft.structure :
     activeCanvas?.staticDocument?.draft.structure??geometry?.structure??model.draft.structure;
@@ -257,11 +263,20 @@ export default function PesWorkspaceDock(p:Props){
     return readSubmittedFrame(true);
   },[p.active,p.entry,geometry,ordinaryOptimizationRunning,activeOptimization?.request.id,optPreview,optFrame,link.groupId,link.nodeId,
     requiresResultFrame,readSubmittedFrame,observed]);
+  // The current display already has the exact proposed geometry and origin.
+  // Prepare its guides together with its molecules so acknowledgement does not
+  // produce a second draw. Scientific actions still read the submitted frame.
+  const proposedIndex=activeCanvas?.frameIndex;
+  const proposedSource=p.active&&!ordinaryOptimizationRunning&&activeCanvas?.result&&proposedIndex!==undefined
+    ?playbackFrameSource(activeCanvas.result,proposedIndex):undefined;
   const sourceGeometry=submittedGeometry??geometry;
-  const annotationGeometry=capture.target?.displayGeometry??(sourceGeometry&&raw?{...sourceGeometry,structure:projectionStructure}:undefined);
+  const annotationSourceGeometry=requiresResultFrame
+    ?geometry&&proposedSource?{...geometry,source:proposedSource}:undefined
+    :geometry;
+  const annotationGeometry=capture.target?.displayGeometry??(annotationSourceGeometry&&raw?{...annotationSourceGeometry,structure:projectionStructure}:undefined);
   const annotationSourceKey=JSON.stringify([link.groupId,link.nodeId,capture.target?.contextKey,annotationGeometry?.source,activeCanvas?.frameIndex]);
   const published=useMemo(()=>{
-    if(!geometry||!group)return null;
+    if(!p.active||!geometry||!group)return null;
     // Empty editable initial/workbench pages stay with their real ModelStore.
     // They are not scientific observation frames and must permit the first atom.
     if(!observed&&!capture.target&&model.draft.structure.atoms.length===0)return null;
@@ -290,18 +305,17 @@ export default function PesWorkspaceDock(p:Props){
         return dispatchOptimize(source,request);
       }}:{}),
       coordinateAnnotations:mergeCoordinateAnnotations(sourceCanvas?.coordinateAnnotations??[],
-        annotationGeometry&&(capture.target||!requiresResultFrame||sourceCanvas?.scientificFrameReady)
-          ?pesCoordinateAnnotations(group,annotationGeometry,annotationSourceKey):[]),
+        annotationGeometry?pesCoordinateAnnotations(group,annotationGeometry,annotationSourceKey):[]),
       // The result remains a protected geometry source, while a paused ready
       // frame may own display-only bond edits even during a background run.
       bondEditingBlocked:!!capture.target || (sourceCanvas?.bondEditingBlocked ?? sourceCanvas?.modelEditingBlocked ?? observation),
       viewport:{...sourceCanvas?.viewport,fixedCellView:projectionStructure.cell?.pbc.some(Boolean)||undefined,resultHighlights,analysisAtomCapture:capture.viewportCapture}};
     return {documentId:p.entry.id,canvas,observation,readScanGeometry:capture.target?undefined:readScanGeometry,
       ...(requiresResultFrame&&!ordinaryOptimizationRunning?{readSubmittedFrame}: {})};
-  },[geometry,group,raw,annotationSourceKey,model,activeCanvas,submittedGeometry?.structure,projectionStructure,capture.viewportCapture,capture.target,hovered,p.entry.id,canOptimize,dispatchOptimize,observed,requiresResultFrame,readSourceGeometry,readSubmittedFrame,readScanGeometry,ordinaryOptimizationRunning,optPreview,activeOptimization,latestOptimization,p.controller,selectPesRecord]);
+  },[p.active,geometry,group,raw,annotationSourceKey,model,activeCanvas,submittedGeometry?.structure,projectionStructure,capture.viewportCapture,capture.target,hovered,p.entry.id,canOptimize,dispatchOptimize,observed,requiresResultFrame,readSourceGeometry,readSubmittedFrame,readScanGeometry,ordinaryOptimizationRunning,optPreview,activeOptimization,latestOptimization,p.controller,selectPesRecord]);
   const onCanvas=p.onCanvas;
   // Use effects through the JSX owner so progress-only publications stay local.
-  usePublishPesCanvas(onCanvas,p.entry.id,p.active?published:null);
+  usePublishPesCanvas(onCanvas,p.entry.id,published);
   const fixedReplay=Boolean(run?.result&&!['starting','running','stopping'].includes(run.status)&&activeCanvas?.trajectoryPlayback?.state.playing);
   useObservedPesFrame(p.controller,link.groupId,link.nodeId,runId,submittedGeometry?.source.seriesId,visibleFrame,p.active,Boolean(submittedGeometry),fixedReplay,selectedRecord?.id,livePreviewSourceFrameIndex>=0);
   const stopFollowing=useCallback(()=>{
@@ -418,7 +432,7 @@ export default function PesWorkspaceDock(p:Props){
     {p.configurationHost&&panelActive&&createPortal(<PesWorkspace controller={p.controller} groupId={group.id} activeNodeId={node.id} geometry={sourceGeometry}
       sourceReady={ready} readCurrentGeometry={readSourceGeometry} readCurrentSnapshot={readCurrentSnapshot} readCurrentScanGeometry={readScanGeometry} captureActive={Boolean(capture.target)} additionalSources={p.additionalSources}
       onActivateNode={p.onActivateNode} selectionOwner={capture.selectionPort.owner} onRequestSelection={requestSelection}
-      onSelectionHighlight={(target,ids)=>setHovered(current=>ids.length?{target,ids}:current?.target.contextKey===target.contextKey?null:current)} onElectronicStateChange={p.onElectronicStateChange} onConstraintsChange={p.onConstraintsChange}/>,p.configurationHost)}
+      onSelectionHighlight={(target,ids)=>setHovered(current=>ids.length?{target,ids}:current?.target.contextKey===target.contextKey?null:current)} onConstraintsChange={p.onConstraintsChange}/>,p.configurationHost)}
     {p.resultHost&&createPortal(<section className="pes-result-workspace" hidden={!panelActive||ordinaryOptimizationRunning} aria-label="势能面结果" data-testid="pes-result-workspace">
       {panelActive&&resultChoice}
       {!resultDocument&&controls}

@@ -1,12 +1,13 @@
 import {DismissibleNotice} from '../DismissibleNotice';
 import {ProjectUiScope,ProjectNativeDetailsBoundary,useProjectUiScope,projectUiSourceIdentity,useProjectState} from '../../projects/ui-state';
 import NumericInput from '../NumericInput';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useState, type Ref } from 'react';
 import { buildRamanSpectrum, correctedFrequency, projectRamanStokesModes, type ProjectedVibrationMode, type RamanStokesMode, type RamanStokesParameters } from '../../results/spectroscopy';
 import { AnalysisTaskLayout, AnalysisTaskSection } from './AnalysisTaskLayout';
 import SpectroscopyControls, { SpectroscopyTable, type SpectrumBuildOptions } from './SpectroscopyControls';
 import { formatResultValue } from '../../results/numeric-format';
 import type { ScientificTableProjection } from './scientific-table';
+import type {RamanViewPort} from './vibration-view-port';
 
 export interface RamanDefaults {
   laserWavelengthNm?: number; temperatureK?: number; fwhm?: number; peakShape?: 'gaussian' | 'lorentzian';
@@ -17,6 +18,7 @@ export interface RamanControlsProps {
   defaults?: RamanDefaults; scaleFactor?: number;
   decimals?:number;
   onDecimalsChange?(value:number):void;
+  nativeControls?:Ref<RamanViewPort>;
 }
 export function ramanActivityTable(modes: readonly ProjectedVibrationMode[], scaleFactor = 1,decimals=2): ScientificTableProjection {
   const number=(value:number|null|undefined)=>formatResultValue(value,decimals);
@@ -64,13 +66,27 @@ function RamanControlsInner(p: RamanControlsProps) {
     if (!parameters || !shape) throw new Error('请先应用激光和温度参数，并选择展宽峰型。');
     return buildRamanSpectrum(p.modes, { ...parameters, ...options, peakShape: shape, scaleFactor });
   }, [p.modes, parameters, peakShape, scaleFactor]);
-  const activityModes = p.modes.filter(mode => mode.ramanActivity != null && Number.isFinite(mode.ramanActivity));
+  const activityModes=useMemo(()=>p.modes.filter(mode=>mode.ramanActivity!=null&&Number.isFinite(mode.ramanActivity)),[p.modes]);
+  const commitParameters=(next:RamanStokesParameters)=>{
+    projectRamanStokesModes(p.modes,next);
+    setApplied({identity:dataIdentity,parameters:next});
+    setError('');
+  };
+  useImperativeHandle(p.nativeControls,()=>({
+    read:()=>({activityModeCount:activityModes.length,parameters,usableStokesModeCount:projected?.filter(row=>row.intensity!==null).length??0,
+      defaults:{laserWavelengthNm:p.defaults?.laserWavelengthNm,temperatureK:p.defaults?.temperatureK}}),
+    apply(next){
+      commitParameters(next);
+      setLaser(String(next.laserWavelengthNm));
+      setTemperature(String(next.temperatureK));
+    },
+  }));
   if (!activityModes.length) return <AnalysisTaskLayout variant="card" title="拉曼谱" className="spectroscopy-card"><p className="postprocess-note">当前频率结果未输出拉曼活性。</p></AnalysisTaskLayout>;
   const unitMissing = activityModes.some(mode => !mode.ramanActivityUnit), conventionMissing = activityModes.some(mode => !mode.ramanActivityConvention || mode.ramanActivityConvention === 'unknown');
   return <AnalysisTaskLayout variant="card" methodDetails title="拉曼谱" className="spectroscopy-card" setup={<div className="spectroscopy-control-row">
       <label>激光 / nm<NumericInput aria-label="Raman激光波长"  min={0} step={1} value={laser} onChange={event => setLaser(event.target.value)}/></label>
       <label>温度 / K<NumericInput aria-label="Raman温度"  min={0} step={1} value={temperature} onChange={event => setTemperature(event.target.value)}/></label>
-      <button type="button" disabled={!validParameters} onClick={() => { try { const next = { laserWavelengthNm: laserValue, temperatureK: temperatureValue }; projectRamanStokesModes(p.modes, next); setApplied({ identity: dataIdentity, parameters: next }); setError(''); } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); } }}>应用参数</button></div>}>
+      <button type="button" disabled={!validParameters} onClick={() => { try { commitParameters({laserWavelengthNm:laserValue,temperatureK:temperatureValue}); } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); } }}>应用参数</button></div>}>
     {(unitMissing || conventionMissing) && <p className="postprocess-note">{activityModes.every(mode => unitMissing ? !mode.ramanActivityUnit : !mode.ramanActivityConvention || mode.ramanActivityConvention === 'unknown') ? '来源' : '部分模式'}未确认拉曼活性{unitMissing && conventionMissing ? '单位及静态/动态约定' : unitMissing ? '单位' : '静态/动态约定'}，暂不能换算。</p>}
     {error && <DismissibleNotice role="alert">{error}</DismissibleNotice>}
     <AnalysisTaskSection title="Stokes 相对强度">

@@ -49,6 +49,8 @@ export function projectedForcePreset(values: PesParameters, fallback: PesConverg
   return values.maxForceHartreePerBohr !== undefined ? 'custom' : fallback;
 }
 export const isPesScanOptimizer = (algorithm: string) => Object.hasOwn(PES_ALGORITHMS.scan, algorithm);
+export const PES_DEFAULT_SCAN_ALGORITHM = 'lbfgs-scan';
+export const PES_CI_NEB_MINIMUM_BEADS = 3;
 export const PES_DEFAULT_HESSIAN_STEP_BOHR = .002;
 export const PES_IRC_NUMBER_FIELDS = {
   stepMassAngstrom: { initial: .10, label: '路径步长', unit: 'Å·√amu', exclusiveMinimum: 0 },
@@ -77,6 +79,7 @@ const pathAdvanced: PesParameterField[] = [
 ];
 const pathBase = { fields: [count('beads', '总珠子数（含两端）', 12, 2)] };
 const pathRecordedBase = { fields: [count('beads', '总珠子数（含两端）', 12, 2), count('recordInterval', '记录间隔（每 N 轮）', 5)] };
+const ciNebBase = { fields: [count('beads', '总珠子数（含两端）', 12, PES_CI_NEB_MINIMUM_BEADS), count('recordInterval', '记录间隔（每 N 轮）', 5)] };
 const fsmLocalFields = [count('fsmNodeSteps', '每个新节点优化步数', 2),
   count('fsmLineSearchSteps', '每步最大回溯次数', 3), positive('fsmBoxAngstrom', '节点局部坐标框半宽', .3, 'Å')];
 const optimizeTs: PesParameterSection[] = [
@@ -92,7 +95,7 @@ const orientation = { current: '使用当前摆放构型', random: '自动生成
 export const LEGACY_PES_PARAMETERS: Record<string, PesParameterSection[]> = {
   slsqp: [{ title: '每点优化设置', fields: [count('maxSteps', '每点最大优化步数', 200), positive('maxForceHartreePerBohr', '最大投影力阈值', .00045, 'Eh/Bohr'),
     positive('rmsForceHartreePerBohr', 'RMS投影力阈值', .0003, 'Eh/Bohr')] }],
-  'ci-neb': [pathRecordedBase, { title: '路径优化设置 · FIRE', fields: [count('nebIterations', '最大路径迭代（含爬坡）', 1000),
+  'ci-neb': [ciNebBase, { title: '路径优化设置 · FIRE', fields: [count('nebIterations', '最大路径迭代（含爬坡）', 1000),
     positive('nebMaxForce', '普通NEB最大垂直力', .001, 'Eh/Bohr'), positive('nebRmsForce', '普通NEB RMS垂直力', .0005, 'Eh/Bohr'),
     positive('ciMaxForce', 'CI最大力', .0005, 'Eh/Bohr'), positive('ciRmsForce', 'CI RMS力', .00025, 'Eh/Bohr'),
     positive('ciToleranceScale', 'CI阶段普通节点容差倍率', 10), positive('ciTriggerForce', '启用CI的最大力阈值', .2, 'Eh/Bohr')] },
@@ -115,30 +118,33 @@ export const LEGACY_PES_PARAMETERS: Record<string, PesParameterSection[]> = {
 };
 
 const projectedForce = positive('fmaxHartreePerBohr', '最大投影力阈值', .00045, 'Eh/Bohr');
-const pointOptimization = [{ title: '每点优化设置', fields: [count('maxSteps', '每点最大优化步数', 200), { ...projectedForce, initial: SELLA_CONVERGENCE_PRESETS.loose.fmaxHartreePerBohr }] }];
+const pointOptimization = [{ title: '每点优化设置', fields: [count('maxSteps', '每点最大优化步数', 500), { ...projectedForce, initial: SELLA_CONVERGENCE_PRESETS.loose.fmaxHartreePerBohr }] }];
 const tsConvergence = { title: '收敛设置', fields: [projectedForce] };
-const nativeSellaTs = [sellaTs[0], optimizeTs[0], tsConvergence, optimizeTs[2]];
-const nativeAseTs = [aseTs[0], optimizeTs[0], tsConvergence, optimizeTs[2]];
+const nativeTsOptimization = { ...optimizeTs[0], fields: [count('maxSteps', '最大优化步数', 500), optimizeTs[0].fields[1]] };
+const nativeSellaTs = [sellaTs[0], nativeTsOptimization, tsConvergence, optimizeTs[2]];
+const nativeAseTs = [aseTs[0], nativeTsOptimization, tsConvergence, optimizeTs[2]];
 export const PES_PARAMETERS: Record<string, PesParameterSection[]> = {
   ...LEGACY_PES_PARAMETERS,
   'sella-scan': pointOptimization, 'lbfgs-scan': pointOptimization, 'fire2-scan': pointOptimization,
-  'ci-neb': [pathRecordedBase, { title: '路径优化设置 · FIRE2', fields: [count('nebIterations', '最大路径迭代（含爬坡）', 1000),
+  'ci-neb': [{ fields: [count('beads', '总珠子数（含两端）', 24, PES_CI_NEB_MINIMUM_BEADS), count('recordInterval', '记录间隔（每 N 轮）', 10)] },
+    { title: '路径优化设置', fields: [count('nebIterations', '最大路径迭代（含爬坡）', 1000),
     positive('ciMaxForce', '攀爬珠子最大力', .002, 'Eh/Bohr'), positive('ciRmsForce', '攀爬珠子RMS力', .001, 'Eh/Bohr'),
     positive('nebMaxForce', '普通珠子最大垂直力', .020, 'Eh/Bohr'), positive('nebRmsForce', '普通珠子RMS垂直力', .010, 'Eh/Bohr'),
     positive('ciTriggerForce', '启用CI的最大垂直力', .2, 'Eh/Bohr')] },
     { title: 'FSM 初始路径', fields: fsmLocalFields }, LEGACY_PES_PARAMETERS['ci-neb'][2]],
   'de-gsm': [pathRecordedBase, ...LEGACY_PES_PARAMETERS['de-gsm'].slice(1)],
-  fsm: [{ fields: [count('beads', '总珠子数（含两端）', 12, 2), count('recordInterval', '记录间隔（每 N 轮）', 5)] }, ...LEGACY_PES_PARAMETERS.fsm.slice(1)],
+  fsm: [{ fields: [count('beads', '总珠子数（含两端）', 12, 2), count('recordInterval', '记录间隔（每 N 轮）', 10)] }, ...LEGACY_PES_PARAMETERS.fsm.slice(1)],
   prfo: nativeSellaTs, rfo: nativeSellaTs, qn: nativeSellaTs, dimer: nativeAseTs, climb: nativeAseTs,
 };
 
 export const usesPesExecutionProfile = (values: PesParameters) => values.executionProfile === PES_EXECUTION_PROFILE;
-/** New cards store their explicit branch. Older drafts without that selection
- * keep the S-IDPP branch they actually submitted; resolving a view never edits
- * the saved draft or upgrades its path-semantics marker. */
+/** New cards store their choices explicitly. Missing values on older drafts
+ * retain the original initializer, optimizer and execution profile. */
 export function effectivePesPathParameters(algorithm: string, values: PesParameters): PesParameters {
-  const field = algorithm === 'ci-neb' ? 'pathInitializer' : algorithm === 'fsm' ? 'fsmGrowth' : undefined;
-  return field && values[field] === undefined ? { ...values, [field]: 'sidpp' } : values;
+  if (algorithm === 'ci-neb') return { pathInitializer: 'sidpp', beads: '12', recordInterval: '5', ...values,
+    nebOptimizer: values.nebOptimizer ?? (usesPesExecutionProfile(values) ? 'fire2' : 'fire') };
+  if (algorithm === 'fsm') return { fsmGrowth: 'sidpp', recordInterval: '5', ...values };
+  return values;
 }
 export function pesParameterSections(algorithm: string, values: PesParameters): readonly PesParameterSection[] {
   const effective = effectivePesPathParameters(algorithm, values);
@@ -156,7 +162,7 @@ export function defaultParameters(algorithm: string): PesParameters {
   if (Object.hasOwn(PES_ALGORITHMS.ts, algorithm)) Object.assign(values, { executionProfile: PES_EXECUTION_PROFILE, coordinateSystem: 'xyz', convergencePreset: 'medium', ...SELLA_CONVERGENCE_PRESETS.medium });
   if (isPesScanOptimizer(algorithm)) Object.assign(values, { executionProfile: PES_EXECUTION_PROFILE,
     coordinateSystem: algorithm === 'sella-scan' ? 'ric' : 'xyz', convergencePreset: 'loose', ...SELLA_CONVERGENCE_PRESETS.loose });
-  if (algorithm === 'ci-neb') Object.assign(values, { executionProfile: PES_EXECUTION_PROFILE, coordinateSystem: 'xyz', nebOptimizer: 'fire2', nebConvergencePreset: 'loose', pathInitializer: 'sidpp', ...NEB_CONVERGENCE_PRESETS.loose });
+  if (algorithm === 'ci-neb') Object.assign(values, { executionProfile: PES_EXECUTION_PROFILE, coordinateSystem: 'xyz', nebOptimizer: 'lbfgs', nebConvergencePreset: 'loose', pathInitializer: 'fsm', ...NEB_CONVERGENCE_PRESETS.loose });
   if (algorithm === 'de-gsm') Object.assign(values, { executionProfile: PES_EXECUTION_PROFILE, gsmGrowth: 'native', gsmConvergencePreset: 'loose', ...GSM_CONVERGENCE_PRESETS.loose });
   // The profile also selects the validated GFN1/2 electronic provider for
   // non-Sella TS and per-node SE-GSM. Their geometry algorithms stay unchanged.
@@ -171,11 +177,12 @@ export function defaultParameters(algorithm: string): PesParameters {
 export function sellaPresetParameters(algorithm: string, values: PesParameters, preset: PesConvergencePreset): PesParameters {
   const { maxForceHartreePerBohr, rmsForceHartreePerBohr: _rms, maxDisplacementBohr: _maxStep, rmsDisplacementBohr: _rmsStep, ...active } = values;
   const defaults = defaultParameters(algorithm);
-  return { ...defaults, ...active, executionProfile: PES_EXECUTION_PROFILE, convergencePreset: preset,
+  return { ...defaults, maxSteps: '200', ...active, executionProfile: PES_EXECUTION_PROFILE, convergencePreset: preset,
     ...(preset === 'custom' ? { fmaxHartreePerBohr: maxForceHartreePerBohr ?? active.fmaxHartreePerBohr ?? defaults.fmaxHartreePerBohr } : SELLA_CONVERGENCE_PRESETS[preset]) };
 }
 export function nebPresetParameters(values: PesParameters, preset: PesConvergencePreset): PesParameters {
-  return { ...defaultParameters('ci-neb'), ...values, executionProfile: PES_EXECUTION_PROFILE, nebOptimizer: values.nebOptimizer ?? 'fire2', nebConvergencePreset: preset,
+  const { pathSemantics: _pathSemantics, ...defaults } = defaultParameters('ci-neb');
+  return { ...defaults, ...effectivePesPathParameters('ci-neb', values), executionProfile: PES_EXECUTION_PROFILE, nebConvergencePreset: preset,
     ...(preset === 'custom' ? {} : NEB_CONVERGENCE_PRESETS[preset]) };
 }
 /** One explicit coordinate edit applies to the shared Sella choice. Historical
@@ -195,7 +202,7 @@ export const defaultPesEventDraft = (): PesEventDraft => ({ mode: 'manual', acti
 const axis = (index: number): PesAxis => ({ id: pesId('axis'), name: index === 1 ? 'q' : `q${index}`, definition: defaultPesExpression(), lower: '', lowerMode: 'automatic', upper: '', points: '11' });
 export function defaultPesCard(kind: PesCardKind, name: string): PesCard {
   const algorithms = Object.keys(PES_ALGORITHMS[kind]);
-  return { id: pesId('card'), kind, name, algorithm: algorithms[0], method: defaultPesMethod(), slots: {}, keys: [], dimension: 1,
+  return { id: pesId('card'), kind, name, algorithm: kind === 'scan' ? PES_DEFAULT_SCAN_ALGORITHM : algorithms[0], method: defaultPesMethod(), slots: {}, keys: [], dimension: 1,
     axes: [axis(1), axis(2)], parametersByAlgorithm: Object.fromEntries(algorithms.map(key => [key, defaultParameters(key)])),
     eventsByAlgorithm: kind === 'explore' ? { 'se-gsm': defaultPesEventDraft() } : {}, runIds: [], collapsed: false,
     ...(kind === 'scan' ? { scanCoordinates: [], scanCoordinateDrafts: [], scanCoordinateOrder: [], scanConvergencePreset: 'loose' as const } : {}) };

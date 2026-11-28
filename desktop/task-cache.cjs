@@ -5,6 +5,7 @@ const path = require('node:path');
 const {createHash,randomUUID} = require('node:crypto');
 const {assert, within} = require('./security.cjs');
 const {readRecord,writeRecord} = require('./conformer-recovery-store.cjs');
+const {storageOwnerIdentity,ownerState} = require('./storage-owner-identity.cjs');
 const token = stat => `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}`;
 async function directory(target, io = fs) {
   const stat = await io.lstat(target);
@@ -179,36 +180,68 @@ async function recoverClosedTask(root, recovery, stillInactive) {
     }
     await writeRecord(fs,recovery,indexName,Buffer.from(JSON.stringify({schema:1,closedOwner:path.basename(root),files:[...bound.values()]})+'\n'),indexIdentity);
   }
-  assert(stillInactive(), 'TASK_CACHE_CHILDREN_ACTIVE');
+  assert(await stillInactive(), 'TASK_CACHE_CHILDREN_ACTIVE');
   return cleanTaskDirectory(root, fs, owned);
 }
 
-function createTaskCache({root, pid = process.pid, alive = id => {try {process.kill(id, 0); return true;} catch (error) {return error.code !== 'ESRCH';}}, report = () => {}}) {
+function createTaskCache({root, pid = process.pid, alive, ownerIdentity = storageOwnerIdentity, report = () => {}}) {
   const owner = `${pid}-${randomUUID()}`, ownerRoot = path.join(root, owner);
+  const currentOwner = pid === process.pid ? ownerIdentity.current() : undefined;
   const children = new Set();
   let ready, finishing;
+  async function readOwnership(root, name) {
+    await directory(root);
+    const marker = path.join(root, 'owner.json'), stat = await fs.lstat(marker);
+    assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.size < 4096, 'TASK_CACHE_OWNER');
+    const value = JSON.parse(await fs.readFile(marker, 'utf8'));
+    assert(value.schema === 1 && value.owner === name && Number.isSafeInteger(value.pid) && value.pid > 0 && name.startsWith(`${value.pid}-`), 'TASK_CACHE_OWNER');
+    const children = [];
+    for (const member of (await fs.readdir(root)).filter(file => /^child-\d+\.json$/.test(file)).sort()) {
+      const childFile = path.join(root, member), info = await fs.lstat(childFile), pid = Number(member.slice(6,-5));
+      assert(info.isFile() && !info.isSymbolicLink() && info.nlink === 1 && info.size < 4096, 'TASK_CACHE_CHILD_OWNER');
+      const child = JSON.parse(await fs.readFile(childFile, 'utf8'));
+      assert(child.pid === pid && (child.owner === undefined || child.owner === name), 'TASK_CACHE_CHILD_OWNER');
+      assert(token(await fs.lstat(childFile)) === token(info), 'TASK_CACHE_CHILD_OWNER_CHANGED');
+      children.push({ pid, identity: token(info) });
+    }
+    const markerIdentity = token(stat);
+    assert(token(await fs.lstat(marker)) === markerIdentity, 'TASK_CACHE_OWNER_CHANGED');
+    return { value, children, markerIdentity };
+  }
   async function initialize() {
     await fs.mkdir(root, {recursive:true}); await directory(root);
+    const oldOwners = [];
     for (const name of await fs.readdir(root)) {
       if (!/^\d+-[a-f0-9-]{36}$/.test(name)) continue;
       const old = path.join(root, name);
+      try { oldOwners.push({name, old, ...await readOwnership(old, name)}); }
+      catch (error) { report({event:'retained', owner:name, message:error.message}); }
+    }
+    const pids = oldOwners.flatMap(({value,children}) => value.ownerIdentity ? [value.pid, ...children.map(child => child.pid)] : []);
+    const state = pids.length ? await ownerIdentity.snapshot(pids) : null;
+    const statuses = new Map(state?.processes?.map(row => [row.pid, row.status]));
+    for (const {name, old, value, children, markerIdentity} of oldOwners) {
       try {
-        await directory(old); const marker = path.join(old, 'owner.json'), stat = await fs.lstat(marker);
-        assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.size < 4096, 'TASK_CACHE_OWNER');
-        const value = JSON.parse(await fs.readFile(marker, 'utf8'));
-        assert(value.schema === 1 && value.owner === name && Number.isSafeInteger(value.pid) && name.startsWith(`${value.pid}-`), 'TASK_CACHE_OWNER');
-        const childIds = (await fs.readdir(old)).filter(member => /^child-\d+\.json$/.test(member)).map(member => Number(member.slice(6,-5)));
-        if (!alive(value.pid) && !childIds.some(alive)) {
+        const ownership = value.ownerIdentity ? ownerState(value, state) : alive ? (alive(value.pid) ? 'alive' : 'dead') : 'unknown';
+        const newBoot = ownership === 'dead' && value.ownerIdentity && state?.bootId !== value.ownerIdentity.bootId;
+        const childrenEnded = newBoot || children.every(({pid}) => value.ownerIdentity ? statuses.get(pid) === 'dead' : alive && !alive(pid));
+        if (ownership === 'dead' && childrenEnded) {
           const recovery = path.join(root, 'recovery', name);
           // The original is reclaimable only after all selected bytes have a
           // verified durable copy. A prior copy is reused only by exact digest.
-          const result = await recoverClosedTask(old, recovery, () => !alive(value.pid) && !childIds.some(alive));
+          const result = await recoverClosedTask(old, recovery, async () => {
+            const current = await readOwnership(old, name);
+            return current.markerIdentity === markerIdentity && current.children.length === children.length &&
+              current.children.every((child, index) => child.pid === children[index].pid && child.identity === children[index].identity) &&
+              (!alive || !alive(value.pid) && children.every(child => !alive(child.pid)));
+          });
           report({event:'recovered', owner:name, recovery, ...result});
-        }
+        } else if (ownership !== 'alive') report({event:'retained', owner:name, message:ownership === 'dead' ? 'TASK_CACHE_CHILDREN_ACTIVE_OR_UNVERIFIED' : 'TASK_CACHE_OWNER_UNVERIFIED'});
       } catch (error) {report({event:'retained', owner:name, message:error.message});}
     }
     await fs.mkdir(ownerRoot); await directory(ownerRoot);
-    await fs.writeFile(path.join(ownerRoot, 'owner.json'), JSON.stringify({schema:1, owner, pid})+'\n', {flag:'wx'});
+    const identity = await currentOwner;
+    await fs.writeFile(path.join(ownerRoot, 'owner.json'), JSON.stringify({schema:1, owner, pid, ownerIdentity: identity})+'\n', {flag:'wx'});
     return ownerRoot;
   }
   return {
@@ -220,7 +253,7 @@ function createTaskCache({root, pid = process.pid, alive = id => {try {process.k
       if (!Number.isSafeInteger(child.pid) || !syncFS.existsSync(ownerRoot)) return child;
       const marker = path.join(ownerRoot, `child-${child.pid}.json`);
       let identity;
-      try {syncFS.writeFileSync(marker, JSON.stringify({pid:child.pid})+'\n', {flag:'wx'});identity=token(syncFS.lstatSync(marker));}
+      try {syncFS.writeFileSync(marker, JSON.stringify({pid:child.pid,owner})+'\n', {flag:'wx'});identity=token(syncFS.lstatSync(marker));}
       catch(error) {report({event:'retained',message:`Child ownership marker failed: ${error.message}`});return child;}
       child.once('close', () => {try {const current=syncFS.lstatSync(marker);if(!current.isSymbolicLink()&&token(current)===identity)syncFS.unlinkSync(marker);else report({event:'retained',message:'Child ownership marker changed'});} catch (error) {if(error.code!=='ENOENT')report({event:'retained',message:error.message});}});
       return child;

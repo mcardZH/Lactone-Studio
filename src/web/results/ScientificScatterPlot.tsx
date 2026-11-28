@@ -1,6 +1,6 @@
 import {useEffect, useId, useMemo, useRef, useState, type ReactNode, type KeyboardEvent} from 'react';
 import {assertResultNotAborted} from '../../results/contracts';
-import {nearestScatterPoint, scatterDataSummary, scatterDataText, scatterXIndex, type ScientificScatterData, type ScientificScatterPoint} from '../../results/scatter-data';
+import {nearestScatterPoint, scatterDataSummary, scatterDataText, scatterPointValid,scatterXIndex,type ScientificScatterData,type ScientificScatterPoint} from '../../results/scatter-data';
 import {plotFonts,plotPointKey, type PlotNote, type PlotPaneEdits} from '../../results/scientific-plot-editing';
 import {formatResultValue} from '../../results/numeric-format';
 import {validPlotViewport, type ScientificPlotSeries, type ScientificPlotViewport} from '../../results/scientific-plot';
@@ -18,7 +18,7 @@ import {insidePlot, targetFromPlotHit, usePlotGestures, clampPlot, type PlotSele
 import {editCurrentPlot,plotCanvasConfiguration,plotEditorPane,plotPartCapabilities, plotMapping} from './plot-editor-pane';
 import {PlotSettingsWindow} from './VisualizationPresetDialog';
 import {captureScientificSvgPng} from './optimization-export';
-import {scatterSvgSnapshot, waitForScatterFrame} from './scientific-scatter-export';
+import {SCATTER_PAPER_FILL, scatterSvgSnapshot, waitForScatterFrame} from './scientific-scatter-export';
 import {useScatterPointLayer} from './useScatterPointLayer';
 import {exportBlob} from './export-image';
 import {ScientificPlotExportMenu} from './ScientificPlotExportMenu';
@@ -369,6 +369,13 @@ export function ScientificScatterPlot({title,xLabel,yLabel,data,colorForX,colorF
       const snapshot=plotPresetSnapshot(style,figure),id=library.save(label,snapshot);choose(id,snapshot);return id;
     },
     defaultPreset:library.makeDefault,
+    canSelectPoint:!!onPointSelect,
+    point(seriesId,index,action){
+      if(seriesId!=='scatter'||!scatterPointValid(data,index))return;
+      const point={index,x:data.x[index],y:data.y[index]};
+      if(action==='select'){assertFigureIdle();setPicked(point);onPointSelect?.(point);}
+      return point;
+    },
     export:captureExport,
     isVisible:()=>!!svg.current?.getClientRects().length,
   }}/>:null;
@@ -401,7 +408,7 @@ export function ScientificScatterPlot({title,xLabel,yLabel,data,colorForX,colorF
     <button type="button" aria-pressed={copyAll} onClick={()=>{setCopyAll(true);host.current?.focus({preventScroll:true});}}>选择全部数据</button>
   </div>;
   const graphics=<div className="scientific-plot-viewport"><div ref={connectStage}
-    className="scientific-scatter-stage scientific-plot-stage" style={sizing.style(stageHeight)}>
+    className="scientific-scatter-stage scientific-plot-stage" style={{...sizing.style(stageHeight),backgroundColor:SCATTER_PAPER_FILL}}>
     <canvas ref={canvas} aria-hidden="true"/>
     <svg ref={svg} xmlns="http://www.w3.org/2000/svg" width={layout.width} height={layout.height}
       viewBox={'0 0 '+layout.width+' '+layout.height} role="group" tabIndex={0} aria-label={ariaLabel}

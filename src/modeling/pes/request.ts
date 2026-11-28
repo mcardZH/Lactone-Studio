@@ -1,11 +1,12 @@
 import { baseElectronicStateParameterError as baseElectronicStateError } from '../../core/base-electronic-state';
-import { pesElectronicConfirmed } from './input-state';
+import { pesElectronicConfirmation } from './input-state';
 import type { Structure } from '../../core/types';
 import { isPeriodic, requireConfirmedPeriodicity } from '../../core/periodic';
 import { periodicPesOperationAvailable } from './periodic-capabilities';
 import type { SharedModelConstraints } from '../../core/modeling/contracts';
 import { supportsXtbAlpb, usesXtbSccIterations } from '../../core/xtb-capabilities';
 import { confirmCoordinateSelection } from '../application/coordinate-selection';
+import {validXtbResourceOverride} from '../resource-preferences';
 import { modelCoordinateKey, projectSharedConstraintsByAtomNumber, retainSharedConstraints } from '../constraints';
 import { PES_SCHEMA, isPesNetMethod, type PesCard, type PesCoordinate, type PesExpressionDraft, type PesGeometry, type PesGroup,
   type PesHessianReference, type PesMethodDraft, type PesParameters, type PesRequest, type PesRunIdentity } from './contracts';
@@ -47,6 +48,10 @@ function compileParameters(algorithm: string, draft: PesParameters, allowed?: Re
     const value = parameterValue(field, merged[field.key]);
     if (value !== undefined) parameters[field.key] = value;
   }
+  if (algorithm === 'ci-neb' && !allowed && (current || draft.nebOptimizer !== undefined)) {
+    if (merged.nebOptimizer !== 'fire2' && merged.nebOptimizer !== 'fire' && merged.nebOptimizer !== 'lbfgs') throw Error('请选择有效的路径优化器。');
+    parameters.nebOptimizer = merged.nebOptimizer;
+  }
   if (current && !allowed) {
     parameters.executionProfile = merged.executionProfile;
     if (method===undefined||usesXtbSccIterations(method)) {
@@ -59,9 +64,8 @@ function compileParameters(algorithm: string, draft: PesParameters, allowed?: Re
     }
     if (merged.convergencePreset !== undefined) parameters.convergencePreset = merged.convergencePreset;
     if (algorithm === 'ci-neb') {
-      if (merged.nebOptimizer !== 'fire2' && merged.nebOptimizer !== 'fire' && merged.nebOptimizer !== 'lbfgs') throw Error('请选择有效的路径优化器。');
       if (!['loose', 'medium', 'tight', 'custom'].includes(String(merged.nebConvergencePreset))) throw Error('请选择有效的路径收敛标准。');
-      parameters.coordinateSystem = 'xyz'; parameters.nebOptimizer = merged.nebOptimizer; parameters.nebConvergencePreset = merged.nebConvergencePreset;
+      parameters.coordinateSystem = 'xyz'; parameters.nebConvergencePreset = merged.nebConvergencePreset;
       if (merged.pathInitializer !== 'sidpp' && merged.pathInitializer !== 'fsm') throw Error('请选择有效的路径初猜方式。');
       parameters.pathInitializer = merged.pathInitializer;
     }
@@ -284,25 +288,26 @@ export function preparePesRequest(group: PesGroup, identity: PesRunIdentity, sou
     if (!product) throw Error('请选择产物结构或记录产物快照。');
     pathProduct = orderedPathStructure(source.structure, product.structure, '产物');
   }
-  const electronic = group.electronic.confirmed;
-  if (!electronic || !pesElectronicConfirmed(group, source)) throw Error('请先确定本次输入结构的电荷和自旋多重度。');
+  const electronic = pesElectronicConfirmation(group, source);
+  if (!electronic) throw Error('请先确定本次输入结构的电荷和自旋多重度。');
   const electronicIssue = baseElectronicStateError(source.structure, electronic);
   if (electronicIssue) throw Error(electronicIssue);
   const operation = 'card' in input ? input.card.kind : input.operation;
   const draft = card ?? group.ts;
   const method: PesMethodDraft = group.sharedMethod ?? draft.method;
-  const net = isPesNetMethod(method.method);
-  if (net) throw Error('此版本提供 xTB 计算，请选择本次计算级别。');
+  if (isPesNetMethod(method.method)) throw Error('此版本提供 xTB 计算，请选择本次计算级别。');
   const periodic = isPeriodic(source.structure);
+  if (method.method === 'gxtb') throw Error('本工程选用 g-xTB。此势能面操作尚未支持该方法，请修改工程计算级别。');
   if (method.method === 'mcgfnff') throw Error('mcGFN-FF 已停用，请重新选择计算级别。');
   const calculationAlgorithm = operation === 'hessian' ? 'numeric' : operation === 'irc' ? 'sella-irc'
     : operation === 'scan' ? effectivePesScanAlgorithm(draft.algorithm, periodic) : draft.algorithm;
   if (periodic && !periodicPesOperationAvailable(method.method, operation, calculationAlgorithm))
     throw Error('所选计算级别尚未开放该周期计算入口。');
   if (operation === 'irc' && method.method === 'gfnff') throw Error('请选择支持反应路径追踪的 GFN-xTB 计算级别。');
-  if (!periodic && !net && method.solvationModel !== 'none' && (method.solvationModel !== 'alpb' || !supportsXtbAlpb(method.method, method.solvent)))
+  const gasOnly = periodic || method.method === 'gfn0';
+  if (!gasOnly && method.solvationModel !== 'none' && (method.solvationModel !== 'alpb' || !supportsXtbAlpb(method.method, method.solvent)))
     throw Error('当前计算级别不支持所选溶剂，请改选气相或可用的ALPB溶剂。');
-  const solvation = !periodic && !net && method.solvationModel === 'alpb' ? { model: 'alpb' as const, solvent: method.solvent } : undefined;
+  const solvation = !gasOnly && method.solvationModel === 'alpb' ? { model: 'alpb' as const, solvent: method.solvent } : undefined;
   const constraints = prepareConstraints(group, source);
   const algorithm = operation === 'scan' ? calculationAlgorithm : draft.algorithm;
   const inputParameters = draft.parametersByAlgorithm[draft.algorithm] ?? {};
@@ -321,14 +326,9 @@ export function preparePesRequest(group: PesGroup, identity: PesRunIdentity, sou
   }
   const parameters = compileParameters(algorithm, selected, operation === 'hessian' ? new Set(['maxSccIterations']) : undefined, method.method);
   parameters.policyVersion = 'v212';
-  if (!net) parameters.accuracy = operation === 'ts' || operation === 'hessian' || operation === 'irc' ? .1 : 1;
+  parameters.accuracy = operation === 'ts' || operation === 'hessian' || operation === 'irc' ? .1 : 1;
   parameters.hessianStepBohr = group.hessianStepBohr ?? PES_DEFAULT_HESSIAN_STEP_BOHR;
   if (periodic) parameters.coordinateSystem = 'xyz';
-  if (net) {
-    parameters.device = method.device ?? 'gpu';
-    delete parameters.maxSccIterations;
-    delete parameters.electronicTemperatureK;
-  }
   if (algorithm === 'de-gsm') {
     const preset = inputParameters.gsmConvergencePreset ?? 'loose';
     if (typeof preset !== 'string' || !Object.hasOwn(PES_CONVERGENCE_OPTIONS, preset)) throw Error('请选择有效的节点收敛标准。');
@@ -405,8 +405,13 @@ export function preparePesRequest(group: PesGroup, identity: PesRunIdentity, sou
   const inherited = !card ? pesSourceFfModel(group, source) : undefined;
   const ffModel = method.method === 'gfnff' ? (pesFfModelMatches(inherited, source.structure, electronic.charge, electronic.multiplicity, solvation)
     ? structuredClone(inherited) : createPesFfModel(identity.runId, source.structure, electronic.charge, electronic.multiplicity, solvation)) : undefined;
+  const overrides=draft.resourceOverrides;
+  const field=algorithm==='ci-neb'||algorithm==='fsm'?'xtbBatchParallelism':'xtbSingleTaskThreads';
+  const override=field==='xtbBatchParallelism'?card?.resourceOverrides?.xtbBatchParallelism:overrides?.xtbSingleTaskThreads;
+  if(!validXtbResourceOverride(override))throw Error('任务的 xTB 线程数或并行数须为正整数。');
   return { schema: PES_SCHEMA, id: identity.runId, sourceDocumentId: source.documentId, runIdentity: identity, operation, algorithm: calculationAlgorithm,
     method: method.method, structure: { ...source.structure, ...electronic }, charge: electronic.charge, uhf: electronic.multiplicity - 1,
+    ...(override===undefined?{}:{resourceOverrides:{[field]:override}}),
     ...(solvation ? { solvation } : {}), ...(ffModel ? { ffModel } : {}), constraints, coordinates: [...coordinates.values()], parameters };
 }
 

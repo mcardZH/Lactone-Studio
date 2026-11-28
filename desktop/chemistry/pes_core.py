@@ -99,6 +99,7 @@ class PathRecords:
         self.records = {}
         self.has_physical_round = False
         self.latest = None
+        self.previous_complete = None
         self.latest_partial = None
         self.last_complete_id = None
         self.last_partial_id = None
@@ -109,16 +110,19 @@ class PathRecords:
             ctx.path_recorders = []
         ctx.path_recorders.append(self)
 
-    def consider(self, frames, phase, step, *, initial=False, first_physical=False):
+    def consider(self, frames, phase, step, *, initial=False, first_physical=False,
+                 retain_previous=False, milestone=False, completed_phase=False):
         if not frames:
             return
         batch = json.loads(json.dumps(frames, allow_nan=False))
+        self.previous_complete = self.latest if retain_previous and self.has_physical_round else None
         self.latest = (batch, phase, step)
         first = not initial and (first_physical or not self.has_physical_round)
         if not initial:
             self.has_physical_round = True
-        if initial or first or step > 0 and step % self.interval == 0:
-            self._record(batch, phase, step, 'initial' if initial else 'first-energy' if first else 'interval')
+        if initial or first or milestone or completed_phase or step > 0 and step % self.interval == 0:
+            kind = 'initial' if initial else 'final' if completed_phase else 'first-energy' if first else 'interval'
+            self._record(batch, phase, step, kind)
 
     def consider_partial(self, frames, phase, step):
         if not frames:
@@ -181,14 +185,19 @@ class PathRecords:
         if self.latest is None and self.latest_partial is None:
             return None
         if self.latest is not None:
+            if self.previous_complete is not None:
+                previous, phase, step = self.previous_complete
+                self._record(previous, phase, step, 'interval')
             frames, phase, step = self.latest
             record = self._record(frames, phase, step, 'final')
-            # A complete interval can also be the final complete round.
-            # An initial geometry remains labelled as such beside partial data.
-            if self.has_physical_round or self.latest_partial is None:
+            if self.has_physical_round:
+                # A prior cadence may have already published the final round.
+                # Write the index in round order and keep that same asset ID.
+                self.records.pop(record['id'])
                 self.records[record['id']] = dict(record, kind='final')
             self.last_complete_id = record['id']
             self.latest = None
+            self.previous_complete = None
         if self.latest_partial is not None:
             frames, phase, step = self.latest_partial
             self.last_partial_id = self._record(frames, phase, step, 'interval', partial=True)['id']
@@ -268,10 +277,58 @@ class PesContext:
             require(not self._closed, 'PES context is closed')
             return self._evaluate(positions, need_bond_orders, node_id)
 
-    def _evaluate(self, positions, need_bond_orders, node_id):
-        self.check_cancelled()
+    @property
+    def supports_evaluation_batch(self):
+        return callable(getattr(self._evaluator, 'evaluate_many', None))
+
+    def evaluate_many(self, nodes):
+        """Return ordered E/G results or independent failures for owned nodes."""
+        with self._evaluation_lock:
+            require(not self._closed, 'PES context is closed')
+            self.check_cancelled()
+            result = [None] * len(nodes)
+            pending = []
+            for index, (node_id, positions) in enumerate(nodes):
+                try:
+                    require(isinstance(node_id, str) and node_id, 'PES node identity must be a nonempty string')
+                    xyz = self._geometry(positions)
+                    key = ('node', node_id)
+                    previous = self._node_cache.get(key)
+                    if previous is not None and np.array_equal(previous[0], xyz):
+                        result[index] = dict(previous[1])
+                    elif self.supports_evaluation_batch:
+                        pending.append((index, key, xyz.copy()))
+                    else:
+                        result[index] = self._evaluate(xyz, False, node_id)
+                except PesCancelled:
+                    raise
+                except Exception as error:
+                    result[index] = error
+            if not pending:
+                return result
+            self.evaluation_attempts += len(pending)
+            evaluated = self._evaluator.evaluate_many([xyz for _, _, xyz in pending])
+            require(len(evaluated) == len(pending), 'PES batch E/G result count differs from the candidate count')
+            self.check_cancelled()
+            for (index, key, xyz), raw in zip(pending, evaluated):
+                try:
+                    if isinstance(raw, Exception):
+                        raise raw
+                    result[index] = self._accept_evaluation(xyz, False, key, raw)
+                except PesCancelled:
+                    raise
+                except Exception as error:
+                    result[index] = error
+            return result
+
+    def _geometry(self, positions):
         xyz = np.asarray(positions, dtype=float)
         require(xyz.shape == self.initial.shape and np.isfinite(xyz).all(), 'Invalid PES evaluation geometry')
+        return xyz
+
+    def _evaluate(self, positions, need_bond_orders, node_id):
+        self.check_cancelled()
+        xyz = self._geometry(positions)
         key = ('default', None) if node_id is None else ('node', node_id)
         previous = self._node_cache.get(key)
         if (previous is not None and np.array_equal(previous[0], xyz)
@@ -282,6 +339,9 @@ class PesContext:
         raw = (evaluate_node(xyz.copy(), node_id=node_id, need_bond_orders=need_bond_orders) if evaluate_node is not None
                else self._evaluator(xyz.copy(), need_bond_orders=need_bond_orders))
         self.check_cancelled()
+        return self._accept_evaluation(xyz, need_bond_orders, key, raw)
+
+    def _accept_evaluation(self, xyz, need_bond_orders, key, raw):
         energy = float(raw['energyHartree'])
         gradient = np.array(raw['gradientHartreePerBohr'], dtype=float, copy=True)
         require(math.isfinite(energy) and gradient.shape == xyz.shape and np.isfinite(gradient).all(),

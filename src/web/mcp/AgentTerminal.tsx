@@ -102,7 +102,7 @@ export default function AgentTerminal({ bridge, visible, floating }: { bridge: A
     };
     syncTheme();
     const observer = new MutationObserver(syncTheme);
-    observer.observe(element.ownerDocument.documentElement, { attributes: true, attributeFilter: ['data-interface-theme', 'data-font-size', 'style'] });
+    observer.observe(element.ownerDocument.documentElement, { attributes: true, attributeFilter: ['data-interface-theme', 'data-interface-surface', 'data-interface-paradigm', 'data-font-size', 'style'] });
     return () => observer.disconnect();
   }, [bridge, floating]);
 

@@ -1,0 +1,890 @@
+/* ============================================================================
+ * Ester Studio · Day & Night Appearance Layer (Pure Presentation)
+ * 1. studio      : Day Mode — Apple Translucent Workstation (macOS / Figma)
+ * 2. dark-studio : Night Mode — Low-Glare Dark Scientific Studio
+ *    Full-site coverage across Modeling, Advanced Modeling, Gaussian/ORCA Input,
+ *    Conformer/PES/xTB2, Postprocess/Trajectory, Task Center, Settings, Citations,
+ *    Dialogs, and Integrated AI Assistant / Terminal / MCP Dock.
+ * ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+ * 1. Day Mode — Apple Translucent Workstation (studio)
+ * ---------------------------------------------------------------------------- */
+:root[data-interface-paradigm=studio],
+[data-interface-paradigm=studio] {
+  --ui-surface-radius: 12px;
+  --ui-subcard-radius: 9px;
+  --ui-control-radius: 8px;
+  --ui-window-radius: 16px;
+  --ui-card-shadow: var(--ui-card-stroke-inset), 0 2px 6px rgb(var(--ui-shadow-tint, 20 62 54) / 0.05), 0 10px 26px -10px rgb(var(--ui-shadow-tint, 20 62 54) / 0.09);
+  --ui-card-hover-shadow: var(--ui-card-stroke-inset), 0 4px 12px rgb(var(--ui-shadow-tint, 20 62 54) / 0.08), 0 14px 30px -10px rgb(var(--ui-shadow-tint, 20 62 54) / 0.13);
+  --ui-popover-shadow: 0 18px 46px -8px rgb(var(--ui-shadow-tint, 20 62 54) / 0.20), 0 3px 10px rgb(var(--ui-shadow-tint, 20 62 54) / 0.08);
+  --ui-popover-bg: color-mix(in srgb, var(--ui-surface-bg) 86%, transparent);
+  --ui-popover-blur: blur(16px) saturate(1.22);
+}
+:root[data-interface-paradigm=studio] .workspace-module-rail {
+  backdrop-filter: blur(12px);
+}
+:root[data-interface-paradigm=studio] .model-workspace-heading .model-view-toolbar {
+  border-radius: 99px;
+  padding: 2px 5px;
+}
+:root[data-interface-paradigm=studio] .workspace-tabs-row .workspace-tab[aria-selected="true"] {
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 -2px 10px rgb(var(--ui-shadow-tint, 20 62 54) / 0.06);
+}
+:root[data-interface-paradigm=studio] .es-agent-dock .es-agent-header,
+:root[data-interface-paradigm=studio] .es-agent-dock .es-agent-tabs {
+  backdrop-filter: blur(10px);
+}
+:root[data-interface-paradigm=studio] .es-agent-entry {
+  border-radius: 11px;
+}
+:root[data-interface-paradigm=studio] .es-agent-compose {
+  box-shadow: 0 2px 10px -4px rgb(var(--ui-shadow-tint, 20 62 54) / 0.12);
+}
+
+/* ----------------------------------------------------------------------------
+ * 2. Night Mode — Low-Glare Dark Scientific Studio (dark-studio)
+ *    Overrides surface/text/border tokens cleanly regardless of active palette,
+ *    while adapting accents from the chosen palette and preserving U01 semantics.
+ * ---------------------------------------------------------------------------- */
+:root[data-interface-paradigm=dark-studio],
+[data-interface-paradigm=dark-studio] {
+  color-scheme: dark;
+  --ui-surface-radius: 11px;
+  --ui-subcard-radius: 8px;
+  --ui-control-radius: 7px;
+  --ui-window-radius: 14px;
+
+  --ui-workspace-rail-bg: #11161d;
+  --ui-page-bg: #151a22;
+  --ui-sidebar-bg: #1a202a;
+  --ui-workspace-tabs-bg: #131820;
+  --ui-workspace-group-bg: #181e28;
+  --ui-workspace-active-tab-bg: #1f2633;
+  --ui-workspace-nav-selected: #1f2e3a;
+  --ui-workspace-tools-bg: #181e27;
+  --ui-analysis-tools-bg: #161b23;
+  --ui-workspace-canvas-bg: #141922;
+
+  --ui-surface-bg: #1e2430;
+  --ui-parameter-card-bg: #1e2430;
+  --ui-subcard-bg: #232a38;
+  --ui-table-header-bg: #1a202a;
+  --ui-table-body-bg: #1e2430;
+  --ui-table-row-alt-bg: #222936;
+  --ui-table-line: #2d3646;
+
+  --ui-control-bg: #242c39;
+  --ui-control-hover-bg: #2d3747;
+  --ui-control-border: #374357;
+  --ui-surface-border: #2c3545;
+  --ui-divider-line: #2a3242;
+
+  --ui-section-ink: #62d4c0;
+  --ui-field-ink: #e6edf6;
+  --ui-control-ink: #dde5f0;
+  --ui-label-ink: #b3c0d1;
+  --ui-note-ink: #8b9ab0;
+  --ui-control-muted: #90a0b4;
+
+  --ui-control-accent: #38b8a4;
+  --ui-control-focus: #52d4bf;
+  --ui-tool-selected-border: #3d9a8b;
+  --ui-control-selected-bg: #1a353c;
+  --ui-control-selected-ink: #8ef0df;
+  --ui-workspace-active-tab-line: #38b8a4;
+
+  --ui-action-primary-bg: #228d7d;
+  --ui-action-primary-hover: #2aa592;
+  --ui-action-primary-ink: #ffffff;
+  --ui-action-tonal-bg: #1c3239;
+  --ui-action-tonal-hover: #234049;
+  --ui-action-tonal-ink: #87e9d9;
+  --ui-action-tonal-border: #2d5a62;
+
+  --ui-action-disabled-bg: #191f28;
+  --ui-action-disabled-ink: #5d6a7c;
+  --ui-action-disabled-border: #293140;
+
+  --ui-shadow-tint: 0 0 0;
+  --ui-card-stroke-inset: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --ui-card-shadow: var(--ui-card-stroke-inset), 0 2px 10px rgb(0 0 0 / 0.30);
+  --ui-card-hover-shadow: var(--ui-card-stroke-inset), 0 4px 18px rgb(0 0 0 / 0.42);
+  --ui-popover-shadow: 0 18px 46px rgb(0 0 0 / 0.56), 0 0 0 1px #39455a;
+  --ui-popover-bg: color-mix(in srgb, #202734 90%, transparent);
+  --ui-popover-blur: blur(16px) saturate(1.15);
+
+  /* Legacy global token bridge */
+  --teal: #228d7d;
+  --teal-dark: #2aa592;
+  --teal-light: #1a3339;
+  --muted: #8b9ab0;
+  --line: #2c3545;
+  --ink: #e6edf6;
+  --panel: #1e2430;
+  --text: #e6edf6;
+  --pp-line: #2c3545;
+  --pp-muted: #8b9ab0;
+  --input-bg: #1e2430;
+  --input-border: #374357;
+  --input-card-bg: #1e2430;
+  --input-card-border: #2c3545;
+  --input-muted: #8b9ab0;
+  background: var(--ui-page-bg);
+  color: var(--ui-field-ink);
+}
+
+/* Adapt dark-studio accent hues when paired with Slate / Ivory / Graphite palettes */
+:root[data-interface-paradigm=dark-studio][data-interface-theme=slate],
+[data-interface-paradigm=dark-studio][data-interface-theme=slate] {
+  --ui-section-ink: #7cb5ff;
+  --ui-control-accent: #4c8ef0;
+  --ui-control-focus: #6ca4f7;
+  --ui-tool-selected-border: #4d7ec7;
+  --ui-control-selected-bg: #1d2d47;
+  --ui-control-selected-ink: #a8ccff;
+  --ui-workspace-active-tab-line: #4c8ef0;
+  --ui-action-primary-bg: #2e6bc4;
+  --ui-action-primary-hover: #3b7ad6;
+  --ui-action-tonal-bg: #1d2b40;
+  --ui-action-tonal-hover: #243752;
+  --ui-action-tonal-ink: #9cc4ff;
+  --ui-action-tonal-border: #334f78;
+  --teal: #2e6bc4;
+  --teal-dark: #3b7ad6;
+}
+:root[data-interface-paradigm=dark-studio][data-interface-theme=ivory],
+[data-interface-paradigm=dark-studio][data-interface-theme=ivory] {
+  --ui-workspace-rail-bg: #161513;
+  --ui-page-bg: #1b1916;
+  --ui-sidebar-bg: #211f1b;
+  --ui-workspace-tabs-bg: #181614;
+  --ui-workspace-active-tab-bg: #26231f;
+  --ui-workspace-tools-bg: #1e1c18;
+  --ui-surface-bg: #26231f;
+  --ui-parameter-card-bg: #26231f;
+  --ui-subcard-bg: #2d2924;
+  --ui-control-bg: #312d27;
+  --ui-control-hover-bg: #3b362f;
+  --ui-surface-border: #3c362f;
+  --ui-control-border: #4a4339;
+  --ui-section-ink: #85d6b8;
+  --ui-action-primary-bg: #2c7c64;
+  --ui-action-primary-hover: #359478;
+}
+:root[data-interface-paradigm=dark-studio][data-interface-theme=graphite],
+[data-interface-paradigm=dark-studio][data-interface-theme=graphite] {
+  --ui-section-ink: #b9c7da;
+  --ui-control-accent: #7f95b0;
+  --ui-control-focus: #9ab0ca;
+  --ui-tool-selected-border: #6e839e;
+  --ui-control-selected-bg: #252e3a;
+  --ui-control-selected-ink: #dbe6f4;
+  --ui-workspace-active-tab-line: #8fa4be;
+  --ui-action-primary-bg: #4c5f78;
+  --ui-action-primary-hover: #5b718f;
+  --ui-action-tonal-bg: #242c37;
+  --ui-action-tonal-hover: #2d3745;
+  --ui-action-tonal-ink: #d0dceb;
+  --ui-action-tonal-border: #414f63;
+}
+
+/* 3D Viewport backdrop override (allows pure white paper canvas in Night Mode, or dark canvas in Day Mode) */
+:root[data-interface-paradigm=dark-studio][data-viewport-backdrop=white] {
+  --ui-workspace-canvas-bg: #ffffff;
+}
+:root[data-interface-paradigm=dark-studio][data-viewport-backdrop=white] .canvas-clear-toolbar {
+  background: rgb(25 32 43 / 0.90);
+  border-color: #3c4a60;
+  color: #edf3fa;
+  opacity: 1;
+}
+:root[data-interface-paradigm=dark-studio][data-viewport-backdrop=white] .canvas-clear-toolbar button {
+  color: #edf3fa;
+}
+:root[data-viewport-backdrop=dark] {
+  --ui-workspace-canvas-bg: #141922;
+}
+:root[data-interface-paradigm=dark-studio] .model-viewport-stage,
+:root[data-interface-paradigm=dark-studio] .model-stage,
+:root[data-viewport-backdrop=dark] .model-viewport-stage,
+:root[data-viewport-backdrop=dark] .model-stage {
+  background: var(--ui-workspace-canvas-bg);
+}
+
+/* ============================================================================
+ * Comprehensive Night-Mode Overrides for Legacy Hardcoded Colors Across All Pages
+ * ============================================================================ */
+
+/* --- Global Shell, Splitters, Nav, Notices & Dialogs --- */
+:root[data-interface-paradigm=dark-studio] body,
+:root[data-interface-paradigm=dark-studio] .app-shell,
+:root[data-interface-paradigm=dark-studio] .sciyue-workspace-v18 {
+  background: var(--ui-page-bg);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .sidebar {
+  background: var(--ui-sidebar-bg);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .workspace-module-rail button.workspace-global-settings {
+  color: var(--ui-section-ink);
+}
+:root[data-interface-paradigm=dark-studio] .desktop-mode .workspace-divider:before,
+:root[data-interface-paradigm=dark-studio] .workspace-column-divider::after,
+:root[data-interface-paradigm=dark-studio] .orca-workbench .orca-divider:after {
+  background: var(--ui-divider-line);
+}
+:root[data-interface-paradigm=dark-studio] .workspace-source-pick-banner,
+:root[data-interface-paradigm=dark-studio] .workspace-input-paused {
+  background: #362d14;
+  border-color: #7c6222;
+  color: #f3d783;
+}
+:root[data-interface-paradigm=dark-studio] .workspace-task-role {
+  background: #332a14;
+  border-color: #8a6c25;
+  color: #f4da88;
+}
+:root[data-interface-paradigm=dark-studio] .workspace-document-surface[data-linked-atoms=true] .model-viewport {
+  background: var(--ui-workspace-canvas-bg);
+}
+:root[data-interface-paradigm=dark-studio] .workspace-document-surface[data-link-selected=true],
+:root[data-interface-paradigm=dark-studio] .workspace-document-tabs [data-link-selected=true],
+:root[data-interface-paradigm=dark-studio] .linked-atom-controls button[aria-pressed=true] {
+  background: #362e14;
+  border-color: #9e7d26;
+  color: #f6dc8d;
+}
+:root[data-interface-paradigm=dark-studio] .workspace-render-failure,
+:root[data-interface-paradigm=dark-studio] .dialog-shell,
+:root[data-interface-paradigm=dark-studio] .sy-settings-panel,
+:root[data-interface-paradigm=dark-studio] .software-choice-card,
+:root[data-interface-paradigm=dark-studio] .workflow-card,
+:root[data-interface-paradigm=dark-studio] .analysis-settings-dialog,
+:root[data-interface-paradigm=dark-studio] .workspace-import-choice.modal,
+:root[data-interface-paradigm=dark-studio] .first-run-license-text {
+  background: var(--ui-surface-bg);
+  color: var(--ui-field-ink);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .feedback-message.feedback-error,
+:root[data-interface-paradigm=dark-studio] .model-error,
+:root[data-interface-paradigm=dark-studio] .trajectory-error {
+  background: #381e22;
+  border-color: #70333a;
+  color: #f7aba4;
+}
+:root[data-interface-paradigm=dark-studio] .electronic-state-warning > summary:hover,
+:root[data-interface-paradigm=dark-studio] .interactive-selection-conflict,
+:root[data-interface-paradigm=dark-studio] .model-bond-perception-notice,
+:root[data-interface-paradigm=dark-studio] .net-device-warning,
+:root[data-interface-paradigm=dark-studio] .model-stereochemistry-warning summary,
+:root[data-interface-paradigm=dark-studio] .model-stereochemistry-warning details > div {
+  background: #382d14;
+  border-color: #826725;
+  color: #f2d583;
+}
+:root[data-interface-paradigm=dark-studio] select:not([multiple]):is(:not([size]), [size="1"]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23b3c0d1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+}
+
+/* --- 1. Modeling, 2D Editor, Fragments, Cell, Smart Slide, Comparison, xTB --- */
+:root[data-interface-paradigm=dark-studio] .workbench-pane-critical,
+:root[data-interface-paradigm=dark-studio] .workbench-pane-restore {
+  background: var(--ui-surface-bg);
+  color: var(--ui-field-ink);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .model-freeze-tools button[aria-pressed="true"] {
+  background: #1a304d !important;
+  border-color: #4f8bd4 !important;
+  color: #8cc4ff !important;
+}
+:root[data-interface-paradigm=dark-studio] .model-freeze-tools button svg {
+  stroke: #72b3ff;
+}
+:root[data-interface-paradigm=dark-studio] .model-freeze-tools button:hover:not(:disabled) {
+  background: #1f2f45;
+  border-color: #4a7ebb;
+}
+:root[data-interface-paradigm=dark-studio] .model-freeze-row {
+  background: #182538;
+  border-color: #2f4e74;
+}
+:root[data-interface-paradigm=dark-studio] .element-preset-preview .element-preset-hydrogen,
+:root[data-interface-paradigm=dark-studio] .element-preset-preview .element-preset-open {
+  fill: #202733;
+}
+:root[data-interface-paradigm=dark-studio] .model-workspace .model-viewport-legend,
+:root[data-interface-paradigm=dark-studio] .model-viewport-legend,
+:root[data-interface-paradigm=dark-studio] .model-element-cursor {
+  background: color-mix(in srgb, #1f2633 92%, transparent);
+  color: var(--ui-field-ink);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .model-canvas-clear-toolbar {
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .fragment-preview-canvas {
+  background: var(--ui-workspace-canvas-bg);
+}
+:root[data-interface-paradigm=dark-studio] .model-document-handle {
+  background: var(--ui-sidebar-bg);
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .model-document-handle:hover {
+  background: var(--ui-control-hover-bg);
+}
+:root[data-interface-paradigm=dark-studio] .model-capture-controls,
+:root[data-interface-paradigm=dark-studio] .model-workspace[data-capture-kind]:not([data-capture-kind=""]) .model-capture-controls {
+  background: #1f283b;
+  border-color: #3d5278;
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .atom-selection-controls input,
+:root[data-interface-paradigm=dark-studio] .cell-editor-length-input input,
+:root[data-interface-paradigm=dark-studio] .model-element-appearance-fields input[type=number],
+:root[data-interface-paradigm=dark-studio] .model-element-appearance-fields input[type=color],
+:root[data-interface-paradigm=dark-studio] .viewport-image-export-menu button {
+  background: var(--ui-control-bg);
+  color: var(--ui-control-ink);
+  border-color: var(--ui-control-border);
+}
+:root[data-interface-paradigm=dark-studio] .bond-selection-controls button[aria-pressed="true"],
+:root[data-interface-paradigm=dark-studio] .cell-editor-axis.is-active {
+  background: var(--ui-control-selected-bg);
+  border-color: var(--ui-tool-selected-border);
+  color: var(--ui-control-selected-ink);
+}
+:root[data-interface-paradigm=dark-studio] .geometry-smart-slide {
+  background: var(--ui-surface-bg);
+  border-color: var(--ui-surface-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .geometry-smart-slide input:not([type=range]),
+:root[data-interface-paradigm=dark-studio] .geometry-smart-slide select,
+:root[data-interface-paradigm=dark-studio] .geometry-smart-close,
+:root[data-interface-paradigm=dark-studio] .geometry-smart-actions button {
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .geometry-smart-actions button:first-child,
+:root[data-interface-paradigm=dark-studio] .geometry-measurement-order {
+  background: var(--ui-action-tonal-bg);
+  border-color: var(--ui-action-tonal-border);
+  color: var(--ui-action-tonal-ink);
+}
+:root[data-interface-paradigm=dark-studio] .personal-fragment-library,
+:root[data-interface-paradigm=dark-studio] .personal-fragment-library.personal-fragment-popup,
+:root[data-interface-paradigm=dark-studio] .comparison-controls,
+:root[data-interface-paradigm=dark-studio] .comparison-panel,
+:root[data-interface-paradigm=dark-studio] .builder-workspace {
+  background: var(--ui-surface-bg);
+  border-color: var(--ui-surface-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .comparison-workspace button,
+:root[data-interface-paradigm=dark-studio] .personal-fragment-library button,
+:root[data-interface-paradigm=dark-studio] .model-element-colors .model-periodic-table button {
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .comparison-workspace button:hover:not(:disabled),
+:root[data-interface-paradigm=dark-studio] .comparison-panel-heading button[aria-pressed=true] {
+  background: var(--ui-control-selected-bg);
+  border-color: var(--ui-tool-selected-border);
+  color: var(--ui-control-selected-ink);
+}
+:root[data-interface-paradigm=dark-studio] .xtb-optimization-panel .optimization-stop:not(:disabled),
+:root[data-interface-paradigm=dark-studio] .xtb-optimization-panel .xtb-optimization-buttons > button:last-child:not(:disabled),
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-settings-surface .conformer-stop-action:not(:disabled) {
+  background: #3a1f23;
+  border-color: #7c3b42;
+  color: #f8aba4;
+}
+:root[data-interface-paradigm=dark-studio] .xtb-optimization-panel .optimization-stop:hover:not(:disabled),
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-settings-surface .conformer-stop-action:not(:disabled):hover {
+  background: #4a262c;
+  border-color: #9e4b54;
+}
+:root[data-interface-paradigm=dark-studio] .two-d-editor-window,
+:root[data-interface-paradigm=dark-studio] .two-d-toolbar,
+:root[data-interface-paradigm=dark-studio] .two-d-sidebar {
+  background: var(--ui-surface-bg);
+  color: var(--ui-field-ink);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .viewer-builder-stage .viewer-builder-appearance,
+:root[data-interface-paradigm=dark-studio] .viewer-highlights-stage .viewer-bottom-controls {
+  background: var(--ui-sidebar-bg);
+  color: var(--ui-control-ink);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .viewer-builder-stage .viewer-builder-appearance button,
+:root[data-interface-paradigm=dark-studio] .viewer-highlights-stage .viewer-bottom-controls button,
+:root[data-interface-paradigm=dark-studio] .viewer-highlights-stage .viewer-bottom-controls label,
+:root[data-interface-paradigm=dark-studio] .viewer-highlight-controls label,
+:root[data-interface-paradigm=dark-studio] .viewer-overlay-legend {
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .viewer-builder-stage .segmented,
+:root[data-interface-paradigm=dark-studio] .viewer-highlight-controls select,
+:root[data-interface-paradigm=dark-studio] .viewer-move-axis select {
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .viewer-builder-stage .segmented button.active {
+  background: var(--ui-control-selected-bg);
+  color: var(--ui-control-selected-ink);
+}
+
+/* --- 2. Input Generator — Gaussian & ORCA (All 4 Steps + Preview + Modals) --- */
+:root[data-interface-paradigm=dark-studio] .engine-switch {
+  background: var(--ui-page-bg);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .engine-switch button[aria-pressed=true] {
+  background: var(--ui-control-selected-bg);
+  color: var(--ui-control-selected-ink);
+}
+:root[data-interface-paradigm=dark-studio] .workflow-content-card,
+:root[data-interface-paradigm=dark-studio] .workflow-content-card > .workflow-navigation,
+:root[data-interface-paradigm=dark-studio] .workflow-content-card .engine-output-step,
+:root[data-interface-paradigm=dark-studio] .orca-workbench .orca-step-content:has(> .generated-input-editor),
+:root[data-interface-paradigm=dark-studio] .generated-input-toolbar,
+:root[data-interface-paradigm=dark-studio] .generated-input-code,
+:root[data-interface-paradigm=dark-studio] .workflow-content-card .generated-input-code textarea,
+:root[data-interface-paradigm=dark-studio] .orca-workbench .orca-wizard-footer,
+:root[data-interface-paradigm=dark-studio] .app-shell.desktop-mode .unified-workbench-grid :is(.wizard-footer, .orca-wizard-footer),
+:root[data-interface-paradigm=dark-studio] .engine-input-preview,
+:root[data-interface-paradigm=dark-studio] .editor-three-dimensional,
+:root[data-interface-paradigm=dark-studio] .sticky-structure-card,
+:root[data-interface-paradigm=dark-studio] .structure-follow-card {
+  background: var(--ui-surface-bg);
+  color: var(--ui-field-ink);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .workflow-content-card > .workflow-navigation > .button-quiet {
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .workflow-content-card > .workflow-navigation > .button-quiet:hover:not(:disabled) {
+  background: var(--ui-control-hover-bg);
+  border-color: var(--ui-control-accent);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .workflow-steps .step-number,
+:root[data-interface-paradigm=dark-studio] .stepper .step-number {
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-control-muted);
+}
+:root[data-interface-paradigm=dark-studio] .workflow-steps .step.active .step-number,
+:root[data-interface-paradigm=dark-studio] .workflow-steps .step.done .step-number,
+:root[data-interface-paradigm=dark-studio] .stepper .step.active .step-number,
+:root[data-interface-paradigm=dark-studio] .stepper .step.done .step-number {
+  background: var(--ui-action-primary-bg);
+  border-color: var(--ui-action-primary-bg);
+  color: #ffffff;
+}
+:root[data-interface-paradigm=dark-studio] .orca-workbench .orca-step-content h1,
+:root[data-interface-paradigm=dark-studio] .method-catalog-popup .dropdown-option-title strong,
+:root[data-interface-paradigm=dark-studio] .mixed-basis-count {
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .engine-input-preview .preview-valid,
+:root[data-interface-paradigm=dark-studio] .app-shell[data-font-size] .route-preview {
+  color: var(--ui-section-ink) !important;
+}
+:root[data-interface-paradigm=dark-studio] .engine-input-preview .preview-invalid {
+  color: #f0b86c;
+}
+:root[data-interface-paradigm=dark-studio] .engine-input-preview.native-input-preview button.input-preview-toggle:hover {
+  background: var(--ui-control-hover-bg);
+  border-color: var(--ui-control-accent);
+}
+:root[data-interface-paradigm=dark-studio] .generated-input-file select,
+:root[data-interface-paradigm=dark-studio] .orca-workbench .font-size-control select,
+:root[data-interface-paradigm=dark-studio] .orca-workbench .solvent-controls input,
+:root[data-interface-paradigm=dark-studio] .orca-workbench .solvent-controls select,
+:root[data-interface-paradigm=dark-studio] .orca-workbench .electronic-state-panel .field input:not(.input-settings-layout *) {
+  background: var(--ui-control-bg);
+  color: var(--ui-control-ink);
+  border-color: var(--ui-control-border);
+}
+:root[data-interface-paradigm=dark-studio] .generated-input-code textarea::selection {
+  background: color-mix(in srgb, var(--ui-control-accent) 35%, transparent);
+}
+:root[data-interface-paradigm=dark-studio] .method-chooser .card-dropdown-trigger,
+:root[data-interface-paradigm=dark-studio] .card-dropdown-popup,
+:root[data-interface-paradigm=dark-studio] .dropdown-option {
+  background: var(--ui-surface-bg);
+  border-color: var(--ui-surface-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .method-chooser .card-dropdown-trigger:hover,
+:root[data-interface-paradigm=dark-studio] .dropdown-option.selected,
+:root[data-interface-paradigm=dark-studio] .dropdown-option[data-active=true] {
+  background: var(--ui-control-selected-bg);
+  border-color: var(--ui-tool-selected-border);
+  color: var(--ui-control-selected-ink);
+}
+:root[data-interface-paradigm=dark-studio] .method-family {
+  background: var(--ui-subcard-bg);
+  color: var(--ui-note-ink);
+}
+:root[data-interface-paradigm=dark-studio] .zindo-method-note,
+:root[data-interface-paradigm=dark-studio] .source-options,
+:root[data-interface-paradigm=dark-studio] .source-import-panel,
+:root[data-interface-paradigm=dark-studio] .inheritance-final,
+:root[data-interface-paradigm=dark-studio] .geometry-controls,
+:root[data-interface-paradigm=dark-studio] .mixed-basis-options,
+:root[data-interface-paradigm=dark-studio] .mixed-basis-region,
+:root[data-interface-paradigm=dark-studio] .orca-source-assets .orca-asset,
+:root[data-interface-paradigm=dark-studio] .orca-source-assets .orca-source-drop,
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-parameter-settings .shared-input-card.shared-input-subcard {
+  background: var(--ui-subcard-bg);
+  border-color: var(--ui-surface-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .mixed-basis-total,
+:root[data-interface-paradigm=dark-studio] .mixed-basis-elements button {
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .mixed-basis-elements button[aria-pressed=true],
+:root[data-interface-paradigm=dark-studio] .solvent-library-card.selected,
+:root[data-interface-paradigm=dark-studio] .solvent-library-card:hover,
+:root[data-interface-paradigm=dark-studio] .solvent-controls .solvent-current-row > button.solvent-library-trigger:hover:not(:disabled),
+:root[data-interface-paradigm=dark-studio] .orca-source-assets .orca-source-drop[data-dragging=true] {
+  background: var(--ui-control-selected-bg);
+  border-color: var(--ui-tool-selected-border);
+  color: var(--ui-control-selected-ink);
+}
+:root[data-interface-paradigm=dark-studio] .inheritance-missing,
+:root[data-interface-paradigm=dark-studio] .input-capability-paused,
+:root[data-interface-paradigm=dark-studio] .checkpoint-file-row[data-source-enabled=true] .reference-file-field input {
+  background: #362c14;
+  border-color: #826725;
+  color: #f3d783;
+}
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-card .shared-input-field,
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-card[data-state=error] .shared-input-field,
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-card[data-state=confirmed] .shared-input-field {
+  background: var(--ui-subcard-bg);
+  color: var(--ui-field-ink);
+  border-color: var(--ui-control-border);
+}
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-card .shared-input-field input,
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-card[data-state=confirmed] .shared-input-field input,
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-card[data-state=error] .shared-input-field input,
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-parameter-settings [data-state=confirmed] :is(.resource-fields, .orca-grid) :is(input, select),
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-parameter-settings .fragment-editor[data-state=confirmed] input {
+  background: var(--ui-control-bg);
+  color: var(--ui-control-ink);
+  border-color: var(--ui-control-border);
+}
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-card[data-state=pending] .shared-input-field,
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-card[data-state=pending] .shared-input-field input,
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-parameter-settings [data-state=pending] :is(.resource-fields, .orca-grid) :is(input, select),
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-parameter-settings .fragment-editor[data-state=pending] input {
+  background: #302815;
+  border-color: #9e7e2e;
+  color: #f5df98;
+}
+:root[data-interface-paradigm=dark-studio] .base-electronic-state-error {
+  color: #f48c84;
+}
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-parameter-settings .input-option-group :is(input, select):disabled {
+  background: var(--ui-action-disabled-bg);
+  color: var(--ui-action-disabled-ink);
+}
+:root[data-interface-paradigm=dark-studio] .atom-picker-dialog,
+:root[data-interface-paradigm=dark-studio] .atom-picker-body,
+:root[data-interface-paradigm=dark-studio] .atom-picker-controls {
+  background: var(--ui-surface-bg);
+  border-color: var(--ui-surface-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .atom-picker-header,
+:root[data-interface-paradigm=dark-studio] .atom-picker-view {
+  background: var(--ui-sidebar-bg);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .atom-picker-dialog button {
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .atom-picker-dialog button:hover:not(:disabled) {
+  background: var(--ui-control-hover-bg);
+  border-color: var(--ui-control-accent);
+}
+
+/* --- 3. Advanced Tasks — Conformer / PES / xTB2 --- */
+:root[data-interface-paradigm=dark-studio] .input-settings-layout.input-settings-surface .mixed-sampling-card {
+  background: var(--ui-subcard-bg);
+  border-color: var(--ui-surface-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .pes-local-failures > summary {
+  background: #3d3013;
+  border-color: #a67c22;
+  color: #f3ce6c;
+}
+
+/* --- 4. Postprocess / Trajectory / Orbitals / Spectra / Tables --- */
+:root[data-interface-paradigm=dark-studio] .postprocess-file-status.status-ready.status-partial {
+  color: #f3cf6e !important;
+  background: #3c3014;
+}
+:root[data-interface-paradigm=dark-studio] .postprocess-file-status.status-error {
+  color: #f7a7a1 !important;
+  background: #3d1f23;
+}
+:root[data-interface-paradigm=dark-studio] .postprocess-file-status.status-reading {
+  color: #8cc4ff !important;
+  background: #1b2f4a;
+}
+:root[data-interface-paradigm=dark-studio] .analysis-entry-grid .task-card.shared-task-choice.selected {
+  color: var(--ui-control-selected-ink);
+}
+:root[data-interface-paradigm=dark-studio] .orbital-selector .orbital-shared-heading,
+:root[data-interface-paradigm=dark-studio] .analysis-task-card,
+:root[data-interface-paradigm=dark-studio] .interaction-analysis-controls,
+:root[data-interface-paradigm=dark-studio] .vibronic-state,
+:root[data-interface-paradigm=dark-studio] .vibronic-result > section {
+  background: var(--ui-surface-bg);
+  border-color: var(--ui-surface-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .trajectory-workspace,
+:root[data-interface-paradigm=dark-studio] .trajectory-heading,
+:root[data-interface-paradigm=dark-studio] .trajectory-player-row,
+:root[data-interface-paradigm=dark-studio] .trajectory-footer,
+:root[data-interface-paradigm=dark-studio] .playback-overlay-controls {
+  background: var(--ui-surface-bg);
+  color: var(--ui-field-ink);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .trajectory-heading > span:not(.scientific-image-copy),
+:root[data-interface-paradigm=dark-studio] .trajectory-notices,
+:root[data-interface-paradigm=dark-studio] .trajectory-frame-info,
+:root[data-interface-paradigm=dark-studio] .trajectory-loading,
+:root[data-interface-paradigm=dark-studio] .trajectory-range small,
+:root[data-interface-paradigm=dark-studio] .trajectory-range-popover small,
+:root[data-interface-paradigm=dark-studio] .playback-overlay-controls small {
+  color: var(--ui-note-ink);
+}
+:root[data-interface-paradigm=dark-studio] .trajectory-view-options > div,
+:root[data-interface-paradigm=dark-studio] .trajectory-range > div,
+:root[data-interface-paradigm=dark-studio] .trajectory-playback-options > div,
+:root[data-interface-paradigm=dark-studio] .trajectory-control-popover {
+  background: var(--ui-popover-bg);
+  backdrop-filter: var(--ui-popover-blur);
+  border-color: var(--ui-control-border);
+  box-shadow: var(--ui-popover-shadow);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .trajectory-controls > button,
+:root[data-interface-paradigm=dark-studio] .trajectory-controls select,
+:root[data-interface-paradigm=dark-studio] .trajectory-controls input[type=number],
+:root[data-interface-paradigm=dark-studio] .trajectory-control-popover select,
+:root[data-interface-paradigm=dark-studio] .trajectory-control-popover input[type=number],
+:root[data-interface-paradigm=dark-studio] [data-testid="postprocess-playback"] .trajectory-stage-choice select {
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-control-ink);
+}
+:root[data-interface-paradigm=dark-studio] .trajectory-controls > .trajectory-play {
+  background: var(--ui-action-tonal-bg);
+  border-color: var(--ui-action-tonal-border);
+  color: var(--ui-action-tonal-ink);
+}
+:root[data-interface-paradigm=dark-studio] .trajectory-controls > input.trajectory-slider {
+  background: linear-gradient(var(--ui-control-border), var(--ui-control-border)) center / calc(100% - 14px) 4px no-repeat;
+}
+:root[data-interface-paradigm=dark-studio] .trajectory-vibration-badge {
+  background: color-mix(in srgb, #1b3148 90%, transparent);
+  color: #93ccff;
+}
+:root[data-interface-paradigm=dark-studio] .scientific-data-table .scientific-row-action-button[aria-pressed=true],
+:root[data-interface-paradigm=dark-studio] .plot-edit-font button[aria-pressed="true"],
+:root[data-interface-paradigm=dark-studio] .plot-edit-tabs button[aria-selected="true"] {
+  background: var(--ui-control-selected-bg);
+  border-color: var(--ui-tool-selected-border);
+  color: var(--ui-control-selected-ink);
+}
+:root[data-interface-paradigm=dark-studio] .scientific-imaginary {
+  background: #3a1f23;
+  color: #f7aba4;
+}
+:root[data-interface-paradigm=dark-studio] .analysis-feedback-toast {
+  background: var(--ui-action-tonal-bg);
+  border-color: var(--ui-action-tonal-border);
+  color: var(--ui-action-tonal-ink);
+}
+:root[data-interface-paradigm=dark-studio] :is(.scientific-table-viewport, .orbital-channel-scroll, .orbital-shared-scroll) {
+  scrollbar-color: #4a5970 #1a202a;
+}
+:root[data-interface-paradigm=dark-studio] :is(.scientific-table-viewport, .orbital-channel-scroll, .orbital-shared-scroll)::-webkit-scrollbar-track,
+:root[data-interface-paradigm=dark-studio] :is(.scientific-table-viewport, .orbital-channel-scroll, .orbital-shared-scroll)::-webkit-scrollbar-corner {
+  background: #1a202a !important;
+}
+:root[data-interface-paradigm=dark-studio] :is(.scientific-table-viewport, .orbital-channel-scroll, .orbital-shared-scroll)::-webkit-scrollbar-thumb {
+  background: #4a5970 !important;
+  border-color: #1a202a !important;
+}
+
+/* --- 5. Task Center --- */
+:root[data-interface-paradigm=dark-studio] .task-state[data-status-tone="running"],
+:root[data-interface-paradigm=dark-studio] .task-state[data-status-tone="unknown"] {
+  color: #f3ce6c;
+  background: #3d3013;
+}
+:root[data-interface-paradigm=dark-studio] .task-state[data-status-tone="success"] {
+  color: #7ee3b0;
+  background: #17382a;
+}
+:root[data-interface-paradigm=dark-studio] .task-state[data-status-tone="failed"] {
+  color: #f7a7a1;
+  background: #3c1f23;
+}
+:root[data-interface-paradigm=dark-studio] .task-state[data-status-tone="stopped"] {
+  color: #aebccb;
+  background: #28313e;
+}
+:root[data-interface-paradigm=dark-studio] .task-gallery .task-card[data-highlight="true"],
+:root[data-interface-paradigm=dark-studio] .task-access,
+:root[data-interface-paradigm=dark-studio] .task-confirm,
+:root[data-interface-paradigm=dark-studio] .task-host-key {
+  background: #332914;
+  border-color: #826725;
+  color: #f3d783;
+}
+
+/* --- 6. Integrated AI Assistant, Terminal & MCP Connections Dock --- */
+:root[data-interface-paradigm=dark-studio] .es-agent-dock {
+  background: var(--ui-sidebar-bg);
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-entry {
+  background: var(--ui-surface-bg);
+  border-color: var(--ui-surface-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-entry-user {
+  background: var(--ui-control-selected-bg);
+  border-color: var(--ui-tool-selected-border);
+  color: var(--ui-field-ink);
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-entry-tool,
+:root[data-interface-paradigm=dark-studio] .es-agent-entry-reasoning,
+:root[data-interface-paradigm=dark-studio] .es-agent-entry-notice {
+  background: var(--ui-page-bg);
+  border-color: var(--ui-control-border);
+  color: var(--ui-note-ink);
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-codeblock {
+  background: #12171f;
+  border-color: var(--ui-control-border);
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-codeblock-header {
+  background: #181f2a;
+  border-color: var(--ui-surface-border);
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-answer code {
+  background: #161c26;
+  border-color: var(--ui-surface-border);
+  color: #9ce6d7;
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-terminal-screen {
+  background: #10151d;
+  border-color: var(--ui-surface-border);
+  color: #dce5f2;
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-terminal-screen .xterm-viewport {
+  background-color: #10151d;
+}
+:root[data-interface-paradigm=dark-studio] .es-agent-avatar {
+  background: #18202c;
+  border-color: var(--ui-control-border);
+}
+:root[data-interface-paradigm=dark-studio] .es-dock-connected {
+  background: #30d492;
+  box-shadow: 0 0 0 2px rgb(48 212 146 / 0.25);
+}
+
+.interface-paradigm-control-wrap {
+  display: grid;
+  gap: 10px;
+}
+.interface-paradigm-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.interface-paradigm-control .interface-surface-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 3px;
+  padding: 8px 11px;
+}
+.interface-paradigm-control .interface-surface-option[aria-checked="true"] {
+  background: var(--ui-control-selected-bg);
+  border-color: var(--ui-control-accent);
+  box-shadow: inset 0 0 0 1px var(--ui-control-accent);
+}
+.interface-paradigm-control .interface-surface-option[aria-checked="true"] .interface-surface-option-title {
+  color: var(--ui-control-selected-ink);
+}
+.interface-paradigm-control .interface-surface-option-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--ui-field-ink);
+}
+.interface-paradigm-control .interface-surface-option-hint {
+  font-size: 11px;
+  color: var(--ui-note-ink);
+  line-height: 1.35;
+}
+.interface-backdrop-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.interface-backdrop-label {
+  font-size: var(--ui-small-size, 12px);
+  color: var(--ui-note-ink);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.interface-backdrop-chip {
+  font: 500 12px/1.2 var(--ui-font-family);
+  padding: 4px 10px;
+  border-radius: var(--ui-control-radius);
+  border: 1px solid var(--ui-control-border);
+  background: var(--ui-control-bg);
+  color: var(--ui-control-ink);
+  cursor: pointer;
+  transition: var(--ui-transition);
+}
+.interface-backdrop-chip[aria-checked="true"] {
+  background: var(--ui-control-selected-bg);
+  border-color: var(--ui-tool-selected-border);
+  color: var(--ui-control-selected-ink);
+  font-weight: 600;
+}

@@ -770,9 +770,13 @@ export async function readPostprocessAuxiliary(file:ResultInputFile,options:Resu
   const results=await(identity.kind==='xyz'?readXyzTrajectory(file,options):readHessScientificResult(file,options));
   try{
     if(results.length!==1)throw new PostprocessSourceError('multiple-jobs','来源含多个独立结构状态段；请分别提供，不自动选择最后一段。');
-    const result=results[0];bindSourceProvenance(result,file);
-    return{kind:identity.kind,software:result.source.software??identity.software,result,results,tasks:result.scientific?.tasks??[],observations:[],coordinateRoundingAngstrom:null};
+    return postprocessAuxiliaryFromResult(file,results[0],identity.kind,identity.software);
   }catch(error){await Promise.all(results.map(result=>result.dispose()));throw error;}
+}
+
+export function postprocessAuxiliaryFromResult(file:ResultInputFile,result:TrajectoryResult,kind:'xyz'|'hess',software:PostprocessSource['software']='unknown'):PostprocessSource{
+  bindSourceProvenance(result,file);
+  return{kind,software:result.source.software??software,result,results:[result],tasks:result.scientific?.tasks??[],observations:[],coordinateRoundingAngstrom:null};
 }
 
 export function postprocessDestination(source: Pick<PostprocessSource, 'tasks' | 'result'>): { engine: 'gaussian' | 'orca' | 'unknown'; task: string; isSinglePoint: boolean } {

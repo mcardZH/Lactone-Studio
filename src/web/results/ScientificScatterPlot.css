@@ -2,7 +2,7 @@
 .scientific-scatter-plot .scientific-scatter-tools label { flex-wrap: nowrap; white-space: nowrap; }
 .scientific-scatter-plot .scientific-scatter-tools input[type="number"] { width: 82px; min-width: 0; box-sizing: border-box; }
 .scientific-scatter-plot .scientific-scatter-tools input[type="range"] { width: 76px; min-width: 0; padding: 0; }
-.scientific-scatter-stage { position: relative; background:var(--ui-workspace-canvas-bg,#fff); }
+.scientific-scatter-stage { position: relative; }
 .scientific-scatter-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .scientific-scatter-stage > svg { position: relative; display: block; width: 100%; height: 100%; user-select: none; font-family: Arial, Microsoft YaHei, sans-serif; }
 .scientific-scatter-plot:focus-visible { outline:2px solid var(--ui-control-focus);outline-offset:2px; }

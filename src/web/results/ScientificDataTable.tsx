@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type HTMLAttributes, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { Pin } from 'lucide-react';
 import {ProjectUiScope,useProjectState,useProjectUiScope} from '../../projects/ui-state';
 import { LegacyScientificDataTable } from './LegacyScientificDataTable';
@@ -49,6 +49,8 @@ export interface ScientificDataTableProps {
   renderHeader?(column: ScientificTableColumn): ReactNode;
   onRowActivate?(row: ScientificTableRow): void;
   activeRowKey?: string;
+  /** Playback owns the current row independently of the copy selection. */
+  liveActiveRow?: boolean;
   /** Explicit external navigation (e.g. a spectrum click), independent of current/copy state. */
   revealRow?: { key: string; requestId: number };
   format?: ScientificTableFormat;
@@ -71,7 +73,7 @@ export function ScientificDataTable(props: ScientificDataTableProps) {
     {props.variant === 'legacy' ? <LegacyScientificDataTable {...props}/> : <NumericScientificDataTable {...props}/>}
   </ProjectUiScope>;
 }
-export function NumericScientificDataTable({ title, hideTitle, onExport, exportFileName, expansion, onRowPreview, onClearActive, projection, selectionScope, layout = 'comparison', rowBindings, rowAction, rowActions, renderHeader, onRowActivate, activeRowKey, revealRow, format, sorting, layoutState, initialColumnMinWidths, numericColumnWidths='uniform', onLayoutChange }: ScientificDataTableProps) {
+export function NumericScientificDataTable({ title, hideTitle, onExport, exportFileName, expansion, onRowPreview, onClearActive, projection, selectionScope, layout = 'comparison', rowBindings, rowAction, rowActions, renderHeader, onRowActivate, activeRowKey, liveActiveRow = false, revealRow, format, sorting, layoutState, initialColumnMinWidths, numericColumnWidths='uniform', onLayoutChange }: ScientificDataTableProps) {
   const suppliedActions = rowActions ?? (rowAction ? [rowAction] : []);
   const selectAction = suppliedActions.find(action=>action.kind==='select');
   const visibilityAction = suppliedActions.find(action=>action.kind==='visibility');
@@ -87,7 +89,7 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
     layoutOwner:selectionScope??identities.sortedRows,
   }),[selectionScope,identities]);
   const [selected, setSelected] = useState<{ owner: string; range: TableSelection } | null>(null);
-  const [highlight,setHighlight]=useState<{owner:string;visible:boolean}|null>(null);
+  const [highlight,setHighlight]=useState<{owner:string;visible:boolean;activeRowKey?:string}|null>(null);
   const [projectDimensions,renderLayout]=useProjectState<ScientificTableLayoutState>('dimensions',{},layoutOwner);
   const [scroll,setScroll]=useProjectState('scroll',{left:0,top:0},layoutOwner),viewportRef=useRef<HTMLDivElement>(null);
   useEffect(()=>{const node=viewportRef.current;if(node){node.scrollLeft=scroll.left;node.scrollTop=scroll.top;}},[layoutOwner]);
@@ -98,13 +100,14 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
   const retainedWidths=scientificTableRetainedWidths(savedDimensions,columnKeys,defaultWidths);
   const dimensions={...savedDimensions,columnWidths:retainedWidths};
   const setDimensions=(value:ScientificTableLayoutState)=>{if(liveOwner.current!==owner)return;const keyed=value.columnWidths?{...value,columnKeys}:value;layouts.current.set(layoutOwner,keyed);renderLayout({...keyed});onLayoutChange?.(keyed);};
-  const highlightVisible=highlight?.owner!==highlightOwner||highlight.visible;
+  const highlightVisible=highlight?.owner!==highlightOwner||highlight.visible||liveActiveRow&&highlight.activeRowKey!==activeRowKey;
   const selection = selected?.owner === owner ? selected.range : null;
   const setSelection = (range: TableSelection | null) => {setSelected(range ? { owner, range } : null);if(range)setHighlight({owner:highlightOwner,visible:true});};
   type Gesture = { owner: string; document:Document; anchor: TableCellAddress; end: TableCellAddress; kind: 'cells' | 'columns'; dragged: boolean; toggle: boolean; x: number; y: number; activate?:()=>void };
   const drag = useRef<Gesture | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const clearActive = useRef(onClearActive); clearActive.current = onClearActive;
+  const currentActiveRow=useRef(activeRowKey);currentActiveRow.current=activeRowKey;
   const releasePointerListeners = useRef<(() => void) | null>(null);
   const releaseResizeListeners = useRef<(() => void) | null>(null);
   const releasePreview = useRef<(() => void) | null>(null);
@@ -122,7 +125,7 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
     if(current&&!gesture.dragged)gesture.activate?.();
     cancelDrag(gesture);
   };
-  const clear = () => { cancelDrag();releasePreview.current?.();releasePreview.current=null; setSelection(null);setHighlight({owner:highlightOwner,visible:false});onRowPreview?.(null);clearActive.current?.(); };
+  const clear = () => { cancelDrag();releasePreview.current?.();releasePreview.current=null; setSelection(null);setHighlight({owner:highlightOwner,visible:false,activeRowKey:currentActiveRow.current});onRowPreview?.(null);clearActive.current?.(); };
   const start = 0, visibleRows = projection.rows;
   const revealOwner=useRef<{owner:string;key:string;requestId:number}|null>(null);
   useEffect(()=>{
@@ -141,7 +144,7 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
     if(target){target.scrollIntoView({block:'nearest',inline:'nearest'});revealOwner.current=null;}
   },[owner,revealRow?.key,revealRow?.requestId]);
   useEffect(() => { cancelDrag();setSelection(null);releaseResizeListeners.current?.();releaseResizeListeners.current=null; }, [owner]);
-  useEffect(()=>{setHighlight({owner:highlightOwner,visible:false});},[highlightOwner]);
+  useEffect(()=>{if(!liveActiveRow)setHighlight({owner:highlightOwner,visible:false});},[highlightOwner,liveActiveRow]);
   useEffect(()=>{cancelDrag();releaseResizeListeners.current?.();releaseResizeListeners.current=null;},[root.current?.ownerDocument]);
   useEffect(() => () => { releasePointerListeners.current?.();releaseResizeListeners.current?.(); drag.current = null; }, []);
   useEffect(()=>{
@@ -244,12 +247,13 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
   }
   measurement.current=()=>{
       const host=root.current;if(!host||!host.getBoundingClientRect||!host.querySelectorAll)return;
+      const available=Math.floor(host.clientWidth??host.getBoundingClientRect().width);
+      if(available<=0)return;
       const minima=contentColumnMinima();
       const numeric=projection.columns.map((column,index)=>column.precision||column.quantity||(!/atom|index|mode|原子|编号|模式/i.test(column.key+column.label)&&projection.rows.some(row=>/^[-+]?\d/.test(row.cells[index]))&&projection.rows.every(row=>/^[-+]?\d|未输出|不适用|—/.test(row.cells[index]))));
       // The card is independent of the user-sized table body. Reserve the
       // permanently visible viewport rail, rather than feeding its overflow
       // width back into the next default-width calculation.
-      const available=Math.floor(host.clientWidth??host.getBoundingClientRect().width);
       const filled=scientificTableDefaultWidths(minima,numeric.map(Boolean),Math.max(0,available-12),actionWidth,initialColumnMinWidths,numericColumnWidths);
       setDefaultWidths(previous=>filled.length!==previous.length||filled.some((value,index)=>Math.abs(value-previous[index])>.5)?filled:previous);
   };
@@ -323,7 +327,10 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
   // Project persistence may clone this map on a width-only write. Equal row
   // heights still describe the same body, regardless of the map's identity.
   const rowHeightSignature=useTableValue(()=>JSON.stringify(dimensions.rowHeights??null),[dimensions.rowHeights]);
-  const tableBody=useTableValue(()=><tbody>{visibleRows.map((row, index) => { const { onClick: _click, onKeyDown: _key, tabIndex: _tab, onPointerEnter: _enter, onPointerLeave: _leave, ...bindings } = rowBindings?.(row) ?? {}; return <tr key={row.key} {...bindings} data-table-row-key={row.key} style={{...bindings.style,height:dimensions.rowHeights?.[row.key]??dimensions.rowHeight??bindings.style?.height}} tabIndex={onRowActivate||selectAction||_click?0:undefined} aria-selected={highlightVisible&&(activeRowKey!==undefined?activeRowKey===row.key:bindings['aria-selected'])||undefined}
+  const liveRows=useRef<Map<string,HTMLTableRowElement>|null>(null),markedRow=useRef<HTMLTableRowElement|undefined>(undefined);
+  if(liveActiveRow&&!liveRows.current)liveRows.current=new Map();
+  const retainedActiveKey=liveActiveRow?undefined:activeRowKey,retainedHighlight=!liveActiveRow&&highlightVisible;
+  const tableBody=useTableValue(()=><tbody key={liveActiveRow?'live':'static'}>{visibleRows.map((row, index) => { const { onClick: _click, onKeyDown: _key, tabIndex: _tab, onPointerEnter: _enter, onPointerLeave: _leave, ...bindings } = rowBindings?.(row) ?? {}; return <tr key={row.key} {...bindings} ref={liveActiveRow?node=>{if(node)liveRows.current?.set(row.key,node);else liveRows.current?.delete(row.key);}:undefined} data-table-row-key={row.key} style={{...bindings.style,height:dimensions.rowHeights?.[row.key]??dimensions.rowHeight??bindings.style?.height}} tabIndex={onRowActivate||selectAction||_click?0:undefined} aria-selected={retainedHighlight&&(retainedActiveKey!==undefined?retainedActiveKey===row.key:bindings['aria-selected'])||undefined}
     onPointerEnter={event=>{if(!drag.current&&!releaseResizeListeners.current){onRowPreview?.(row);_enter?.(event);releasePreview.current=()=>{onRowPreview?.(null);_leave?.(event);};}}} onPointerLeave={event=>{if(!drag.current&&!releaseResizeListeners.current){onRowPreview?.(null);_leave?.(event);clearActive.current?.();releasePreview.current=null;}}}
     onKeyDown={event=>{if(event.target!==event.currentTarget)return;if(event.key==='Enter'||event.key===' '){event.preventDefault();rowEvents.current.activateRow(row,event as unknown as MouseEvent<HTMLTableRowElement>);}else _key?.(event);}}
     onClick={event=>{if(event.target===event.currentTarget||event.detail===0)rowEvents.current.activateRow(row,event);}}>
@@ -338,7 +345,14 @@ export function NumericScientificDataTable({ title, hideTitle, onExport, exportF
     >{row.cells[columnIndex]}{columnIndex===0&&<span className="scientific-row-resizer" role="separator" aria-label="调整表格行高" data-row-key={row.key} aria-orientation="horizontal" onPointerDown={event=>rowEvents.current.resize(event,'row',0,row.key)}/>}</td>)}
     {!!actions.length && <td className="scientific-row-action"><span className="scientific-row-action-list">{actions.map((action, actionIndex) => action.available?.(row) !== false && (action.kind==='checkbox'?<input key={actionIndex} type="checkbox" aria-label={typeof action.label==='function'?action.label(row):action.label} checked={action.active?.(row)??false} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()} onChange={()=>action.onActivate(row)}/>:<button key={actionIndex} type="button" className="scientific-row-action-button" aria-label={typeof action.label === 'function' ? action.label(row) : action.label} title={typeof action.label === 'function' ? action.label(row) : action.label} aria-pressed={action.active?.(row) ?? false}
       onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); action.onActivate(row); }}>{action.text !== undefined ? typeof action.text === 'function' ? action.text(row) : action.text : action.kind === 'pin' ? <Pin size={16} strokeWidth={1.75} aria-hidden="true"/> : '选择'}</button>))}</span></td>}
-  </tr>; })}</tbody>,[projection.columns,projection.rows,owner,selection,highlightVisible,activeRowKey,rowHeightSignature,dimensions.rowHeight,rowBindings,rowAction,rowActions,onRowPreview,onRowActivate]);
+  </tr>; })}</tbody>,[projection.columns,projection.rows,owner,selection,liveActiveRow,retainedHighlight,retainedActiveKey,rowHeightSignature,dimensions.rowHeight,rowBindings,rowAction,rowActions,onRowPreview,onRowActivate]);
+  useLayoutEffect(()=>{
+    const next=liveActiveRow&&highlightVisible&&activeRowKey!==undefined?liveRows.current?.get(activeRowKey):undefined;
+    if(markedRow.current===next)return;
+    markedRow.current?.removeAttribute('aria-selected');
+    next?.setAttribute('aria-selected','true');
+    markedRow.current=next;
+  },[tableBody,liveActiveRow,activeRowKey,highlightVisible]);
   return <div ref={root} className="scientific-data-table" data-variant="numeric" data-layout={layout === 'metrics' ? 'metrics' : undefined} data-highlight-active={highlightVisible||undefined} tabIndex={0} aria-label="可复制分析表格"
     onPointerDown={event=>{if(!(event.target as Element).closest('th,td,button,input,select,textarea,[role=separator]'))clear();}}
     onPointerUp={() => finishDrag()} onPointerCancel={() => cancelDrag()}

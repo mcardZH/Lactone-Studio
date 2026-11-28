@@ -16,16 +16,16 @@
     "lockPath": "desktop/packaging/pes-libxtb-runtime.lock.json"
   },
   "baseRuntime": {
-    "lockSha256": "a2add1025dc386886cb6461e96250dea04758a8fc23f1df09c631eba567faa43",
+    "lockSha256": "1bb73c09eba5d88a5ebb0fd6b016dbf03b99f9197cd5428c56b0f16eddfc5317",
     "runtimeManifest": {
       "path": "runtime.json",
-      "bytes": 963138,
-      "sha256": "82d15f59220330c3fc03e232af47a76ae104fac2b3764c46f74ad3ddb893b58b"
+      "bytes": 962819,
+      "sha256": "769ae0c1ea1426511ba4e09676639891ec46337f591d9402c6c7a6b6b3dde9af"
     }
   },
   "pythonVersion": "3.12.13",
   "pythonSha256": "0d84b0acc6a5a3e7906d07c63a364e19b76410fa726c4412c74d3af7408b08d5",
-  "bootstrapSha256": "5f6eb573d7f7f73f59cd7b5e989bcab0fb9f1ab3771731f4d221e2aae14f6049",
+  "bootstrapSha256": "c2eb90f03f9f5a3e6fe9421dbca8178d2045bf991fced143fbe26743a77a8069",
   "pythonToolchain": {
     "path": "desktop/packaging/native-toolchain.lock.json",
     "bytes": 5843,
@@ -336,6 +336,7 @@
     "desktop/chemistry/pes_coordinates.py",
     "desktop/chemistry/pes_scan_ts.py",
     "desktop/chemistry/pes_paths.py",
+    "desktop/chemistry/pes_path_pool.py",
     "desktop/chemistry/pes_neb.py",
     "desktop/chemistry/pes_strings.py",
     "desktop/chemistry/advanced_path.py",

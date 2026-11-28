@@ -201,8 +201,9 @@ function createMcpHost({ profileRoot, discoveryDir, executable, entry, send, con
   }
 
   function accept(socket) {
-    sockets.add(socket);
     socket.on('error', () => {});
+    if (stopped) { socket.destroy(); return; }
+    sockets.add(socket);
     const serverNonce = newSecret();
     const abort = new AbortController();
     const calls = new Map();
@@ -392,7 +393,7 @@ function createMcpHost({ profileRoot, discoveryDir, executable, entry, send, con
     closeTask = (async () => {
       await startTask;
       await Promise.all([discoveryWrite, rememberWrite]);
-      if (server?.listening) await new Promise(resolve => server.close(resolve));
+      if (server?.listening) await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
       if (process.platform !== 'win32') {
         try {
           const endpoint = listenPath(instanceId);
@@ -401,7 +402,13 @@ function createMcpHost({ profileRoot, discoveryDir, executable, entry, send, con
           }
         } catch { /* ignore */ }
       }
-      if (descriptor) await fs.unlink(descriptor).catch(error => { if (error.code !== 'ENOENT') report(error); });
+      if (descriptor) await fs.unlink(descriptor).catch(error => {
+        if (error.code !== 'ENOENT') {
+          const cause = failure('discovery_close_failed', '无法移除此 ES 实例的连接信息。');
+          report(cause);
+          throw cause;
+        }
+      });
     })();
     return closeTask;
   }

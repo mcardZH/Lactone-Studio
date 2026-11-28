@@ -13,7 +13,7 @@ export interface SurfaceMeshAdmission {
   cell?: (cell: Vector3) => boolean;
   /** Only explicitly restricted interaction fields may omit an entire cell
    * when an independently positioned mapping stencil is outside its domain. */
-  invalidSample?: 'skip-cell';
+  invalidSample?: 'skip-cell' | 'keep-shape';
 }
 const EDGES = [[0, 1], [1, 3], [3, 2], [2, 0], [4, 5], [5, 7], [7, 6], [6, 4], [0, 4], [1, 5], [3, 7], [2, 6]] as const;
 const corner = (cell: Vector3, code: number): Vector3 => [cell[0] + ((code & 4) >> 2), cell[1] + ((code & 2) >> 1), cell[2] + (code & 1)];
@@ -72,9 +72,12 @@ export function* createSurfaceMeshWork(shape: Pick<SurfaceScalarField, 'grid' | 
       const local = a.map((v, axis) => v + fraction * (b[axis] - v)) as Vector3;
       const position = vertex===undefined ? prior?.position??grid.origin.map((v, axis) => v + grid.axes.reduce((sum, step, i) => sum + step[axis] * local[i], 0)) as Vector3 : vertices[vertex];
       // Shared positions still sample every later cell's own strict stencil.
-      const value = sample?.(position, cell);
-      if(value===null&&admission?.invalidSample==='skip-cell'){rejected=true;break;}
-      if (sample && !Number.isFinite(value)) throw new Error('表面映射采样没有可靠有限值。');
+      const sampled = sample?.(position, cell);
+      if(sampled===null&&admission?.invalidSample==='skip-cell'){rejected=true;break;}
+      // This sentinel belongs to the display mesh only. It is never a physical sample or a source grid value.
+      const missing=sampled===null&&admission?.invalidSample==='keep-shape';
+      if(sample&&!missing&&!Number.isFinite(sampled))throw new Error('表面映射采样没有可靠有限值。');
+      const value=missing?NaN:sampled;
       const boundary=!!slab&&(fraction===0?a[0]===end:fraction===1?b[0]===end:a[0]===end&&b[0]===end);
       candidates.push({edge:e,key,position,value:prior?.value??value??undefined,boundary});
     }

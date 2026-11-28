@@ -4,8 +4,7 @@ import type { DesktopBridge } from '../../modeling/contracts';
 import type { InteractionGeneratedFields, InteractionMethod, InteractionSource } from '../../results/interaction-contracts';
 import type { SurfaceContext, SurfaceCubeSourceRef, SurfaceScalarField, SurfaceStamp } from '../../results/surface-contracts';
 import { molecularCubeField } from '../../results/cube-reader';
-import { readDisplayCube } from './cube-display-reader';
-import { cubeOptions, materializeCubeFields, readRegisteredCubeAsset, restoreOriginalCubeAsset, type CubeAssetDesktop } from './cube-asset-bridge';
+import { cubeOptions, materializeCubeFields, readImportedCubeAsset, readRegisteredCubeAsset, restoreOriginalCubeAsset, retainImportedCubeAsset, type CubeAssetDesktop } from './cube-asset-bridge';
 import { exportSavedCube } from './export-saved-cube';
 import { sameSurfaceContext, sameSurfaceStamp, validateSurfaceScalarField } from '../../results/surface-field';
 import { postprocessWavefunctionFrame, type PostprocessDocument } from '../../results/postprocess-document';
@@ -13,7 +12,7 @@ import { validateInteractionGeneratedFields, validateInteractionContributions } 
 import { assertSurfaceCubeSourceGeometry } from './surface-desktop-bridge';
 import type { InteractionControlsBridge } from './interaction-controls-contracts';
 import { assertStructureInteractionContext, assertStructureInteractionSource, interactionUsesStructure } from '../../results/interaction-structure-context';
-import { analysisOriginalCubeKey, openAnalysisOriginalCube, isRestoredAnalysisData, markRestoredAnalysisData, notifyAnalysisProjectStateChanged, rebindAnalysisContext, retainAnalysisProjectSnapshot, type AnalysisOriginalCube } from '../../projects/analysis-state';
+import { analysisOriginalCubeKey, openAnalysisOriginalCube, isRestoredAnalysisData, markRestoredAnalysisData, notifyAnalysisProjectStateChanged, rebindAnalysisContext, retainImmutableAnalysisBuffer } from '../../projects/analysis-state';
 
 export type InteractionDesktopApi = Pick<DesktopBridge, 'openInteractionSession' | 'generateInteraction' | 'interactionContributions' | 'restoreInteractionFields' | 'exportInteractionCube' | 'cancelInteraction' | 'closeInteractionSession'
   | 'importSurfaceCube' | 'registerSurfaceCube' | 'readRegisteredSurfaceCube' | 'releaseSurfaceCube' | 'exportRegisteredSurfaceCube' | 'onMultiwfnProgress' | 'orbitalResourceInfo'> & CubeAssetDesktop;
@@ -43,6 +42,7 @@ export function createInteractionDesktopBridge(options: InteractionDesktopBridge
   if (!options.document) assertStructureInteractionContext(context, structure);
   const sessions = new Map<InteractionSource['kind'], Session>(), artifacts = new Map<string, Artifact>(), generated = new Map<string, { session: Session; signature: string }>();
   const imported = new Map<string, Imported>(), tokens = new Set<string>(), tasks = new Set<Promise<unknown>>(),orphanSessions=new Set<string>();
+  const importedReleases = new Map<string, () => Promise<void>>();
   const progressSubscriptions=new Set<()=>void>();
   let active = options.active, disposed = false, epoch = 0, operation: Operation | null = null;
   const report = (reason: unknown) => { if(disposed)return;try { options.onCleanupError?.(reason instanceof Error ? reason.message : String(reason)); } catch { /* Independent cleanup continues. */ } };
@@ -57,7 +57,12 @@ export function createInteractionDesktopBridge(options: InteractionDesktopBridge
     const abort = () => { void cancelOperation(op).catch(report); }; signal.addEventListener('abort', abort, { once: true });
     const task = Promise.resolve().then(async () => { current(op); const value = await execute(op); current(op); if(!op.readOnly)notifyAnalysisProjectStateChanged(); return value; }).finally(async () => { await op.cancelling?.catch(()=>{}); signal.removeEventListener('abort', abort); if (operation === op) operation = null; tasks.delete(task); }); op.settlement=task; tasks.add(task); return task;
   }
-  async function releaseToken(token: string) { assert(desktop.releaseSurfaceCube, '当前环境缺少Cube来源释放入口。'); const result = await desktop.releaseSurfaceCube(token); assert(result.released, 'Cube来源尚未释放。'); tokens.delete(token); }
+  async function releaseToken(token: string) {
+    const release = importedReleases.get(token);
+    if (release) await release();
+    else { assert(desktop.releaseSurfaceCube, '当前环境缺少Cube来源释放入口。'); const result = await desktop.releaseSurfaceCube(token); assert(result.released, 'Cube来源尚未释放。'); }
+    importedReleases.delete(token); tokens.delete(token);
+  }
   async function restoreImported(fieldId: string, signal: AbortSignal): Promise<{ entry: Imported; field?: SurfaceScalarField } | undefined> {
     const existing=imported.get(fieldId);if(existing)return { entry: existing };
     const original=await openAnalysisOriginalCube(analysisOriginalCubeKey(options.analysisId,context,fieldId));
@@ -120,11 +125,15 @@ export function createInteractionDesktopBridge(options: InteractionDesktopBridge
       assert(request.role === 'mapping' || (request.method === 'iri' || request.method === 'rdg' ? request.role === request.method : ['inter', 'intra', 'total'].includes(request.role)), 'Cube明确角色与方法不符。');
       const value = await desktop.importSurfaceCube(request.file); if (!value) throw aborted(); tokens.add(value.token); let accepted = false;
       try { current(op); assert(value.token && value.sourceRevision && value.bytes === request.file.size, 'Cube快照身份或字节数不符。');
-        const {parsed,originalBytes}=await readDisplayCube({text:value.text,bytes:value.bytes,keepOriginal:true},op.abort.signal,value.knownDomain?.coordinateUnit?cubeOptions(value.knownDomain.coordinateUnit):{});current(op);
+        const { parsed, originalBytes } = await readImportedCubeAsset(desktop, value, op.abort.signal); current(op);
         const field = molecularCubeField(parsed, { id: 'interaction-field-' + crypto.randomUUID(), context, function: fieldFunctions[request.role], functionLabel: request.role, valueUnit: request.valueUnit,
           definitionEvidence: { kind: 'user-provided', description: `用户明确${request.method}/${request.role}函数与单位` }, source: { id: value.token, name: value.name, revision: value.sourceRevision, kind: 'external-cube', producer: 'unknown' }, validDomain: { kind: 'full-grid', evidence: '按用户确认的外部Cube直接绘图约定使用全部文件节点；并非独立验证计算覆盖，内容绑定域记录优先' } }, value.knownDomain);
-        validateSurfaceScalarField(field); current(op); imported.set(field.id, { token: value.token, metadata: metadata(field), signature: signature(field) }); tokens.add(value.token);
-        const {values:_values,...fieldMetadata}=field;retainAnalysisProjectSnapshot(analysisOriginalCubeKey(options.analysisId,context,field.id),{name:value.name,originalBytes:originalBytes!,sourceRevision:value.sourceRevision,fieldMetadata} satisfies AnalysisOriginalCube);
+        validateSurfaceScalarField(field); current(op);
+        const { values, ...fieldMetadata } = field;
+        const release = retainImportedCubeAsset(desktop, analysisOriginalCubeKey(options.analysisId, context, field.id), value, fieldMetadata, originalBytes, report);
+        if (release) importedReleases.set(value.token, release);
+        retainImmutableAnalysisBuffer(values);
+        imported.set(field.id, { token: value.token, metadata: metadata(field), signature: signature(field) });
         accepted = true; return field;
       } finally { if (!accepted) await releaseToken(value.token).catch(report); }
     }); },

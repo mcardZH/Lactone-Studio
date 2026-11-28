@@ -15,8 +15,13 @@ export function assertStructureInteractionSource(structure: Structure): void {
 }
 
 export function createStructureInteractionContext(document: ModelDocument, activationEpoch = 0): SurfaceContext {
+  assertStructureInteractionSource(document.draft.structure);
+  return createStructureAnalysisContext(document,activationEpoch);
+}
+
+/** Identity shared by structure-only methods after their own native admission. */
+export function createStructureAnalysisContext(document: ModelDocument, activationEpoch = 0): SurfaceContext {
   const structure = document.draft.structure;
-  assertStructureInteractionSource(structure);
   if (!document.id || !Number.isSafeInteger(document.revision) || document.revision < 0
     || !Number.isSafeInteger(activationEpoch) || activationEpoch < 0) throw new Error('结构分析缺少有效模型文档身份。');
   // Exact ordered Cartesian Å snapshot and stable IDs; bonds, camera, selection

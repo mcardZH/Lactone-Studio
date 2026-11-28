@@ -8,7 +8,7 @@ import type { MDPreparationProvenance, Structure } from '../core/types';
 import { createLazyConformerTrajectory, type ConformerTrajectoryResult } from '../modeling/conformers/trajectory';
 import { captureProjectCompanionBundles, restoreProjectCompanionBundles, captureRawProjectCompanionCandidates, restoreRawProjectCompanionCandidates, rawProjectCompanionOutputIdentity, projectCompanionVersion, type ProjectCompanionBundleSnapshot, type ProjectRawCompanionBundleSnapshot } from './companion-sources';
 import { createRestoredManagedSource } from './managed-source';
-import {PROJECT_ASSET_BATCH_COUNT,PROJECT_CHUNK_BYTES,type ProjectAssetWrite} from './desktop-bridge';
+import {PROJECT_ASSET_BATCH_COUNT,PROJECT_CHUNK_BYTES,type ProjectAssetRange,type ProjectAssetWrite} from './desktop-bridge';
 import {VibronicSha256} from '../core/gaussian-vibronic/sha256-stream';
 import { readGeneratedXtbSourcePackage, retainGeneratedXtbSourcePackage, validateGeneratedXtbBundle, type GeneratedXtbSourcePackage } from '../results/xtb-generated-source';
 import { getPostprocessTaskAssociation, setPostprocessTaskAssociation, type PostprocessManagedTaskReference } from './postprocess-task-association';
@@ -17,11 +17,15 @@ import { isScientificFileDocument, retainPostprocessFileSourceBytes, readPostpro
 import {postprocessFileJobSource, type PostprocessScientificFileSource} from '../results/postprocess-sources';
 import type { ResultDiagnostic, ResultDiagnosticSnapshot } from '../results/contracts';
 import { requiresProjectFormat15 } from './format15';
+import { extractVibrationDisplacements, restoreVibrationDisplacements, type VibrationAssets } from './vibration-assets';
+import { createPackedTrajectorySnapshotReader, encodePackedTrajectorySnapshot, type PackedTrajectorySnapshot } from './trajectory-binary-snapshot';
 
-export interface ProjectAssetWriter { write(category: string, name: string, bytes: Uint8Array | string): Promise<{ assetId: string }>;writeMany?(values:readonly ProjectAssetWrite[]):Promise<{assetId:string}[]> }
+export interface ProjectAssetWriter { write(category: string, name: string, bytes: Uint8Array | string): Promise<{ assetId: string }>;writeRange?(category:string,name:string,source:ProjectAssetRange):Promise<{assetId:string}>;writeMany?(values:readonly ProjectAssetWrite[]):Promise<{assetId:string}[]> }
 export interface ProjectAssetReader { read(assetId: string): Promise<Uint8Array>;readMany?(assetIds:readonly string[]):Promise<Uint8Array[]>; readRange?(assetId: string, offset: number, length: number, expectedBytes: number): Promise<Uint8Array> }
 type ResultData = Omit<TrajectoryResult, 'getFrame' | 'dispose'>;
 export interface TrajectoryResultSnapshot { schema: 1; data: ResultData; frameAssets: string[];
+  vibrationAssets?: VibrationAssets;
+  packedFrames?: PackedTrajectorySnapshot;
   /** The first frame's metadata may not describe later native frames. */
   frameFormatVersion?: 8 | 15;
   conformer?: Pick<ConformerTrajectoryResult, 'identity' | 'frameIds' | 'protectedAtomIds' | 'displayRestoration'> }
@@ -76,6 +80,28 @@ export function trajectorySnapshotRequiresFormat8(snapshot: TrajectoryResultSnap
     display?.projection === 'rigid-v2' || !!display?.references?.some(reference => structureRequiresXtbFormat8(reference.structure));
 }
 
+export function trajectorySnapshotRequiresFormat19(snapshot: TrajectoryResultSnapshot): boolean {
+  return snapshot.vibrationAssets !== undefined || snapshot.packedFrames !== undefined;
+}
+
+function postprocessTrajectorySnapshots(snapshot: PostprocessFileDocumentSnapshot): TrajectoryResultSnapshot[] {
+  const trajectories: TrajectoryResultSnapshot[] = [];
+  const attachments = [snapshot.wavefunction, ...snapshot.companions ?? []];
+  if ('kind' in snapshot) {
+    if (snapshot.displayResult) trajectories.push(snapshot.displayResult);
+    for (const job of snapshot.output.jobs) if (job.kind === 'geometry') trajectories.push(job.snapshot);
+  } else {
+    trajectories.push(snapshot.result);
+    attachments.push(snapshot.output);
+  }
+  for (const item of attachments) if (item) trajectories.push(item.result, ...item.results);
+  return trajectories;
+}
+
+export function postprocessSnapshotRequiresFormat19(snapshot: PostprocessFileDocumentSnapshot): boolean {
+  return postprocessTrajectorySnapshots(snapshot).some(trajectorySnapshotRequiresFormat19);
+}
+
 function attachmentRequiresFormat8(value: PostprocessAttachmentSnapshot | undefined): boolean {
   if (!value) return false;
   const generated = value.data?.generatedXtb;
@@ -107,13 +133,16 @@ const clone = <T>(value: T): T => JSON.parse(json(value)) as T;
  * asset. Opening reads metadata/first geometry only, subsequent frames lazily. */
 export async function encodeTrajectoryResult(result: TrajectoryResult, writer: ProjectAssetWriter): Promise<TrajectoryResultSnapshot> {
   const { getFrame: _get, dispose: _dispose, displayRestoration:_displayRestoration, ...metadata } = result as TrajectoryResult & Partial<ConformerTrajectoryResult>;
-  const data = clone(metadata), frameAssets: string[] = [];
+  const vibration = writer.writeRange && metadata.scientific ? extractVibrationDisplacements(metadata.scientific) : undefined;
+  const data = clone(vibration ? { ...metadata, scientific: vibration.science } : metadata), frameAssets: string[] = [];
+  const collection = result as Partial<ConformerTrajectoryResult>;
+  const packedFrames = !collection.identity ? await encodePackedTrajectorySnapshot(result, writer) : undefined;
   let batch:ProjectAssetWrite[]=[],batchBytes=0,requiresFormat8=false,requiresFormat15=false;
   const flush=async()=>{if(!batch.length)return;const values=batch;batch=[];batchBytes=0;
     const written=writer.writeMany?await writer.writeMany(values):await Promise.all(values.map(value=>writer.write(value.category,value.name,value.bytes)));
     if(written.length!==values.length||written.some(value=>typeof value.assetId!=='string'||!value.assetId))throw new Error('项目轨迹批写回执不完整。');
     frameAssets.push(...written.map(value=>value.assetId));};
-  for (let index = 0; index < data.frames.length; index++) {
+  for (let index = 0; !packedFrames && index < data.frames.length; index++) {
     const structure = getPreparedTrajectoryFrame(result, index)?.raw ?? await result.getFrame(index);
     if (!requiresFormat15 && requiresProjectFormat15(structure)) requiresFormat15 = true;
     if (!requiresFormat8 && structureRequiresXtbFormat8(structure)) requiresFormat8 = true;
@@ -125,14 +154,41 @@ export async function encodeTrajectoryResult(result: TrajectoryResult, writer: P
     if(batch.length===PROJECT_ASSET_BATCH_COUNT)await flush();
   }
   await flush();
-  const collection = result as Partial<ConformerTrajectoryResult>;
-  return { schema: 1, data, frameAssets, ...(requiresFormat15 ? { frameFormatVersion: 15 as const } : requiresFormat8 ? { frameFormatVersion: 8 as const } : {}),
+  return { schema: 1, data, frameAssets, ...(vibration ? { vibrationAssets: await vibration.write(writer) } : {}), ...(packedFrames ? { packedFrames } : {}),
+    ...(requiresFormat15 ? { frameFormatVersion: 15 as const } : requiresFormat8 ? { frameFormatVersion: 8 as const } : {}),
     ...(collection.identity && collection.frameIds ? { conformer: clone({ identity: collection.identity, frameIds: collection.frameIds, protectedAtomIds: collection.protectedAtomIds ?? [],...(collection.displayRestoration?{displayRestoration:collection.displayRestoration}:{}) }) } : {}) };
 }
-export function decodeTrajectoryResult(snapshot: TrajectoryResultSnapshot, reader: ProjectAssetReader): TrajectoryResult {
-  if (snapshot.schema !== 1 || snapshot.frameAssets.length !== snapshot.data.frames.length ||
+type PreparedResultNumerics = ReadonlyMap<TrajectoryResultSnapshot, ResultData>;
+
+export async function prepareProjectResultNumerics(snapshots: readonly TrajectoryResultSnapshot[], reader: ProjectAssetReader): Promise<PreparedResultNumerics> {
+  const prepared = new Map<TrajectoryResultSnapshot, ResultData>();
+  const decoded = new Map<string, [number, number, number][]>();
+  for (const snapshot of snapshots) if (snapshot.vibrationAssets !== undefined && !prepared.has(snapshot)) {
+    const data = clone(snapshot.data);
+    prepared.set(snapshot, { ...data, scientific: await restoreVibrationDisplacements(data.scientific, snapshot.vibrationAssets, reader, decoded) });
+  }
+  return prepared;
+}
+
+export function prepareProjectPostprocessNumerics(snapshot: PostprocessFileDocumentSnapshot, reader: ProjectAssetReader): Promise<PreparedResultNumerics> {
+  return prepareProjectResultNumerics(postprocessTrajectorySnapshots(snapshot), reader);
+}
+
+export function decodeTrajectoryResult(snapshot: TrajectoryResultSnapshot, reader: ProjectAssetReader, prepared?: PreparedResultNumerics): TrajectoryResult {
+  const packed = snapshot.packedFrames, hasPacked = packed !== undefined;
+  if (snapshot.schema !== 1 || !Array.isArray(snapshot.frameAssets) ||
+    (hasPacked ? !packed || snapshot.frameAssets.length !== 0 || snapshot.conformer !== undefined : snapshot.frameAssets.length !== snapshot.data.frames.length) ||
     snapshot.frameFormatVersion !== undefined && snapshot.frameFormatVersion !== 8 && snapshot.frameFormatVersion !== 15) throw new Error('项目轨迹索引无效。');
-  const input = { ...clone(snapshot.data), async readFrame(index: number, signal?: AbortSignal) {
+  const numericData = prepared?.get(snapshot);
+  if (snapshot.vibrationAssets !== undefined && !numericData) throw Error('项目振动方向尚未从已保存的数值资产恢复。');
+  const data = numericData ?? clone(snapshot.data);
+  if (packed) {
+    const source = createPackedTrajectorySnapshotReader(packed, reader, data.frames.length);
+    const result = createLazyTrajectoryResult({ ...data, readFrame: source.readFrame, release: source.dispose });
+    source.register(result);
+    return result;
+  }
+  const input = { ...data, async readFrame(index: number, signal?: AbortSignal) {
     assertResultNotAborted(signal);
     const bytes = await reader.read(snapshot.frameAssets[index]); assertResultNotAborted(signal);
     return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as Structure;
@@ -141,6 +197,11 @@ export function decodeTrajectoryResult(snapshot: TrajectoryResultSnapshot, reade
 }
 
 const CHUNK_BYTES = 8 * 1024 ** 2;
+function encodeMemoizedResult(result: TrajectoryResult, writer: ProjectAssetWriter, memo: Map<TrajectoryResult, Promise<TrajectoryResultSnapshot>>) {
+  let pending = memo.get(result);
+  if (!pending) { pending = encodeTrajectoryResult(result, writer); memo.set(result, pending); }
+  return pending;
+}
 async function encodeAttachment(attachment: PostprocessAttachment, writer: ProjectAssetWriter, memo: Map<TrajectoryResult, Promise<TrajectoryResultSnapshot>>): Promise<PostprocessAttachmentSnapshot> {
   const companionRevision = projectCompanionVersion(attachment);
   const { result, results, ...sourceData } = attachment.source;
@@ -153,9 +214,7 @@ async function encodeAttachment(attachment: PostprocessAttachment, writer: Proje
   if (rawOutput && (rawOutput.sourceId !== identity.id || rawOutput.name !== identity.name || rawOutput.size !== identity.size || inspected && rawOutput.revision !== inspected.sourceRevision)) throw new Error('原始候选集合与当前OUT来源身份冲突。');
   const legacyBytes = inspected?.text === undefined ? undefined : encoder.encode(inspected.text);
   if (sourceData.metadata && (!inspected || inspected.sourceId !== identity.id || inspected.sourceRevision !== sourceData.metadata.sourceRevision)) throw new Error('无法核对已绑定波函数的来源快照。');
-  const encode = (value: TrajectoryResult) => {
-    let pending = memo.get(value); if (!pending) { pending = encodeTrajectoryResult(value, writer); memo.set(value, pending); } return pending;
-  };
+  const encode = (value: TrajectoryResult) => encodeMemoizedResult(value, writer, memo);
   // Copy original bytes from the import lease, including BOM/line endings.
   // A changed or missing lease fails this generation rather than mixing sources.
   for (let start = 0; start < identity.size; start += CHUNK_BYTES) {
@@ -187,12 +246,12 @@ export async function encodePostprocessDocument(document: PostprocessDocument, w
   for(const extra of postprocessSourceExtras(document)){const chunks=[],hash=new VibronicSha256();for(let start=0;start<extra.byteSize;start+=CHUNK_BYTES){const bytes=await extra.readRange(start,Math.min(extra.byteSize,start+CHUNK_BYTES));hash.update(bytes);chunks.push({...await writer.write('sources',extra.name,bytes),bytes:bytes.byteLength});}if(hash.digest()!==extra.revision)throw Error('附加原始来源在保存时改变。');extraSources.push({name:extra.name,sourceId:extra.sourceId,revision:extra.revision,byteSize:extra.byteSize,format:extra.format,chunks});}
   const hasGeneratedPackage=[output,wavefunction,...companions??[]].some(value=>Boolean(value?.generatedXtbPackage)), managedTask=getPostprocessTaskAssociation(document);
   const fileRoles = [output,wavefunction,...companions??[]].some(value => value?.role || value?.data.excitationCompanionSelection);
-  return { schema: fileRoles?4:hasGeneratedPackage||managedTask||extraSources.length?3:hasRawCandidates?2:1, id: document.id, ...(managedTask?{managedTask:clone(managedTask)}:{}),...(extraSources.length?{extraSources}:{}), result: await encodeTrajectoryResult(document.result, writer), output, wavefunction, companions,
+  return { schema: fileRoles?4:hasGeneratedPackage||managedTask||extraSources.length?3:hasRawCandidates?2:1, id: document.id, ...(managedTask?{managedTask:clone(managedTask)}:{}),...(extraSources.length?{extraSources}:{}), result: await encodeMemoizedResult(document.result, writer, memo), output, wavefunction, companions,
     ...(document.pair ? { pair: clone(pair) } : {}), ...(document.wavefunctionFrameIndex !== undefined ? { wavefunctionFrameIndex: document.wavefunctionFrameIndex } : {}) };
 }
 
-function restoreAttachment(snapshot: PostprocessAttachmentSnapshot, reader: ProjectAssetReader): PostprocessAttachment {
-  const source: PostprocessSource = { ...clone(snapshot.data), result: decodeTrajectoryResult(snapshot.result, reader), results: snapshot.results.map(result => decodeTrajectoryResult(result, reader)) };
+function restoreAttachment(snapshot: PostprocessAttachmentSnapshot, reader: ProjectAssetReader, prepared?: PreparedResultNumerics): PostprocessAttachment {
+  const source: PostprocessSource = { ...clone(snapshot.data), result: decodeTrajectoryResult(snapshot.result, reader, prepared), results: snapshot.results.map(result => decodeTrajectoryResult(result, reader, prepared)) };
   if (snapshot.generatedXtbPackage) retainGeneratedXtbSourcePackage(source, async () => {
     const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await reader.read(snapshot.generatedXtbPackage!.assetId))) as GeneratedXtbSourcePackage;
     if (value.schema !== 1 || value.bundle.artifactId !== source.generatedXtb?.artifactId) throw Error('XTB原始来源包身份无效。');
@@ -234,15 +293,15 @@ function restoreAttachment(snapshot: PostprocessAttachmentSnapshot, reader: Proj
   if(snapshot.rawCompanionCandidates)restoreRawProjectCompanionCandidates(attachment,snapshot.rawCompanionCandidates,reader,raw.revision);
   return attachment;
 }
-export function decodePostprocessDocument(snapshot: PostprocessDocumentSnapshot, reader: ProjectAssetReader): PostprocessDocument {
+export function decodePostprocessDocument(snapshot: PostprocessDocumentSnapshot, reader: ProjectAssetReader, prepared?: PreparedResultNumerics): PostprocessDocument {
   if ('kind' in snapshot) throw Error('文件级来源须通过通用科学文件恢复入口读取。');
   if (snapshot.schema !== 1 && snapshot.schema !== 2 && snapshot.schema !== 3 && snapshot.schema !== 4) throw new Error('不支持的项目后处理版本。');
   if(snapshot.schema<3&&[snapshot.output,snapshot.wavefunction,...snapshot.companions??[]].some(value=>value?.generatedXtbPackage))throw new Error('GFN2完整来源包需要新版来源索引，不能降级读取。');
   if(snapshot.schema===1&&[snapshot.output,snapshot.wavefunction,...snapshot.companions??[]].some(value=>value?.rawCompanionCandidates!==undefined))throw new Error('原始配套候选需要新版来源索引，不能按旧schema降级读取。');
-  const output = snapshot.output ? restoreAttachment(snapshot.output, reader) : undefined, wavefunction = snapshot.wavefunction ? restoreAttachment(snapshot.wavefunction, reader) : undefined;
+  const output = snapshot.output ? restoreAttachment(snapshot.output, reader, prepared) : undefined, wavefunction = snapshot.wavefunction ? restoreAttachment(snapshot.wavefunction, reader, prepared) : undefined;
   if (snapshot.pair && (!output || !wavefunction)) throw new Error('项目配对证明缺少对应来源。');
-  const document: PostprocessDocument = { id: snapshot.id, result: decodeTrajectoryResult(snapshot.result, reader), output, wavefunction,
-    companions: snapshot.companions?.map(value => restoreAttachment(value, reader)),
+  const document: PostprocessDocument = { id: snapshot.id, result: decodeTrajectoryResult(snapshot.result, reader, prepared), output, wavefunction,
+    companions: snapshot.companions?.map(value => restoreAttachment(value, reader, prepared)),
     ...(snapshot.pair ? { pair: { ...clone(snapshot.pair), primary: output!.source, wavefunction: wavefunction!.source } } : {}),
     ...(snapshot.wavefunctionFrameIndex !== undefined ? { wavefunctionFrameIndex: snapshot.wavefunctionFrameIndex } : {}) };
   if (snapshot.managedTask) { const value = snapshot.managedTask; if (snapshot.schema < 3 || !value.taskId || !value.sourceSetId || !value.sourceVersion || value.archived !== true) throw Error('项目受管理来源引用无效或需要较新格式。'); setPostprocessTaskAssociation(document, value, true); }
@@ -281,13 +340,13 @@ export async function encodePostprocessFileDocument(document: PostprocessFileDoc
     ...(pair ? { pair: { jobId: pair.primary.result.id, waveSourceId: pair.wavefunction.result.source.id, waveRevision: pair.wavefunction.metadata!.sourceRevision, proof: clone(proof) } } : {}),
     ...(document.wavefunction ? { wavefunction: await encodeAttachment(document.wavefunction, writer, memo) } : {}),
     ...(document.companions ? { companions: await Promise.all(document.companions.map(item => encodeAttachment(item, writer, memo))) } : {}),
-    ...(document.displayResult ? { displayResult: await encodeTrajectoryResult(document.displayResult, writer) } : {}),
+    ...(document.displayResult ? { displayResult: await encodeMemoizedResult(document.displayResult, writer, memo) } : {}),
     ...(document.sourceWarnings ? { sourceWarnings: clone(document.sourceWarnings) } : {}), ...(extraSources.length ? { extraSources } : {}) };
 }
 
 /** Restores source bytes and scientific facts directly. No parser, engine, or converter runs. */
-export function decodePostprocessFileDocument(snapshot: PostprocessFileDocumentSnapshot, reader: ProjectAssetReader): PostprocessFileDocument {
-  if (!('kind' in snapshot)) return decodePostprocessDocument(snapshot, reader);
+export function decodePostprocessFileDocument(snapshot: PostprocessFileDocumentSnapshot, reader: ProjectAssetReader, prepared?: PreparedResultNumerics): PostprocessFileDocument {
+  if (!('kind' in snapshot)) return decodePostprocessDocument(snapshot, reader, prepared);
   if (snapshot.kind !== 'scientific-file') throw Error('未知科学文件schema4类型。');
   const raw = clone(snapshot.output.raw), metadata = clone(snapshot.output.data);
   if (!metadata.fileOnly || metadata.identity.id !== raw.sourceId || metadata.identity.name !== raw.name || metadata.identity.size !== raw.size || !Number.isSafeInteger(raw.size) || raw.size < 0
@@ -312,7 +371,7 @@ export function decodePostprocessFileDocument(snapshot: PostprocessFileDocumentS
       if (data.kind !== 'diagnostic' || data.source.id !== raw.sourceId || data.source.name !== raw.name || data.source.size !== raw.size) throw Error('诊断job不属于所保存文件。');
       return { ...data, async readSourceRange(start: number, end: number, signal?: AbortSignal) { if (disposed) throw Error('诊断job已关闭。'); return input.readRange(start, end, signal); }, dispose() { if (disposed) return; disposed = true; release(); } } as ResultDiagnostic;
     }
-    const result = decodeTrajectoryResult(item.snapshot, reader), dispose = result.dispose.bind(result);
+    const result = decodeTrajectoryResult(item.snapshot, reader, prepared), dispose = result.dispose.bind(result);
     if (result.source.id !== raw.sourceId || result.source.name !== raw.name || result.source.size !== raw.size) throw Error('几何job不属于所保存文件。');
     result.dispose = async () => { if (disposed) return; await dispose(); disposed = true; release(); }; return result;
   });
@@ -322,7 +381,7 @@ export function decodePostprocessFileDocument(snapshot: PostprocessFileDocumentS
     await input.close?.();
   } };
   const output = retainPostprocessFileSourceBytes({ source, ...(snapshot.output.role ? { role: snapshot.output.role } : {}) }, input);
-  const displayResult = snapshot.displayResult ? decodeTrajectoryResult(snapshot.displayResult, reader) : undefined;
+  const displayResult = snapshot.displayResult ? decodeTrajectoryResult(snapshot.displayResult, reader, prepared) : undefined;
   if (displayResult && (!source.selectedJobId || displayResult.scientific?.ircEvidence?.outputId !== source.selectedJobId && displayResult.id !== source.selectedJobId)) throw Error('科学文件显示轨迹缺少所选job对应。');
   const extraSources = snapshot.extraSources?.map(supplied => {
     const extra = clone(supplied); let disposed = false;
@@ -330,11 +389,11 @@ export function decodePostprocessFileDocument(snapshot: PostprocessFileDocumentS
     return { name: extra.name, sourceId: extra.sourceId, revision: extra.revision, byteSize: extra.byteSize, format: extra.format, role: extra.role,
       async readRange(start: number, end: number, signal?: AbortSignal) { assertResultNotAborted(signal); if (disposed || ![start, end].every(Number.isSafeInteger) || start < 0 || end < start || end > extra.byteSize) throw Error('附加科学资产范围无效或已关闭。'); const bytes = new Uint8Array(end - start); let offset = 0; for (const part of extra.chunks) { const next = offset + part.bytes; if (next > start && offset < end) { const block = await reader.read(part.assetId); assertResultNotAborted(signal); if (disposed || block.length !== part.bytes) throw Error('附加科学资产已关闭或分块损坏。'); const first = Math.max(start, offset), last = Math.min(end, next); bytes.set(block.subarray(first - offset, last - offset), first - start); } offset = next; } return bytes; }, dispose() { disposed = true; } };
   });
-  const wavefunction = snapshot.wavefunction ? restoreAttachment(snapshot.wavefunction, reader) : undefined;
+  const wavefunction = snapshot.wavefunction ? restoreAttachment(snapshot.wavefunction, reader, prepared) : undefined;
   const primary = postprocessFileJobSource(source), savedPair = snapshot.pair;
   if (savedPair && (!primary || !wavefunction || savedPair.proof.conflicts.length || savedPair.proof.notices.some(note => /^来源.+记录不一致/.test(note)) || savedPair.jobId !== primary.result.id || savedPair.waveSourceId !== wavefunction.source.result.source.id || savedPair.waveRevision !== wavefunction.source.metadata?.sourceRevision || !primary.result.frames.some(frame => frame.index === savedPair.proof.frameIndex))) throw Error('科学文件保存的job/波函数配对身份不一致。');
   return { kind: 'scientific-file', id: snapshot.id, output, ...(wavefunction ? { wavefunction } : {}), ...(savedPair && primary && wavefunction ? { pair: { ...clone(savedPair.proof), primary, wavefunction: wavefunction.source } } : {}),
-    ...(snapshot.companions ? { companions: snapshot.companions.map(item => restoreAttachment(item, reader)) } : {}), ...(displayResult ? { displayResult } : {}), ...(snapshot.sourceWarnings ? { sourceWarnings: clone(snapshot.sourceWarnings) } : {}), ...(extraSources?.length ? { extraSources } : {}) };
+    ...(snapshot.companions ? { companions: snapshot.companions.map(item => restoreAttachment(item, reader, prepared)) } : {}), ...(displayResult ? { displayResult } : {}), ...(snapshot.sourceWarnings ? { sourceWarnings: clone(snapshot.sourceWarnings) } : {}), ...(extraSources?.length ? { extraSources } : {}) };
 }
 export const encodeResult = encodeTrajectoryResult;
 export const decodeResult = decodeTrajectoryResult;

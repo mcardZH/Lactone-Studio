@@ -81,6 +81,21 @@ export function surfaceExtremaRange(extrema: readonly SurfaceExtremum[]): { min:
   const min = Math.min(...minima), max = Math.max(...maxima);
   return min <= max ? { min, max } : undefined;
 }
+/** Only reported limits of the selected surface region contribute to its color range. */
+export function surfaceRegionColorRange(region:SurfaceRegionResult|null|undefined,analysisExtrema:readonly SurfaceExtremum[],fn:SurfaceFunction,unit:string):{min:number;max:number}|undefined {
+  if(!region)return;
+  const convert=(value:number|null,from:string|null)=>{
+    if(value===null||!Number.isFinite(value)||!from)return;
+    try{const converted=convertSurfaceMappingValue(value,fn,from,unit);return Number.isFinite(converted)?converted:undefined;}catch{return undefined;}
+  };
+  const extrema=[...region.extrema,...analysisExtrema].filter(row=>row.regionId===region.selection.id&&row.scope==='global');
+  const range=surfaceExtremaRange(extrema.flatMap(row=>{const value=convert(row.value,row.valueUnit);return value===undefined?[]:[{...row,value,valueUnit:unit}];}));
+  if(range)return range;
+  const metric=(key:string)=>region.metrics.find(value=>value.key===key&&value.dimension==='mapping-value');
+  const minimum=metric('minimum'),maximum=metric('maximum');
+  const min=convert(minimum?.value??null,minimum?.unit??null),max=convert(maximum?.value??null,maximum?.unit??null);
+  if(min!==undefined&&max!==undefined&&min<=max)return {min,max};
+}
 export function surfaceDistributionTable(distribution: SurfaceAreaDistribution, decimals = DEFAULT_RESULT_DECIMALS): ScientificTableProjection {
   return { columns: [{ key: 'interval', label: `区间 / ${surfaceDisplayUnit(distribution.valueUnit)}`, heading: '区间', headerUnit: surfaceDisplayUnit(distribution.valueUnit) }, { key: 'area', label: `面积 / ${surfaceDisplayUnit(distribution.areaUnit)}`, heading: '面积', headerUnit: surfaceDisplayUnit(distribution.areaUnit) }, { key: 'fraction', label: '占比 / %', heading: '占比', headerUnit: '%' }],
     rows: distribution.bins.map((bin, index) => ({ key: String(index), cells: [`${bin.lowerInclusive ? '[' : '('}${number(bin.lower, decimals)}, ${number(bin.upper, decimals)}${bin.upperInclusive ? ']' : ')'}`, number(bin.area, decimals), number(bin.fraction == null ? null : bin.fraction * 100, decimals)] })) };

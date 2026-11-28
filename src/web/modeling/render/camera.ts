@@ -1,3 +1,5 @@
+export const CAMERA_ROTATION_DEGREES_PER_PIXEL = .4;
+
 /** 3Dmol's public view stores a model-to-screen quaternion at indices 4–7.
  * Premultiplication applies a rotation about fixed SCREEN axes, regardless of
  * the previous pose. Screen right/up/toward-user correspond to GL x/y/z;
@@ -11,7 +13,7 @@ export function rotateScreenView(view: number[], dx: number, dy: number): number
   const norm = Math.hypot(...view.slice(4, 8));
   if (!Number.isFinite(norm) || norm < 1e-12) throw new Error('视角四元数无效。');
   const [x, y, z, w] = view.slice(4, 8).map(v => v / norm);
-  const angle = length * .4 * Math.PI / 180, s = Math.sin(angle / 2) / length;
+  const angle = length * CAMERA_ROTATION_DEGREES_PER_PIXEL * Math.PI / 180, s = Math.sin(angle / 2) / length;
   const a = dy * s, b = dx * s, d = Math.cos(angle / 2);
   const next = [d * x + a * w + b * z, d * y + b * w - a * z, d * z + a * y - b * x, d * w - a * x - b * y];
   const n = Math.hypot(...next);

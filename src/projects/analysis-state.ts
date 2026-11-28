@@ -62,27 +62,47 @@ export interface AnalysisOriginalCubeSource extends Omit<AnalysisOriginalCube, '
   bytes: number;
   readRange(offset: number, length: number): Promise<Uint8Array>;
 }
+class PagedCubeBytes {
+  constructor(readonly bytes: number, readonly sha256: string, readonly readRange: AnalysisOriginalCubeSource['readRange'], readonly release: () => void) {}
+}
 export const analysisOriginalCubeKey = (analysisId: string, context: SurfaceContext, fieldId: string) => `cube-source:${JSON.stringify([context.documentId, analysisId, context.sourceId, context.sourceRevision, fieldId])}`;
-export async function captureAnalysisOriginalSources(scope: AnalysisProjectScope): Promise<{ key: string; source: AnalysisOriginalCube }[]> {
-  const keys = new Set([...retained.keys(), ...lazy.keys()]); const result: { key: string; source: AnalysisOriginalCube }[] = [];
+export async function captureAnalysisOriginalSources(scope: AnalysisProjectScope): Promise<{ key: string; source: AnalysisOriginalCubeSource }[]> {
+  const keys = new Set([...retained.keys(), ...lazy.keys()]); const result: { key: string; source: AnalysisOriginalCubeSource }[] = [];
   for (const key of keys) if (key.startsWith('cube-source:') && analysisProjectEntryInScope(key, scope)) {
-    const value = await load(key) as AnalysisOriginalCube | undefined;
-    if (!value || !(value.originalBytes instanceof Uint8Array) || !value.sourceRevision || !value.name) throw Error('插入的Cube原始来源不完整，不能保存任务。');
-    result.push({ key, source: { ...value, originalBytes: value.originalBytes.slice() } });
+    const source = await openAnalysisOriginalCube(key);
+    if (!source?.sourceRevision || !source.name) throw Error('插入的Cube原始来源不完整，不能保存任务。');
+    result.push({ key, source });
   }
   return result;
 }
-export function retainAnalysisProjectSnapshot(key: string, value: unknown): void { retained.set(key, freeze(value, key));retainedCitationMetadata.set(key,analysisCitationMetadata(value)); notifyAnalysisProjectStateChanged(); }
+function releaseRetainedCube(key: string) {
+  const bytes = (retained.get(key) as { originalBytes?: unknown } | undefined)?.originalBytes;
+  if (bytes instanceof PagedCubeBytes) bytes.release();
+}
+export function retainAnalysisProjectSnapshot(key: string, value: unknown): void {
+  const frozen = freeze(value, key);
+  releaseRetainedCube(key);
+  retained.set(key, frozen); retainedCitationMetadata.set(key, analysisCitationMetadata(value)); notifyAnalysisProjectStateChanged();
+}
+export function retainAnalysisOriginalCube(key: string, source: AnalysisOriginalCubeSource, release: () => void): void {
+  const { name, sourceRevision, fieldMetadata, bytes, readRange } = source;
+  retainAnalysisProjectSnapshot(key, { name, sourceRevision, fieldMetadata, originalBytes: new PagedCubeBytes(bytes, sourceRevision, readRange, release) });
+}
 const typed = { Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array, BigInt64Array, BigUint64Array };
+const immutableAnalysisBuffers = new WeakSet<ArrayBufferView>();
+/** A producer can transfer a completed grid whose values will never be changed. */
+export function retainImmutableAnalysisBuffer(values: Float64Array): void { immutableAnalysisBuffers.add(values); }
 const utf8 = new TextEncoder();
 const text = new TextDecoder('utf-8', { fatal: true });
 const bad = (path: string, detail: string): never => { throw new Error(`无法完整保存分析结果 ${path}：${detail}`); };
 function freeze(value: unknown, path: string, stack = new Set<object>()): unknown {
   if (typeof value === 'function' || typeof value === 'symbol') return bad(path, '存在函数或其他未适配的运行对象。');
   if (!value || typeof value !== 'object') return value;
+  if (value instanceof PagedCubeBytes) return value;
   if (stack.has(value)) return bad(path, '存在循环引用。');
   if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) {
     if (value instanceof DataView) return bad(path, 'DataView尚未适配。');
+    if (ArrayBuffer.isView(value) && immutableAnalysisBuffers.has(value)) return value;
     return structuredClone(value);
   }
   stack.add(value);
@@ -102,6 +122,17 @@ async function encode(value: unknown, writer: ProjectAssetWriter, path: string, 
   if (typeof value === 'bigint') return { $sy: 'bigint', value: String(value) };
   if (typeof value !== 'object') return bad(path, '存在函数或其他未适配的运行对象。');
   if (stack.has(value)) return bad(path, '存在循环引用。');
+  if (value instanceof PagedCubeBytes) {
+    let assetId: string;
+    if (writer.writeRange) {
+      ({ assetId } = await writer.writeRange('sources', 'original-cube.bin', value));
+    } else {
+      const bytes = await value.readRange(0, value.bytes);
+      if (bytes.byteLength !== value.bytes) throw new Error('项目 Cube 原件长度与索引不符。');
+      ({ assetId } = await writer.write('sources', 'original-cube.bin', bytes));
+    }
+    return { $sy: 'buffer', type: 'Uint8Array', assetId, bytes: value.bytes, role: 'source' };
+  }
   if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) {
     if (value instanceof DataView) return bad(path, 'DataView尚未适配。');
     const name = value instanceof ArrayBuffer ? 'ArrayBuffer' : value.constructor.name;
@@ -186,9 +217,10 @@ export async function loadAnalysisProjectSnapshot<T>(key: string): Promise<T | u
 export async function openAnalysisOriginalCube(key: string): Promise<AnalysisOriginalCubeSource | undefined> {
   const entry = lazy.get(key);
   if (!entry) {
-    const value = retained.get(key) as AnalysisOriginalCube | undefined;
+    const value = await retained.get(key) as (Omit<AnalysisOriginalCube, 'originalBytes'> & { originalBytes: PagedCubeBytes | Uint8Array }) | undefined;
     if (!value) return undefined;
     const { originalBytes, ...metadata } = value;
+    if (originalBytes instanceof PagedCubeBytes) return { ...metadata, bytes: originalBytes.bytes, readRange: originalBytes.readRange };
     if (!(originalBytes instanceof Uint8Array)) throw new Error('项目 Cube 原始来源字段无效。');
     return { ...metadata, bytes: originalBytes.byteLength, readRange: async (offset, length) => originalBytes.subarray(offset, offset + length) };
   }
@@ -291,7 +323,7 @@ export function useAnalysisProjectSnapshot<T>(key: string, capture: () => T | Pr
 export function forgetAnalysisProjectSnapshots(prefix?: string): void {
   for(const key of retainedCitationMetadata.keys())if(prefix===undefined||key.startsWith(prefix))retainedCitationMetadata.delete(key);
   for (const key of owners.keys()) if (prefix === undefined || key.startsWith(prefix)) owners.delete(key);
-  for (const key of retained.keys()) if (prefix === undefined || key.startsWith(prefix)) retained.delete(key);
+  for (const key of retained.keys()) if (prefix === undefined || key.startsWith(prefix)) { releaseRetainedCube(key); retained.delete(key); }
   for (const key of lazy.keys()) if (prefix === undefined || key.startsWith(prefix)) lazy.delete(key);
   for (const key of loading.keys()) if (prefix === undefined || key.startsWith(prefix)) loading.delete(key);
   notifyAnalysisProjectStateChanged();
@@ -315,6 +347,7 @@ export function forgetAnalysisProjectDocument(documentId: string, sourceIds: rea
     }catch{return false;}
   };
   for (const key of keys) if (documentBound(key) || !stillLiveSourceIds.includes(documentId)&&key.includes(quotedDocument) || sources.some(source => key.includes(source))) {
+    releaseRetainedCube(key);
     owners.delete(key); retained.delete(key); lazy.delete(key); loading.delete(key);
     retainedCitationMetadata.delete(key);
   }
@@ -338,7 +371,9 @@ export async function captureAnalysisProjectState(writer: ProjectAssetWriter, op
   const entries: AnalysisProjectState['entries'] = [];
   const trackedWriter = (references: Set<string>): ProjectAssetWriter => ({ async write(category, name, bytes) {
     const result = await writer.write(category, name, bytes); references.add(result.assetId); return result;
-  } });
+  }, ...(writer.writeRange ? { async writeRange(category, name, source) {
+    const result = await writer.writeRange!(category, name, source); references.add(result.assetId); return result;
+  } } : {}) });
   for (const [key, value] of frozen) {
     const references = new Set<string>(), target = trackedWriter(references);
     const encoded = await encode(value, target, key);
@@ -347,15 +382,28 @@ export async function captureAnalysisProjectState(writer: ProjectAssetWriter, op
   }
   // Untouched entries are copied as encoded assets, without allocating their
   // scientific grids. This also makes Save As self-contained in the new root.
-  const copy = async (encoded: Encoded, reader: ProjectAssetReader, target: ProjectAssetWriter, path = ''): Promise<Encoded> => {
+  const copy = async (encoded: Encoded, reader: ProjectAssetReader, target: ProjectAssetWriter): Promise<Encoded> => {
     if (!encoded || typeof encoded !== 'object') return encoded;
-    if (Array.isArray(encoded)) return Promise.all(encoded.map(item => copy(item, reader, target, path)));
-    if (encoded.$sy === 'buffer') {
-      const bytes = await reader.read(encoded.assetId as string);
-      if (bytes.byteLength !== encoded.bytes) throw new Error('项目分析格点字节长度不符。');
-      return { ...encoded, ...(await target.write(encoded.role === 'source' ? 'sources' : 'results', encoded.role === 'source' ? 'original-cube.bin' : 'analysis-grid.bin', bytes)) };
+    if (Array.isArray(encoded)) {
+      const values = [];
+      for (const item of encoded) values.push(await copy(item, reader, target));
+      return values;
     }
-    return Object.fromEntries(await Promise.all(Object.entries(encoded).map(async ([key, item]) => [key, await copy(item, reader, target, `${path}.${key}`)])));
+    if (encoded.$sy === 'buffer') {
+      const { assetId, bytes, role } = encoded;
+      if (typeof assetId !== 'string' || typeof bytes !== 'number' || !Number.isSafeInteger(bytes) || bytes < 0) throw new Error('项目分析格点引用无效。');
+      const category = role === 'source' ? 'sources' : 'results', name = role === 'source' ? 'original-cube.bin' : 'analysis-grid.bin';
+      if (reader.readRange && target.writeRange && /^[a-f0-9]{64}$/.test(assetId)) {
+        return { ...encoded, ...(await target.writeRange(category, name, { bytes, sha256: assetId,
+          readRange: (offset, length) => reader.readRange!(assetId, offset, length, bytes) })) };
+      }
+      const complete = await reader.read(assetId);
+      if (complete.byteLength !== bytes) throw new Error('项目分析格点字节长度不符。');
+      return { ...encoded, ...(await target.write(category, name, complete)) };
+    }
+    const values: [string, Encoded][] = [];
+    for (const [key, item] of Object.entries(encoded)) values.push([key, await copy(item, reader, target)]);
+    return Object.fromEntries(values);
   };
   let preserveUnlistedAssets = false;
   for (const [key, entry] of lazy) if (included(key) && !values.has(key)) {
@@ -388,10 +436,10 @@ export function prepareAnalysisProjectRestore(dto: AnalysisProjectState, reader:
     } catch (error) { if(!options.additive)throw error;options.onInvalidEntry?.(entry?.key,error); }
   }
   return async function publishAnalysisProjectRestore() {
-    if (!options.additive) { retained.clear();retainedCitationMetadata.clear(); lazy.clear(); loading.clear(); }
+    if (!options.additive) { for (const key of retained.keys()) releaseRetainedCube(key); retained.clear();retainedCitationMetadata.clear(); lazy.clear(); loading.clear(); }
     for (const [key, value] of next) {
       if (options.additive) {
-        try { const decoded = await decode(JSON.parse(text.decode(await value.reader.read(value.assetId))) as Encoded, value.reader); const restored = options.transform ? options.transform(decoded) : decoded; markRestored(restored); retained.set(key, restored); }
+        try { const decoded = await decode(JSON.parse(text.decode(await value.reader.read(value.assetId))) as Encoded, value.reader); const restored = options.transform ? options.transform(decoded) : decoded; markRestored(restored); releaseRetainedCube(key); retained.set(key, restored); }
         catch (error) { options.onInvalidEntry?.(key, error); next.delete(key); continue; }
         retainedCitationMetadata.delete(key);if(value.citationMetadata!==undefined){const citation=decodeCitationMetadata(value.citationMetadata as Encoded);retainedCitationMetadata.set(key,options.transformCitation?options.transformCitation(citation):citation);}loading.delete(key); lazy.delete(key); continue;
       }

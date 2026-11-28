@@ -1,7 +1,8 @@
-import {createWorkspaceFileActions,type WorkspaceFileContext} from '../mcp/workspace-file-actions';
+import {createWorkspaceFileActions,guardTwoDImport,type WorkspaceFileContext,type WorkspaceImportAgent} from '../mcp/workspace-file-actions';
+import {resolveResultCamera} from '../mcp/result-camera';
 import {captureStructureExportDocument} from '../../modeling/application/structure-export-snapshot';
 import {presentedVibrationStructure} from '../results/vibration-animation';
-import {conformerRunCollectionId,conformerRunCollectionRef,createFrameShell,parseConformerRunCollectionRef,parseOptimizationCollectionRef,pesRecordRef,retainedOptimizationCollection,type FrameShellPorts} from '../mcp/frame-shell';
+import {conformerRunCollectionId,conformerRunCollectionRef,createFrameShell,parseConformerRunCollectionRef,parseOptimizationCollectionRef,parsePesSeriesCollectionRef,pesRecordRef,retainedOptimizationCollection,retainedPesSeriesCollections,type FrameShellPorts} from '../mcp/frame-shell';
 import {pesPathRecords} from '../../modeling/pes/path-records';
 import {confirmFrameElectronicState,createFrameAccess,isFrameReference,viewTrajectoryCanvas} from '../mcp/frame-tools';
 import type {BaseElectronicStateValues} from '../../core/base-electronic-state';
@@ -23,7 +24,7 @@ import type {CoreToolContext,BatchReceipt} from '../mcp/workspace-tools';
 import {WorkspaceColumns,WorkspaceColumnDivider,fitWorkspaceColumns,readWorkspaceColumnGeometry,useWorkspaceColumns} from "./WorkspaceColumns";
 import type {WorkspaceLayoutPort,WorkspaceLayoutSnapshot} from '../mcp/auxiliary-tools';
 import {beginWorkspaceDividerDrag,moveWorkspaceDividerDrag,endWorkspaceDividerDrag} from './workspace-divider-drag';
-import {Fragment,Suspense,lazy,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore,type ReactNode,type CSSProperties} from 'react';
+import {Fragment,Suspense,lazy,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore,type ReactNode,type CSSProperties,type MouseEvent,type PointerEvent as ReactPointerEvent} from 'react';
 import {createImportResourceClosures} from './workspace-import-resources';
 import {ProjectUiStore,ProjectUiScope,ProjectNativeDetailsBoundary,ProjectUiRestoreBoundary} from '../../projects/ui-state';
 import {registerImportedModelSources,forgetImportedModelSources,commitImportedModelSourceBundle} from '../../projects/import-sources';
@@ -52,7 +53,7 @@ import {ConformerRecoveryPanel} from './ConformerRecoveryPanel';
 import type {ConformerRecoveryBridge,ConformerRecoveryItem} from '../../modeling/advanced/conformer-recovery';
 import {bindAdvancedPathDesktopBridge,bindConformerSamplingDesktopBridge,bindAissDesktopBridge} from '../../modeling/advanced/desktop-bridge';
 import {createPortal,flushSync} from 'react-dom';
-import {Atom,FileCode2,ChartNoAxesCombined,X,Workflow,Boxes,ListChecks} from 'lucide-react';
+import {Atom,FileCode2,ChartNoAxesCombined,X,Workflow,Boxes,ListChecks,FolderPlus} from 'lucide-react';
 import AdvancedModelingNavigation,{type AdvancedModelingRoute} from './AdvancedModelingNavigation';
 import type {StructureTransformCandidate} from '../../core/modeling/contracts';
 import AdvancedWorkspace,{buildConformerResultCollections,conformerCollectionRevision} from '../advanced/AdvancedWorkspace';
@@ -78,7 +79,7 @@ import {useFirstRunLicense} from '../useFirstRunLicense';
 import {setPreparedTrajectoryResources,subscribePreparedTrajectoryMemory} from '../../results/prepared-trajectory';
 import {AdvancedController} from '../../modeling/advanced/controller';
 import type {AdvancedFrameSource} from '../../modeling/advanced/frame-source';
-import {scientificCanvasKey,scientificCanvasStructure,scientificFrameForModel,scientificSourceCanvas} from './scientific-frame-source';
+import {scientificCanvasKey,scientificCanvasStructure,scientificFrameForCanvasModel,scientificFrameForModel,scientificSourceCanvas} from './scientific-frame-source';
 import type {StructureExportPort} from '../results/structure-export-source';
 import {captureAdvancedFrame,assertAdvancedIsolated} from '../../modeling/advanced/frame-source';
 import {makeDocumentStamp} from '../../core/modeling/model-store';
@@ -94,11 +95,12 @@ import {createDynamicsPort} from '../../modeling/dynamics/port';
 import {desktopBridge} from '../../modeling/platform/desktop';
 import {createWorkspaceRegistry,protectedPesDocument,workspaceTrajectoryKey,type WorkspaceDocumentEntry,type WorkspaceLabelOrigin} from '../../modeling/workspace-registry';
 import {editableImportedStructureElectronicState} from '../../core/base-electronic-state';
-import type {PesGeometry,PesNode,PesRun} from '../../modeling/pes/contracts';
+import type {PesGeometry,PesNode,PesRecoveryItem,PesRun} from '../../modeling/pes/contracts';
 import {pesConstraintReference,resolvePesConstraintDefinitions} from '../../modeling/pes/request';
 import type {WorkspaceSpaceOptimizationRequest} from '../results/analysis-canvas';
-import {ordinaryOptimizationInput,prepareOrdinaryOptimization,runPesOrdinaryOptimization} from './pes-ordinary-optimization';
-import {OPTIMIZATION_SOLVATION_EVENT,OPTIMIZATION_PREFERENCE_KEY,readWorkspaceOptimizationPreferences,workspaceOptimizationAlpb,writeWorkspaceOptimizationPreferences} from './tool-session';
+import {ordinaryOptimizationInput,pesOrdinaryOptimizationInput,prepareOrdinaryOptimization,runPesOrdinaryOptimization} from './pes-ordinary-optimization';
+import type {WorkspaceOptimizationPreferences} from './tool-session';
+import {checkedProjectCalculationLevel,legacyProjectCalculationLevel,newProjectOptimization,ProjectOptimizationContext} from './project-calculation-level';
 import type {SharedModelConstraints} from '../../core/modeling/contracts';
 import PesWorkspaceDock,{type PesWorkspaceProjection} from './PesWorkspaceDock';
 import {pesFileSnapshotSources,pesTabSnapshotSources,publishPesFileObservation,type PesFileObservation} from './pes-tab-snapshot';
@@ -132,14 +134,16 @@ import {fileDisplayDocument,usePostprocessWorkspace} from '../results/usePostpro
 import {assertOrbitalSourcesIdle} from '../results/useOrbitalField';
 import DialogShell from '../DialogShell';
 import {workspaceTabDragMoved,workspaceTabTargetContains,resolveWorkspaceTabDropIntent} from './workspace-tab-drag';
-import WorkspaceTab,{WorkspaceTabCloseIcon} from './WorkspaceTab';
+import WorkspaceTab,{WorkspaceTabCloseIcon,WorkspaceTabMenu,WorkspaceTabNameEditor,type WorkspaceTabMenuAnchor} from './WorkspaceTab';
+import {emptyTabGroupPresentation,moveWorkspaceTabItems,restoreTabGroupPresentation,scientificTabGroup,tabGroupId} from './workspace-tab-groups';
+import {isOrdinaryPesTabCandidate,pesTabAdmissionIssue} from '../../modeling/pes/tab-admission';
 import {useWorkspacePageValue} from './workspace-page-context';
 import {workspaceSourceGeometryKey,workspaceRetainedSourceGeometryMatches,workspaceXtbScientificFrameIdentity} from './workspace-source-validity';
 import {workspaceCurrentSharedFrozenAtomIds} from './workspace-live-preview';
 import {conformerInitialDocument,assertConformerInitialElectronicOwner} from './workspace-conformer-initial-owner';
 import WorkspacePublicationNotice from './WorkspacePublicationNotice';
 import {createConformerPlaybackResolver,projectConformerPlaybackCollection} from '../advanced/conformer-playback';
-import {captureConformerFrameOrder,conformerPlaybackOrder,type ConformerFrameOrder} from './workspace-conformer-order';
+import {captureConformerFrameOrder,conformerPlaybackOrder,restoreConformerFrameOrders,sameConformerFrameOrder,type ConformerFrameOrder} from './workspace-conformer-order';
 import {workspaceFreezeEditingAllowed,isConformerWorkspaceResult,commitConformerInitialFreezes,commitConformerInitialCoordinateFreeze,conformerFrameFreezeDisplay,type ConformerFreezeCoordinate} from './workspace-freeze-policy';
 import {createConformerDisplayRestoration} from '../../modeling/conformers/playback-display';
 import {createConformerCollectionPublisher,conformerCollectionSourcesCurrent,conformerCollectionMatchesCurrent,conformerCollectionMatchesPublished,createAdvancedHydrationProjectionBaseline,conformerPlaybackFrameIndex,conformerTrajectoryObservedSource,prepareConformerPublication,restoredConformerPublicationResult,retirePreparedConformerPublication} from './workspace-conformer-publication';
@@ -257,7 +261,7 @@ export interface DocumentWorkspaceSurface extends MultiStructureSourceActions {
  displaySettings:DisplaySettings;onDisplaySettingsChange(next:DisplaySettings):void;
  sharedShowAxes:boolean;onSharedShowAxesChange(value:boolean):void;
  toolIntent:WorkspaceToolIntent;onToolIntentChange(next:WorkspaceToolIntent):void;
- viewportActive:boolean;legendVisible:boolean;layoutActions:ReactNode;legendExpanded:boolean;onLegendExpandedChange(expanded:boolean):void;
+ viewportActive:boolean;detachedViewportActive?:boolean;legendVisible:boolean;layoutActions:ReactNode;legendExpanded:boolean;onLegendExpandedChange(expanded:boolean):void;
  linkedAtomActions?:ReactNode;onAtomNumberPick?:(atomId:string)=>void;linkedAtomsActive?:boolean;
  workspaceDocumentPickMode?:'source'|'link';workspaceDocumentPickSelected?:boolean;
  workspaceInputRoles?:WorkspaceViewportState['workspaceInputRoles'];
@@ -266,11 +270,12 @@ export interface DocumentWorkspaceSurface extends MultiStructureSourceActions {
  samplingSphereDraft?:SamplingSphereViewportDraft|null;
  onSamplingSphereRadiusChange?(change:SamplingSphereRadiusChange):void;
  structureAnalysisActive?:boolean;
+ structureAnalysisRequestedPage?:{id:string;kind:'surface'};
  freezeEditingAllowed?:boolean;
  advancedModelingRoute?:AdvancedModelingRoute;
  onAdvancedModelingRouteChange?(route:AdvancedModelingRoute):void;
  onAdvancedModelingBack?():void;
- onDeriveStructure?(candidate:StructureTransformCandidate,source?:import('../../modeling/contracts').ModelDocument):void;
+ onDeriveStructure?(candidate:StructureTransformCandidate,source?:import('../../modeling/contracts').ModelDocument,signal?:AbortSignal):string|void|Promise<string|void>;
  onWorkspaceHistory?(kind:'undo'|'redo'):boolean;
  workspaceCanUndo?:boolean;workspaceCanRedo?:boolean;
 }
@@ -390,6 +395,24 @@ export function workspaceActiveXtbCanvas(context:{xtbAnalysis:boolean; documentI
   return context.xtbAnalysis&&context.documentId===context.activeId?resolve():undefined;
 }
 
+function ImportGeometryDialog({name,jobs,choose,cancel,ownerDocument}:{
+ name:string;jobs:readonly TrajectoryResult[];choose(job:TrajectoryResult,index:number):void;cancel():void;ownerDocument?:Document;
+}){
+ const [jobId,setJobId]=useState(jobs.at(-1)!.id);
+ const job=jobs.find(row=>row.id===jobId)!;
+ const [frame,setFrame]=useState('');
+ const index=frame===''?job.frames.length-1:Number(frame)-1;
+ const valid=Number.isSafeInteger(index)&&index>=0&&index<job.frames.length;
+ return <DialogShell aria-label="选择计算作业和帧" className="modal workspace-import-choice" backdropClassName="modal-backdrop" ownerDocument={ownerDocument} onCancel={cancel}>
+  <h2>选择要载入的结构</h2><p>{name}</p>
+  <label>作业 <select value={jobId} onChange={event=>{setJobId(event.target.value);setFrame('');}}>
+   {jobs.map(value=><option key={value.id} value={value.id}>{value.label} · {value.frames.length} 帧</option>)}
+  </select></label>
+  <label>帧 <input type="number" min={1} max={job.frames.length} step={1} value={frame} placeholder={String(job.frames.length)} onChange={event=>setFrame(event.target.value)}/></label>
+  <div className="modal-buttons"><button disabled={!valid} onClick={()=>choose(job,index)}>载入结构</button><button onClick={cancel}>取消</button></div>
+ </DialogShell>;
+}
+
 export default function WorkspaceShell(props:{renderDocument(surface:DocumentWorkspaceSurface):ReactNode}) {
  const [projectUi]=useState(()=>new ProjectUiStore());
  return <ProjectUiScope store={projectUi} scope={['workspace']}><ResultsMcpProvider><ProjectWorkspaceShell {...props} projectUi={projectUi}/></ResultsMcpProvider></ProjectUiScope>;
@@ -403,27 +426,37 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const activePageId=state.views.find(view=>view.id===state.activeViewId)?.documentId;
  const activeConformerGroup=state.documents.find(entry=>entry.id===activePageId)?.conformerGroup;
  const [error,setError]=useState(''),[reading,setReading]=useState(false),[readProgress,setReadProgress]=useState<number|null>(null),[readCancelPending,setReadCancelPending]=useState(false),[importCloseFailed,setImportCloseFailed]=useState(false);
- const pes=usePesWorkspaceIntegration(registry,setError,()=>pesFollowAllowed.current&&advancedSectionRef.current==='path');
- useEffect(()=>{
-  const controller=pes.controller;if(!controller)return;
-  let previous=workspaceOptimizationAlpb(readWorkspaceOptimizationPreferences())?.solvent;
-  const apply=(value:ReturnType<typeof workspaceOptimizationAlpb>)=>{
-   if(value?.solvent===previous)return;
-   previous=value?.solvent;
-   controller.syncXtbSolvation(value);
-  };
-  const sync=(event:Event)=>apply((event as CustomEvent<ReturnType<typeof workspaceOptimizationAlpb>|null>).detail??undefined);
-  const storage=(event:StorageEvent)=>{
-   if(event.key===OPTIMIZATION_PREFERENCE_KEY)apply(workspaceOptimizationAlpb(readWorkspaceOptimizationPreferences()));
-  };
-  window.addEventListener(OPTIMIZATION_SOLVATION_EVENT,sync);window.addEventListener('storage',storage);
-  return ()=>{window.removeEventListener(OPTIMIZATION_SOLVATION_EVENT,sync);window.removeEventListener('storage',storage);};
- },[pes.controller]);
+ const [optimization,setOptimization]=useState(newProjectOptimization);
+ const optimizationRef=useRef(optimization);
+ const legacyCalculationPending=useRef(false);
+ const calculationLevel=useMemo(()=>({
+  read:()=>optimizationRef.current.calculationLevel,
+  update(patch:Partial<typeof optimization.calculationLevel>){
+   const current=optimizationRef.current;
+   const level=checkedProjectCalculationLevel({...current.calculationLevel,...patch});
+   if(!level)throw Error('工程计算级别或溶剂设置无效。');
+   if(JSON.stringify(level)===JSON.stringify(current.calculationLevel))return;
+   legacyCalculationPending.current=false;
+   setOptimization(optimizationRef.current={...current,calculationLevel:level});
+  }
+ }),[]);
+ const pes=usePesWorkspaceIntegration(registry,setError,()=>pesFollowAllowed.current&&advancedSectionRef.current==='path',calculationLevel);
+ function writeProjectOptimization(next:WorkspaceOptimizationPreferences){
+  const previous=optimizationRef.current.calculationLevel;
+  const level=checkedProjectCalculationLevel(next.calculationLevel)??previous;
+  if(JSON.stringify(level)!==JSON.stringify(previous))legacyCalculationPending.current=false;
+  const accepted={...next,calculationLevel:JSON.stringify(level)===JSON.stringify(previous)?previous:level};
+  setOptimization(optimizationRef.current=accepted);
+  pes.getController()?.syncProjectCalculationLevel();
+  return accepted;
+ }
+ const prepareProjectOptimization=()=>legacyCalculationPending.current?pes.ensure():Promise.resolve();
  const [pesCanvases,setPesCanvases]=useState<PesCanvasCache>(()=>new Map());
  const pesCanvasesRef=useRef(pesCanvases);pesCanvasesRef.current=pesCanvases;
  const pesSubmittedFrames=useRef(new WeakMap<WorkspaceDocumentEntry['store'],{sourceEpoch:number;revision:number;frame:PesGeometry|null}>());
  const pesCanvasPublishers=useRef(new Map<string,{epoch:string;publish:(id:string,value:PesWorkspaceProjection|null)=>void}>());
  const [collapsedPesGroups,setCollapsedPesGroups]=useState<Record<string,boolean>>({});
+ const [tabGroups,setTabGroups]=useState(emptyTabGroupPresentation);
  const restoredPesNames=useRef<Record<string,string>>({});
  const [pesClosing,setPesClosing]=useState<{groupId:string;nodeId?:string;label:string;requesterDocumentId?:string}|null>(null),[pesDeleting,setPesDeleting]=useState(false);
 
@@ -562,7 +595,8 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const [advancedSection,setAdvancedSection]=useWorkspacePageValue<AdvancedSection|null>(activePageId,state.documents.find(entry=>entry.id===activePageId)?.pesGroup?'path':activeConformerGroup?'conformer':activePageId?inheritedNavigation.current.get(activePageId)?.section??null:null,'advancedSection');
  const [conformerGroups,setConformerGroups]=useState<Record<string,{label:string;labelOrigin?:WorkspaceLabelOrigin;collapsed:boolean;samplingOperation?:ConformerSamplingChoice|null}>>({});
  const [conformerSamplingChoice,setConformerSamplingChoice]=useWorkspacePageValue<ConformerSamplingChoice|null>(activePageId,activeConformerGroup?conformerGroups[activeConformerGroup.taskId]?.samplingOperation??null:activePageId?inheritedNavigation.current.get(activePageId)?.sampling??null:null,'conformerSamplingChoice');
- const [renamingGroup,setRenamingGroup]=useState<string|null>(null);
+ const [tabRename,setTabRename]=useState<{kind:'tab'|'group';id:string}|null>(null);
+ const [tabMenu,setTabMenu]=useState<{kind:'tab'|'group';id:string;anchor:WorkspaceTabMenuAnchor}|null>(null);
  const [conformerFrameOrders,setConformerFrameOrders]=useState<Record<string,ConformerFrameOrder>>({});
  const [conformerViewControls,setConformerViewControls]=useState<Record<string,ReactNode>>({});
  const conformerCollectionCache=useRef(new WeakMap<AdvancedTaskRecord,ConformerResultCollection[]>());
@@ -570,7 +604,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const conformerCollectionPublisher=useRef(createConformerCollectionPublisher());
  const conformerPrepared=useRef(new Map<string,{frames:ReadonlyArray<{id:string;coordinates:string;energy:number|undefined}>;includeEnergies:boolean|undefined;result:TrajectoryResult;abort:AbortController;ready:Promise<void>}>());
  const restoredConformerReaders=useRef(new WeakSet<TrajectoryResult>());
- const advancedIntegration=useRef<{controller?:AdvancedController;prepare(task:AdvancedTaskRecord,onProgress:(completed:number,total:number)=>void):Promise<void>}>({prepare:async()=>{throw Error('构象结果准备入口尚未连接。');}});
+ const advancedIntegration=useRef<{controller?:AdvancedController;releaseConsumers?:()=>void;prepare(controller:AdvancedController,task:AdvancedTaskRecord,onProgress:(completed:number,total:number)=>void):Promise<void>}>({prepare:async()=>{throw Error('构象结果准备入口尚未连接。');}});
  const [samplingSphereDraft,setSamplingSphereDraft]=useState<SamplingSphereDraft|undefined>();
  const [samplingSphereRadiusChange,setSamplingSphereRadiusChange]=useState<SamplingSphereRadiusChange|null>(null);
  const derivedModelingRoutes=useRef(new Map<string,AdvancedModelingRoute>());
@@ -590,6 +624,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const advancedAnalysisDocuments=useRef(new Map<string,string>());
  const [advancedAnalysisBindings,setAdvancedAnalysisBindings]=useState<Record<string,string>>({});
  const [structureAnalysisSelected,setStructureAnalysisSelected]=useState<Record<string,boolean>>({});
+ const [structureAnalysisRequestedPage,setStructureAnalysisRequestedPage]=useState<{documentId:string;projectEpoch:number;id:string;kind:'surface'}>();
  const canvasCallbacks=useRef(new Map<string,(value:AnalysisCanvas|null)=>void>());
  const submittedConformerInputs=useRef(new WeakMap<WorkspaceDocumentEntry['store'],SubmittedScientificFrame>());
  const submittedPesTabResults=useRef(new WeakMap<WorkspaceDocumentEntry['store'],RetainedPesTabResultCursor>());
@@ -637,6 +672,9 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  function analysisHostRef(id:string){let callback=analysisHostCallbacks.current.get(id);if(!callback){callback=node=>setAnalysisToolHosts(previous=>previous[id]===node?previous:{...previous,[id]:node});analysisHostCallbacks.current.set(id,callback);}return callback;}
  const [plots,setPlots]=useState<(PostprocessPlotSnapshot|FilePathPlotSnapshot)[]>([]),[resultImportRequest,setResultImportRequest]=useState<ScientificSourceFile[]|null>(null),[resultImportDescriptions,setResultImportDescriptions]=useState<string[]>([]);
  const resultImportChoice=useRef<((value:'analysis'|'structure'|'cancel')=>void)|null>(null);
+ const [importGeometryChoice,setImportGeometryChoice]=useState<{
+  name:string;jobs:readonly TrajectoryResult[];choose(job:TrajectoryResult,index:number):void;cancel():void;
+ }|null>(null);
  const resolveResultImport=(value:'analysis'|'structure'|'cancel')=>{const resolve=resultImportChoice.current;resultImportChoice.current=null;setResultImportRequest(null);resolve?.(value);};
  const openPlot=useCallback((snapshot:PostprocessPlotSnapshot|FilePathPlotSnapshot)=>{
   const id=`plot-${crypto.randomUUID()}`;
@@ -665,9 +703,12 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const borrowedBatchRef=useRef(borrowedBatch);borrowedBatchRef.current=borrowedBatch;
  const retainedUnreadableBatchAsset=useRef<string|undefined>(undefined);
  const [batchInputRecoveryNotice,setBatchInputRecoveryNotice]=useState<string>();
+ const pesModuleSource=useRef<{stamp:WorkspaceActivationStamp;projectEpoch:number;sourceEpoch:number;
+  frame?:PesGeometry;constraints?:SharedModelConstraints;issue?:string}|undefined>(undefined);
  const inheritedViews=useRef(new Map<string,{camera?:number[];transform?:ModelViewportProps['viewTransform']}>());
  const [preparedInputTarget,setPreparedInputTarget]=useState<{structure:Structure;engine:'gaussian'|'orca'}|null>(null);
  const rootElement=useRef<HTMLDivElement>(null);
+ const [restoringDocumentViews,setRestoringDocumentViews]=useState(false);
  useLayoutEffect(()=>{
   const root=rootElement.current;if(!root)return;
   const panel=root.querySelector<HTMLElement>('.workspace-advanced-modeling-panel');if(!panel)return;
@@ -685,7 +726,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   update();const observer=new win.MutationObserver(update);observer.observe(panel,{childList:true,subtree:true});
   const resized=new win.ResizeObserver(update);resized.observe(panel);
   return()=>{observer.disconnect();resized.disconnect();};
- },[]);
+ },[restoringDocumentViews]);
  useLayoutEffect(()=>{
   const node=rootElement.current;if(!node)return;const win=node.ownerDocument.defaultView!;
   const boundary=createLayoutResizeBoundary(node,callback=>win.requestAnimationFrame(callback),id=>win.cancelAnimationFrame(id));
@@ -695,11 +736,13 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  },[]);
  const [dockTarget,setDockTarget]=useState<WorkspaceViewportState['dockTarget']>();
  const tabs=useRef<HTMLDivElement>(null),fileInput=useRef<HTMLInputElement>(null),importEpoch=useRef(0),importController=useRef<AbortController|null>(null);
- const tabDrag=useRef<{id:string;pointerId:number;x:number;y:number;moved:boolean}|null>(null);
+ const tabDrag=useRef<{kind:'tab'|'group';id:string;pointerId:number;x:number;y:number;moved:boolean}|null>(null);
+ const suppressTabClick=useRef(false);
  const closeRequests=useRef(new Map<string,{requestId:string;requesterWindowId:string}>());
  const mcpCloseStaging=useRef(new Map<string,()=>void>());
  const closeConfirmations=useRef(new Set<string>());
  const closingTransactions=useRef(new Set<string>());
+ const projectWindowClosePending=useRef(false);
  const runtimeOwners=useRef(new Map<string,{controller:DynamicsController;unsubscribe:()=>void}>());
  const documentRuntimeOwners=useRef(new Map<string,{epoch:string;owner:DocumentRuntimeOwner}>());
  function documentRuntime(entry:WorkspaceDocumentEntry):DocumentRuntimeOwner{
@@ -782,7 +825,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const pesCanvas=currentPesCanvas(pesCanvases,active);
  useTransientLayerScope(rootElement.current?.ownerDocument??(typeof document==='undefined'?null:document),JSON.stringify([taskWorkspace.opened?'tasks':state.module,activeId,advancedSection,activeId?activeAnalysisResults[activeId]?.result?.id:undefined]));
  const scrollPageKey=JSON.stringify([activeId,state.module,advancedSection,advancedModelingRoute]);
- useLayoutEffect(()=>{const root=rootElement.current;if(!root)return;for(const node of root.querySelectorAll<HTMLElement>('[data-page-scroll]')){const saved=pageScroll.current.get(scrollPageKey+':'+node.dataset.pageScroll);node.scrollTop=saved?.top??0;node.scrollLeft=saved?.left??0;}},[scrollPageKey]);
+ useLayoutEffect(()=>{const root=rootElement.current;if(!root)return;for(const node of root.querySelectorAll<HTMLElement>('[data-page-scroll]')){const saved=pageScroll.current.get(scrollPageKey+':'+node.dataset.pageScroll);node.scrollTop=saved?.top??0;node.scrollLeft=saved?.left??0;}},[scrollPageKey,restoringDocumentViews]);
  function advancedSourceGeometryCurrent(source:AdvancedFrameSource){
   const key=JSON.stringify(source.ref),owner=capturedSourceOwners.current.get(key);
   const entry=registry.getSnapshot().documents.find(value=>value.id===(owner?.documentId??source.ref.documentId));
@@ -826,10 +869,11 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    if(sourceCopyBusy.current)throw Error('请先完成当前来源选择。');sourceCopyBusy.current=true;
    try{if(!await confirmConformerCopy(stamp,'file-import'))return null;registry.assertCurrent(stamp);if(entry.sourceEpoch!==sourceEpoch||scientificFrameKey(id)!==frameKey)throw Error('来源帧已变化，未载入外部文件。');}
    finally{sourceCopyBusy.current=false;}
-   return{forceNew:true as const,onCreated:(created:string)=>{inheritedViews.current.set(created,pose);try{registry.assertCurrent(stamp);}catch{return;}setMainDocumentId(created);activateDocument(created);registry.setModule('analysis');}};
+   return{forceNew:true as const,onCreated:(created:string,present?:boolean)=>{inheritedViews.current.set(created,pose);if(present===false)return;try{registry.assertCurrent(stamp);}catch{return;}setMainDocumentId(created);activateDocument(created);registry.setModule('analysis');}};
   },
   guardRemove:id=>{if(protectedConformerSource(id))throw Error('构象来源页面只读；不能移除原任务的输出或波函数。');},
   activate:id=>activateDocument(id),exists:id=>registry.getSnapshot().documents.some(entry=>entry.id===id),analyze:()=>registry.setModule('analysis'),onError:setError,onDiagnostics:addSourceDiagnostics,
+  captureNavigation:()=>{const origin=mcpPresentationOrigin();return()=>sameMcpPresentation(origin,mcpPresentationOrigin());},
   onFileDocument:()=>{registry.invalidateActivation();taskWorkspace.leave();},
  },activeId);
  const advancedPorts=useRef({postprocess});advancedPorts.current={postprocess};
@@ -959,26 +1003,54 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   return owner;
  }
  const [advancedController,setAdvancedController]=useState<AdvancedController|null>(null);
- const subscribeAdvanced=useCallback((listener:()=>void)=>advancedController?.subscribe(()=>{advancedHydrationProjection.current.observe(JSON.stringify(advancedController.getSnapshot().tasks.map(task=>[task.id,task.runs.at(-1)?.status??'',task.revision??0])));listener();})??(()=>{}),[advancedController]);
- const readAdvanced=useCallback(()=>JSON.stringify(advancedController?.getSnapshot().tasks.map(task=>[task.id,task.runs.at(-1)?.status??'',task.revision??0])??[]),[advancedController]);
+ const setAdvancedControllerError=(message:string)=>{
+  if(advancedIntegration.current.controller===advancedController&&!restoringProject.current)setError(message);
+ };
+ function advancedProjection(controller:AdvancedController|null|undefined){
+  return JSON.stringify(controller?.getSnapshot().tasks.map(task=>[task.id,task.runs.at(-1)?.status??'',task.revision??0])??[]);
+ }
+ const readAdvanced=useCallback(()=>advancedProjection(advancedController),[advancedController]);
+ const subscribeAdvanced=useCallback((listener:()=>void)=>advancedController?.subscribe(()=>{
+  if(advancedIntegration.current.controller!==advancedController)return;
+  advancedHydrationProjection.current.observe(readAdvanced());listener();
+ })??(()=>{}),[advancedController,readAdvanced]);
  const advancedStatusProjection=useSyncExternalStore(subscribeAdvanced,readAdvanced,readAdvanced);
  const advancedGroupStatuses=useMemo(()=>new Map<string,string>(JSON.parse(advancedStatusProjection)),[advancedStatusProjection]);
- useEffect(()=>advancedController?bindWorkspaceAdvancedConsumers(registry,advancedController):undefined,[registry,advancedController]);
- useEffect(()=>{const desktop=desktopBridge(),bridge=desktop?.startXtb&&desktop.commandXtb&&desktop.onXtbEvent?{startXtb:desktop.startXtb.bind(desktop),commandXtb:desktop.commandXtb.bind(desktop),onXtbEvent:desktop.onXtbEvent.bind(desktop),readXtbElectronicArtifacts:desktop.readXtbElectronicArtifacts?.bind(desktop),releaseXtbElectronicArtifacts:desktop.releaseXtbElectronicArtifacts?.bind(desktop),releaseXtbOptimizationCaches:desktop.releaseXtbOptimizationCaches?.bind(desktop)}:null;
+ function retireAdvancedController(){
+  const integration=advancedIntegration.current,previous=integration.controller,releaseConsumers=integration.releaseConsumers;
+  integration.controller=undefined;integration.releaseConsumers=undefined;
+  releaseConsumers?.();
+  if(previous)void previous.dispose().catch(cause=>console.warn('旧高级任务资源释放失败。',cause));
+ }
+ function installAdvancedController(read:typeof pendingAdvancedProject.current=null){
+ const desktop=desktopBridge(),bridge=desktop?.startXtb&&desktop.commandXtb&&desktop.onXtbEvent?{startXtb:desktop.startXtb.bind(desktop),commandXtb:desktop.commandXtb.bind(desktop),onXtbEvent:desktop.onXtbEvent.bind(desktop),readXtbElectronicArtifacts:desktop.readXtbElectronicArtifacts?.bind(desktop),releaseXtbElectronicArtifacts:desktop.releaseXtbElectronicArtifacts?.bind(desktop),releaseXtbOptimizationCaches:desktop.releaseXtbOptimizationCaches?.bind(desktop)}:null;
  const pathBridge=desktop?.startAdvancedPath&&desktop.commandAdvancedPath&&desktop.onAdvancedPathEvent?bindAdvancedPathDesktopBridge({startAdvancedPath:desktop.startAdvancedPath.bind(desktop),commandAdvancedPath:desktop.commandAdvancedPath.bind(desktop),onAdvancedPathEvent:desktop.onAdvancedPathEvent.bind(desktop)}):null;
  const samplingBridge=desktop?.startConformerSampling&&desktop.commandConformerSampling&&desktop.onConformerSamplingEvent?bindConformerSamplingDesktopBridge({startConformerSampling:desktop.startConformerSampling.bind(desktop),commandConformerSampling:desktop.commandConformerSampling.bind(desktop),onConformerSamplingEvent:desktop.onConformerSamplingEvent.bind(desktop),readConformerSamplingResult:desktop.readConformerSamplingResult?.bind(desktop),releaseConformerSamplingResult:desktop.releaseConformerSamplingResult?.bind(desktop)}):null;
  const aissBridge=desktop?.startAiss&&desktop.commandAiss&&desktop.onAissEvent?bindAissDesktopBridge({startAiss:desktop.startAiss.bind(desktop),commandAiss:desktop.commandAiss.bind(desktop),onAissEvent:desktop.onAissEvent.bind(desktop)}):null;
- const controller=new AdvancedController({bridge,pathBridge,samplingBridge,aissBridge,conformerBatchBridge:createDesktopConformerBatchBridge(desktop?.conformerBatchCommand&&desktop.onConformerBatchProgress?{conformerBatchCommand:desktop.conformerBatchCommand.bind(desktop),onConformerBatchProgress:desktop.onConformerBatchProgress.bind(desktop)}:null),resolveInitialSource:taskId=>captureConformerInitial(taskId),onConformerResultsReady:(task,onProgress)=>advancedIntegration.current.prepare(task,onProgress),resolveResources:()=>{const value=computeSnapshotRef.current;if(!value||!value.writable||value.error)throw Error('当前计算资源尚未就绪，请确认全局资源设置。');return value;},
+ const controller=new AdvancedController({bridge,pathBridge,samplingBridge,aissBridge,conformerBatchBridge:createDesktopConformerBatchBridge(desktop?.conformerBatchCommand&&desktop.onConformerBatchProgress?{conformerBatchCommand:desktop.conformerBatchCommand.bind(desktop),onConformerBatchProgress:desktop.onConformerBatchProgress.bind(desktop)}:null),resolveInitialSource:taskId=>captureConformerInitial(taskId),onConformerResultsReady:(task,onProgress)=>advancedIntegration.current.prepare(controller,task,onProgress),resolveResources:()=>{const value=computeSnapshotRef.current;if(!value||!value.writable||value.error)throw Error('当前计算资源尚未就绪，请确认全局资源设置。');return value;},
   workerResourceBridge:desktop?.acquireWorkerResources&&desktop.cancelWorkerResources&&desktop.releaseWorkerResources?{acquireWorkerResources:desktop.acquireWorkerResources.bind(desktop),cancelWorkerResources:desktop.cancelWorkerResources.bind(desktop),releaseWorkerResources:desktop.releaseWorkerResources.bind(desktop)}:undefined,
   currentSourceGuard:source=>{if(source.ref.taskId){if(retainedAdvancedGeometrySource(controller,source))return;throw Error('该高级结果帧的任务身份或内容不匹配。');}const entry=registry.document(source.ref.documentId);if(!advancedSourceGeometryCurrent(source))throw Error('高级任务来源结构已修改或关闭，请重新取用。');if(source.ref.sourceId&&entry.analysisBinding&&!registry.analysisAvailable(entry.id))throw Error('来源分析已失效，请重新取用有效结构帧。');},
   onElectronicResult:async(bundle,context)=>{
+   const projectEpoch=projectIdentityEpoch.current;
+   const guardOwner=()=>{if(advancedIntegration.current.controller!==controller||restoringProject.current||projectIdentityEpoch.current!==projectEpoch)throw Error('单点项目已更换，原生产物保留但未关联迟到结果。');};guardOwner();
    const source=controller.getSnapshot().tasks.find(task=>task.id===context.taskId)?.spec.source;if(!source)throw Error('单点任务来源已关闭。');
    const owner=capturedSourceOwners.current.get(JSON.stringify(source.ref)),targetId=owner?.documentId??source.ref.documentId,target=registry.document(targetId),targetEpoch=target.epoch;
-   const guard=()=>{const current=registry.document(targetId);if(current.epoch!==targetEpoch||current.conformerGroup||!advancedSourceGeometryCurrent(source))throw Error('单点来源已修改或关闭，原生产物保留但未关联迟到结果。');};guard();
+   const guard=()=>{guardOwner();const current=registry.document(targetId);if(current.epoch!==targetEpoch||current.conformerGroup||!advancedSourceGeometryCurrent(source))throw Error('单点来源已修改或关闭，原生产物保留但未关联迟到结果。');};guard();
    const id=await advancedPorts.current.postprocess.attachGeneratedToExisting(bundle,context,targetId,guard);if(!id)throw Error('GFN2受管结果暂未接入后处理，原生产物仍保留。');
+   guardOwner();
    const key=`${context.taskId}:${context.deliveryRunId??context.runId}`;advancedAnalysisDocuments.current.set(key,id);setAdvancedAnalysisBindings(previous=>({...previous,[key]:id}));
   },
- });advancedIntegration.current.controller=controller;setAdvancedController(controller);return()=>{for(const value of conformerPrepared.current.values())retirePreparationRecord(value);conformerPrepared.current.clear();void controller.dispose();};},[registry]);
+ });
+ retireAdvancedController();
+ pendingAdvancedRestore.current=null;pendingAdvancedProject.current=read;
+ advancedIntegration.current.controller=controller;
+ advancedIntegration.current.releaseConsumers=bindWorkspaceAdvancedConsumers(registry,controller);
+ setAdvancedController(controller);
+ }
+ useEffect(()=>{
+  installAdvancedController();
+  return ()=>{retireAdvancedController();for(const value of conformerPrepared.current.values())retirePreparationRecord(value);conformerPrepared.current.clear();};
+ },[registry]);
  const fileCurrent=state.module==='analysis'?postprocess.currentFile:null;
  const [fileSidebarCollapsed,setFileSidebarCollapsed]=useState<Record<string,boolean>>({});
  const currentFileSidebarCollapsed=Boolean(fileCurrent&&fileSidebarCollapsed[fileCurrent.id]);
@@ -997,6 +1069,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const additionalPesSources=useMemo(()=>pesLayout?[...pesTabSnapshotSources(state.documents,{
   lookup:id=>registry.getSnapshot().documents.find(entry=>entry.id===id),
   closing:id=>closingTransactions.current.has(id),
+  candidateGroup:id=>tabGroups.members[id],
   controller:pes.controller,
   pesFrame:entry=>{
    const projected=currentPesCanvas(pesCanvasesRef.current,entry);
@@ -1030,7 +1103,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     ??initialPlaybackFrame(result,createPlaybackCollection(result,{ownerId:entry.id}))??0};
   },
  }),...pesFileSnapshotSources(Object.values(postprocess.fileDocuments),id=>advancedPorts.current.postprocess.captureFileDocuments()[id],
-  document=>fileFrameOwner(document).observation)]:[],[pesLayout,state.documents,postprocess.fileDocuments,registry,pes.controller,advancedController]);
+  document=>fileFrameOwner(document).observation)]:[],[pesLayout,state.documents,postprocess.fileDocuments,registry,pes.controller,advancedController,tabGroups.members]);
  pesFollowAllowed.current=pesLayout&&!ownerHidden&&!taskWorkspace.opened&&!closingPending;
  const advancedModelingLayout=state.module==='advanced-modeling';
  const xtbAnalysisLayout=advancedLayout&&advancedSection==='xtb2';
@@ -1130,12 +1203,29 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const inputTask=state.inputTask,inputOwnerId=inputTask?.documentId;
  const documents=[...state.documents].sort((a,b)=>{const ai=order.indexOf(a.id),bi=order.indexOf(b.id);return(ai<0?1e9:ai)-(bi<0?1e9:bi);});
  const pendingConformerInitialEdit=Boolean(pendingEdit&&documents.find(entry=>entry.id===pendingEdit.request.documentId)?.conformerGroup?.role==='initial');
- const tabGroup=(entry:WorkspaceDocumentEntry|undefined)=>entry?.pesGroup?.groupId??entry?.conformerGroup?.taskId;
- const tabDocuments:WorkspaceDocumentEntry[]=[],tabGroupsSeen=new Set<string>();
- for(const entry of documents){if(detached[entry.id]||retiredConformerReader(entry))continue;const group=tabGroup(entry);
-  if(!group){tabDocuments.push(entry);continue;}if(tabGroupsSeen.has(group))continue;tabGroupsSeen.add(group);
-  tabDocuments.push(...documents.filter(value=>tabGroup(value)===group&&!detached[value.id]&&!retiredConformerReader(value)).sort((a,b)=>Number(b.conformerGroup?.role==='initial'||b.pesGroup?.kind==='initial')-Number(a.conformerGroup?.role==='initial'||a.pesGroup?.kind==='initial')||(a.conformerGroup?.role==='initial'?a.conformerGroup.initialIndex??0:0)-(b.conformerGroup?.role==='initial'?b.conformerGroup.initialIndex??0:0)));
+ const availablePesGroups=new Set(documents.flatMap(entry=>entry.pesGroup?[entry.pesGroup.groupId]:[]));
+ const tabGroup=(entry:WorkspaceDocumentEntry|undefined)=>{
+  const group=tabGroupId(entry,tabGroups);
+  return group&&(group===scientificTabGroup(entry)||Object.hasOwn(tabGroups.groups,group)||availablePesGroups.has(group))?group:undefined;
+ };
+ const tabEntries=new Map(documents.filter(entry=>!detached[entry.id]&&!retiredConformerReader(entry)).map(entry=>[entry.id,entry]));
+ const tabMembers=new Map<string,WorkspaceDocumentEntry[]>(Object.keys(tabGroups.groups).map(id=>[id,[]]));
+ // Ownership survives detaching the view. The group header is still a drop
+ // target while every member is docked elsewhere.
+ for(const entry of documents){
+  const group=tabGroup(entry);
+  if(!group)continue;
+  if(!tabMembers.has(group))tabMembers.set(group,[]);
+  if(tabEntries.has(entry.id))tabMembers.get(group)!.push(entry);
  }
+ const initialPosition=(entry:WorkspaceDocumentEntry)=>entry.pesGroup?.kind==='initial'?0:entry.conformerGroup?.role==='initial'?entry.conformerGroup.initialIndex??0:Infinity;
+ for(const members of tabMembers.values())members.sort((left,right)=>initialPosition(left)===initialPosition(right)?0:initialPosition(left)-initialPosition(right));
+ const tabRowIds=[...new Set([...order,...documents.map(entry=>entry.id),...tabMembers.keys()].flatMap(id=>{
+  const entry=tabEntries.get(id);
+  return tabMembers.has(id)?[id]:entry?[tabGroup(entry)??id]:[];
+ }))];
+ const tabDocuments=tabRowIds.flatMap(id=>tabMembers.get(id)??[tabEntries.get(id)!]);
+ const tabOrderItems=tabRowIds.flatMap(id=>[id,...(tabMembers.get(id)??[]).map(entry=>entry.id)]);
  const internalModels=documents.filter(entry=>(!entry.result||analysisLayout&&Boolean(postprocess.documents[entry.id])||advancedLayout&&entry.id===activeId)&&!detached[entry.id]);
  const displayedDocumentId=sharedLayout?(internalModels.some(entry=>entry.id===activeId)?activeId:internalModels.some(entry=>entry.id===mainDocumentId)?mainDocumentId:internalModels[0]?.id):activeId;
  const presentationOwner=useRef(displayedDocumentId);presentationOwner.current=displayedDocumentId;
@@ -1157,8 +1247,8 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const selectingMembers=useRef(false);selectingMembers.current=linkedControls.selecting;
  const linkedControlsLive=useRef(linkedControls);linkedControlsLive.current=linkedControls;
  const [availableWidth,setAvailableWidth]=useState(()=>Math.max(800,window.innerWidth-66));
- useLayoutEffect(()=>{const node=rootElement.current?.querySelector('.workspace-document-area');if(!node)return;const resize=()=>setAvailableWidth(node.getBoundingClientRect().width);resize();const observer=new ResizeObserver(resize);observer.observe(node);return()=>observer.disconnect();},[]);
- useLayoutEffect(()=>{const target=legendHostId?rootElement.current?.querySelector<HTMLElement>(`.model-document-pane[data-document-id="${legendHostId}"] .model-transform-candidate [data-testid="model-viewport"]`)??rootElement.current?.querySelector<HTMLElement>(`.model-document-pane[data-document-id="${legendHostId}"] [data-testid="model-viewport"]`):null;setLegendTarget(target??null);},[legendHostId,sharedLayout,documentSignature,deckMode,state.module]);
+ useLayoutEffect(()=>{const node=rootElement.current?.querySelector('.workspace-document-area');if(!node)return;const resize=()=>setAvailableWidth(node.getBoundingClientRect().width);resize();const observer=new ResizeObserver(resize);observer.observe(node);return()=>observer.disconnect();},[restoringDocumentViews]);
+ useLayoutEffect(()=>{const target=legendHostId?rootElement.current?.querySelector<HTMLElement>(`.model-document-pane[data-document-id="${legendHostId}"] .model-transform-candidate [data-testid="model-viewport"]`)??rootElement.current?.querySelector<HTMLElement>(`.model-document-pane[data-document-id="${legendHostId}"] [data-testid="model-viewport"]`):null;setLegendTarget(target??null);},[legendHostId,sharedLayout,documentSignature,deckMode,state.module,restoringDocumentViews]);
  useEffect(()=>{if(sourcePick&&(inputOwnerId!==sourcePick.ownerId||state.module!=='input'))setSourcePick(null);},[inputOwnerId,state.module,sourcePick]);
  const maintenanceDisabled=reading||Boolean(closingPending)||state.documents.some(entry=>['starting','running','pausing','paused','stopping'].includes(entry.runtime.phase));
  useEffect(()=>{if(displayedDocumentId&&sharedLayout)setMainDocumentId(displayedDocumentId);},[displayedDocumentId,sharedLayout]);
@@ -1185,6 +1275,22 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   pes.controller?.setActiveNode(groupId,node.id);
   activateDocument(entry.id);registry.setModule('advanced');
  }
+ async function openSavedPesRun(item:PesRecoveryItem,guard:()=>void){
+  await pes.ensure();
+  guard();
+  const controller=pes.getController();
+  if(!controller||!desktop?.claimPesRecovery||!desktop.closePesRecovery)throw Error('当前工作台无法读取势能面恢复结果。');
+  const claim=await desktop.claimPesRecovery(item.id);
+  let committed=false;
+  try{
+   guard();
+   const {groupId,nodeId}=await controller.recoverCompletedRun(claim,guard);
+   committed=true;
+   guard();
+   const node=controller.getSnapshot().groups.find(group=>group.id===groupId)?.nodes.find(value=>value.id===nodeId);
+   if(node)activatePesNode(groupId,node);
+  }finally{if(!committed)await desktop.closePesRecovery(item.id);}
+ }
  async function changeAdvancedSection(section:AdvancedSection|null){
   if(section!=='path'){
    advancedSectionRef.current=section;setAdvancedSection(section);setAdvancedCapture(undefined);setError('');return;
@@ -1195,18 +1301,25 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    await pes.ensure();
    const entry=registry.assertCurrent(stamp),controller=pes.controller;
    if(!controller||projectEpoch!==projectIdentityEpoch.current||registry.getSnapshot().module!=='advanced')throw Error('当前势能面入口已变化，请重新选择。');
-   if(entry.pesGroup){advancedSectionRef.current='path';setAdvancedSection('path');controller.setActiveNode(entry.pesGroup.groupId,entry.pesGroup.nodeId);setError('');return;}
-   if(entry.store.hasTransaction?.()||['starting','running','pausing','paused','stopping'].includes(entry.runtime.phase))throw Error('请先结束当前结构运行或几何预览。');
+   const transfer=pesModuleSource.current;
+   const handoff=transfer&&transfer.projectEpoch===projectEpoch&&transfer.sourceEpoch===entry.sourceEpoch
+    &&transfer.stamp.documentId===stamp.documentId&&transfer.stamp.documentEpoch===stamp.documentEpoch
+    &&transfer.stamp.activationEpoch===stamp.activationEpoch&&transfer.stamp.revision===stamp.revision?transfer:undefined;
+   if(handoff?.issue)throw Error(handoff.issue);
+   if(entry.pesGroup&&!handoff?.frame){advancedSectionRef.current='path';setAdvancedSection('path');controller.setActiveNode(entry.pesGroup.groupId,entry.pesGroup.nodeId);setError('');return;}
+   if(!handoff?.frame&&(entry.store.hasTransaction?.()||['starting','running','pausing','paused','stopping'].includes(entry.runtime.phase)))throw Error('请先结束当前结构运行或几何预览。');
    const model=entry.store.getSnapshot();
    const derived=Boolean(entry.result||entry.legacyResult||entry.trajectory||entry.conformerGroup||protectedConformerSource(entry.id)||
      registry.analysisAvailable(entry.id)&&(entry.analysisBinding||advancedPorts.current.postprocess.documents[entry.id])||advancedObservationsRef.current[entry.id]?.ref.taskId);
-   const displayed=derived?await readCurrentWorkspaceSource(true,true):undefined;
+   const displayed=derived&&!handoff?.frame?await readCurrentWorkspaceSource(true,true):undefined;
    registry.assertCurrent(stamp);
    if(projectEpoch!==projectIdentityEpoch.current||registry.getSnapshot().module!=='advanced')throw Error('当前势能面入口已切换。');
-   const geometry:PesGeometry=displayed?{documentId:entry.id,revision:displayed.ref.revision,structure:scientificFrameForModel(displayed.structure),originFrame:displayed.ref,label:entry.label}
-     :{documentId:entry.id,revision:model.revision,structure:model.draft.structure,label:entry.label};
+   const geometry:PesGeometry=handoff?.frame??(displayed?{documentId:entry.id,revision:displayed.ref.revision,structure:scientificFrameForCanvasModel(displayed.structure,currentSourceCanvas(entry)),originFrame:displayed.ref,label:entry.label}
+     :{documentId:entry.id,revision:model.revision,structure:model.draft.structure,label:entry.label});
    if(geometry.structure.atoms.length&&(geometry.structure.dimension===2||geometry.structure.periodicSource?.completeness==='partial'))throw Error('势能面探索需要真实三维几何和完整的周期晶胞。');
-   const group=pes.createInitialGroup(geometry,displayed?.constraints??model.sharedConstraints,derived?undefined:entry);
+   const group=pes.createInitialGroup(geometry,handoff?.frame?handoff.constraints:displayed?.constraints??model.sharedConstraints,
+    derived||handoff?.frame?undefined:entry);
+   if(handoff)pesModuleSource.current=undefined;
    const initial=group.nodes[0];
   const target=pes.register(group.id,initial);pes.projectConstraints(target,group,true);
    activatePesNode(group.id,initial);setError('');
@@ -1227,7 +1340,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   try{
    const {entry,link,controller,group}=currentPesTarget();
    if(geometry.documentId!==entry.id||geometry.revision!==entry.store.getSnapshot().revision)throw Error('科学结构帧已变化，请重新选择。');
-   const source={...geometry,structure:scientificFrameForModel(geometry.structure)};
+   const source={...geometry,structure:scientificFrameForCanvasModel(geometry.structure,currentSourceCanvas(entry))};
    const target=protectedPesDocument(entry)||link.kind==='initial'&&geometry.source?.frameId
     ?pes.register(group.id,controller.createWorkbench(group.id,source)):entry;
   if(target!==entry){pes.projectConstraints(target,group,true);const node=controller.getSnapshot().groups.find(row=>row.id===group.id)!.nodes.find(row=>row.id===target.pesGroup!.nodeId)!;activatePesNode(group.id,node);}
@@ -1242,19 +1355,31 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   const {entry,link,controller,group}=currentPesTarget(true),stamp=registry.stamp();
   if(geometry.documentId!==entry.id||request.source.id!==entry.id||request.source.revision!==entry.store.getSnapshot().revision)throw Error('优化来源帧已变化，请重新选择。');
   const source:PesGeometry=structuredClone({...geometry,structure:geometry.source?.frameId?
-   scientificFrameForModel(geometry.structure):request.source.draft.structure});
+   scientificFrameForCanvasModel(geometry.structure,currentSourceCanvas(entry)):request.source.draft.structure});
   const selected=structuredClone(request.source.selection),preferences=structuredClone(request.preferences),xtbOptions=request.xtbOptions?structuredClone(request.xtbOptions):undefined;
+  const document={...request.source,selection:selected,
+   sharedConstraints:resolvePesConstraintDefinitions(group,source.structure,source.documentId),draft:{...request.source.draft,structure:source.structure}};
+  const input=pesOrdinaryOptimizationInput({source,document,preferences,xtbOptions,empiricalBondParameters:request.empiricalBondParameters});
   registry.assertCurrent(stamp);
-  const node=controller.prepareOptimization(group.id,link.nodeId,source),target=pes.register(group.id,node);
-  if(target!==entry){pes.projectConstraints(target,group,true);target.store.select(selected);activatePesNode(group.id,node);await new Promise<void>(resolve=>window.requestAnimationFrame(()=>resolve()));}
-  const current=currentPesTarget(true);
-  if(current.entry.id!==target.id||current.link.nodeId!==node.id)throw Error('优化目标已切换，本次尚未启动。');
-  const snapshot=target.store.getSnapshot(),document={...request.source,id:snapshot.id,revision:snapshot.revision,selection:selected,
-   sharedConstraints:resolvePesConstraintDefinitions(current.group,source.structure,source.documentId),draft:{...request.source.draft,structure:structuredClone(source.structure)}};
-  return runPesOrdinaryOptimization({controller,groupId:group.id,nodeId:node.id,source:{...source,documentId:target.id,revision:snapshot.revision},document,preferences,xtbOptions,
-   onRunStarted:request.onRunStarted,empiricalBondParameters:request.empiricalBondParameters,spaceKeydownAtMs:request.spaceKeydownAtMs});
+  let derived:PesNode|undefined;
+  return runPesOrdinaryOptimization({controller,groupId:group.id,nodeId:link.nodeId,source,document,preferences,xtbOptions,input,
+   bindTarget:node=>{
+    const target=pes.register(group.id,node);
+    if(target!==entry){
+     try{pes.projectConstraints(target,group,true);target.store.select(selected);derived=node;}
+     catch(cause){
+      void registry.closeDocument(target.id,true).catch(error=>setError(error instanceof Error?error.message:String(error)));
+      throw cause;
+     }
+    }
+    return {documentId:target.id,revision:target.store.getSnapshot().revision};
+   },
+   onRunStarted:(identity,actual)=>{
+    request.onRunStarted?.(identity,actual);
+    if(derived&&registry.stamp().documentId===entry.id)activatePesNode(group.id,derived);
+   },empiricalBondParameters:request.empiricalBondParameters,spaceKeydownAtMs:request.spaceKeydownAtMs});
  }
- async function retainWorkspaceOptimization(request:RetainedOrdinaryOptimizationRequest){
+ async function retainWorkspaceOptimization(request:RetainedOrdinaryOptimizationRequest,retainTrajectory=true){
   const original=registry.document(request.source.id);
   const project=projectIdentityEpoch.current;
   const revision=request.source.revision,documentEpoch=original.epoch;
@@ -1262,19 +1387,18 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   const current=registry.document(original.id),controller=pes.getController();
   if(!controller||project!==projectIdentityEpoch.current||current.epoch!==documentEpoch||current.store.getSnapshot().revision!==revision)
    throw Error('优化轨迹所属项目或模型已变化，本次尚未启动。');
+  if(!controller.available)throw Error('当前运行环境未连接结构优化器。');
   const source:PesGeometry={documentId:original.id,revision,label:original.label,structure:structuredClone(request.source.draft.structure),
    originFrame:request.sourceRef??{documentId:original.id,documentEpoch,revision}};
+  const input=pesOrdinaryOptimizationInput({source,document:request.source,preferences:request.preferences,xtbOptions:request.xtbOptions,
+   empiricalBondParameters:request.empiricalBondParameters});
   const group=pes.createInitialGroup(source,request.source.sharedConstraints);
   const node=group.nodes[0],owner=pes.register(group.id,node);
   const snapshot=owner.store.getSnapshot();
   const document={...request.source,id:snapshot.id,revision:snapshot.revision};
   return runPesOrdinaryOptimization({controller,groupId:group.id,nodeId:node.id,
-   source:{...source,documentId:owner.id,revision:snapshot.revision},document,preferences:request.preferences,xtbOptions:request.xtbOptions,retainTrajectory:true,
+   source:{...source,documentId:owner.id,revision:snapshot.revision},document,preferences:request.preferences,xtbOptions:request.xtbOptions,input,retainTrajectory,
    onRunStarted:request.onRunStarted,empiricalBondParameters:request.empiricalBondParameters,spaceKeydownAtMs:request.spaceKeydownAtMs});
- }
- function changePesElectronicState(values:{charge:number;multiplicity:number}){
-  const {entry}=currentPesTarget();
-  if(!protectedPesDocument(entry)&&!(pesCanvas?.documentId===entry.id&&pesCanvas.observation))entry.store.setElectronicState(values.charge,values.multiplicity,true);
  }
  function changePesConstraints(constraints:SharedModelConstraints){
   const {entry,group,link}=currentPesTarget();
@@ -1317,8 +1441,12 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   return conformerFrameFreezeDisplay(task,frame,current,documents);
  }
  function retirePreparationRecord(record:{result:TrajectoryResult;abort:AbortController},reserved:readonly (TrajectoryResult|undefined)[]=[]){
+  const owner=advancedIntegration.current.controller,epoch=projectIdentityEpoch.current;
   const retained=[...reserved,...registry.getSnapshot().documents.flatMap(entry=>[entry.result,entry.legacyResult,entry.analysisBinding?.result])];
-  void Promise.resolve(retirePreparedConformerPublication(record,retained)).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));
+  void Promise.resolve(retirePreparedConformerPublication(record,retained)).catch(cause=>{
+   if(owner&&advancedIntegration.current.controller===owner&&epoch===projectIdentityEpoch.current&&!restoringProject.current)setError(cause instanceof Error?cause.message:String(cause));
+   else console.warn('旧构象结果资源释放失败。',cause);
+  });
  }
  function preparedConformerCollection(collection:ConformerResultCollection,task:AdvancedTaskRecord){
   collection=projectConformerPlaybackCollection(collection,task);
@@ -1336,7 +1464,11 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   record.ready=prepareConformerPublication(result,{signal:abort.signal}).then(()=>{}).catch(cause=>{if(conformerPrepared.current.get(key)===record){conformerPrepared.current.delete(key);retirePreparationRecord(record);}throw cause;});
   conformerPrepared.current.set(key,record);return record;
  }
- async function prepareConformerTask(task:AdvancedTaskRecord,onProgress:(completed:number,total:number)=>void){
+ async function prepareConformerTask(controller:AdvancedController,task:AdvancedTaskRecord,onProgress:(completed:number,total:number)=>void){
+  const projectEpoch=projectIdentityEpoch.current;
+  const currentOwner=()=>advancedIntegration.current.controller===controller&&projectIdentityEpoch.current===projectEpoch&&!restoringProject.current;
+  const assertOwner=()=>{if(!currentOwner())throw Error('构象项目已更换，未发布旧任务结果。');};
+  assertOwner();
   const collections=conformerCollectionsFor(task);
   const playable=collections.filter(collection=>collection.frames.length&&collection.playbackAvailable!==false);
   const total=playable.reduce((sum,collection)=>sum+collection.frames.length,0);
@@ -1345,13 +1477,14 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   for(const collection of playable){
    const prepared=preparedConformerCollection(collection,task);
    const view=existingPreparedTrajectoryView(prepared.result)??prepareTrajectoryView(prepared.result);
-   const publish=()=>onProgress(settled+view.snapshot().completed,total);
+   const publish=()=>{if(currentOwner())onProgress(settled+view.snapshot().completed,total);};
    const unsubscribe=view.subscribe(publish);
    try{publish();await prepared.ready;}
    finally{unsubscribe();view.release();}
+   assertOwner();
    settled+=collection.frames.length;
    onProgress(settled,total);
-   const current=advancedIntegration.current.controller?.getSnapshot().tasks.find(row=>row.id===task.id);
+   const current=controller.getSnapshot().tasks.find(row=>row.id===task.id);
    if(!current||!conformerCollectionMatchesCurrent(collection,conformerCollectionsFor(current)))throw Error('构象结果在准备期间已改变，未发布过期集合。');
   }
   // This callback is awaited by the task owner before a successor can claim
@@ -1366,7 +1499,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    const tasks=advancedController?.getSnapshot().tasks??[],task=tasks.find(task=>task.id===collection.identity.taskId);if(!task)return false;
    return conformerCollectionMatchesCurrent(collection,conformerCollectionsFor(task))&&(!collection.frames.length||conformerCollectionSourcesCurrent(collection,tasks));
   },
-  revision:(identity:import('../../modeling/workspace-contracts').WorkspaceTrajectoryIdentity)=>conformerCollectionRevision(advancedController?.getSnapshot().tasks.find(task=>task.id===identity.taskId)),
+  revision:(identity:import('../../modeling/workspace-contracts').WorkspaceTrajectoryIdentity)=>conformerCollectionRevision(advancedIntegration.current.controller?.getSnapshot().tasks.find(task=>task.id===identity.taskId)),
   open:(collection:ConformerResultCollection,frameId?:string,options?:{activate?:boolean})=>{const epoch=projectIdentityEpoch.current;void openConformerCollectionNow(collection,frameId,options).catch(cause=>{if(epoch===projectIdentityEpoch.current&&!(cause instanceof Error&&cause.name==='AbortError'))setError(cause instanceof Error?cause.message:String(cause));});},
  };}
  async function openConformerCollectionNow(collection:ConformerResultCollection,frameId?:string,options?:{activate?:boolean}){
@@ -1506,7 +1639,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    const entry=registry.getSnapshot().documents.find(entry=>entry.trajectory?.identity.collectionId===collectionId&&frames.every(frame=>frame.taskId===entry.trajectory!.identity.taskId));
    if(!entry||closingTransactions.current.has(entry.id))return false;
    const next=captureConformerFrameOrder(entry,collectionId,frames);if(!next)return false;
-   setConformerFrameOrders(previous=>JSON.stringify(previous[entry.id])===JSON.stringify(next)?previous:{...previous,[entry.id]:next});return true;
+   setConformerFrameOrders(previous=>sameConformerFrameOrder(previous[entry.id],next)?previous:{...previous,[entry.id]:next});return true;
   };
   // A child sorting effect can precede its parent's synchronous reader update.
   // Rebind once after that commit; removed frames still cannot pass membership.
@@ -1581,13 +1714,45 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   const previous=registry.document(id);
   if(previous&&(previous.inputDirty.gaussian||previous.inputDirty.orca))setNewInputTarget(id);else startNewInputTask(id);
  }
- function navigateModule(module:WorkspaceModule){
+ async function navigateModule(module:WorkspaceModule){
   taskWorkspace.leave();
+  if(module!=='advanced'||registry.getSnapshot().module!=='advanced')pesModuleSource.current=undefined;
   if(module==='input'&&borrowedBatchRef.current){activateDocument(borrowedBatchRef.current.documentId);registry.setModule('input');return;}
   if(module==='input'&&activeId&&(active?.trajectory||active&&protectedPesDocument(active)||state.module==='advanced'&&advancedObservationsRef.current[activeId]?.ref.taskId)){
    void captureCurrentAdvancedSource().then(source=>prepareAdvancedInput(source)).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));return;
   }
-  try{registry.setModule(module);setError('');}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
+  try{
+   if(module==='advanced'&&registry.getSnapshot().module==='analysis'){
+    const stamp=registry.stamp(),origin=mcpPresentationOrigin(),projectEpoch=projectIdentityEpoch.current;
+    const owner=registry.assertCurrent(stamp),sourceEpoch=owner.sourceEpoch;
+    const pp=advancedPorts.current.postprocess,file=pp.fileOwnerId?pp.captureFileDocuments()[pp.fileOwnerId]:undefined;
+    if(file||owner.result||owner.legacyResult||owner.analysisBinding||pp.documents[owner.id]||currentSourceCanvas(owner)?.result){
+     let frame:PesGeometry|undefined,constraints:SharedModelConstraints|undefined,issue:string|undefined;
+     try{
+      if(file){
+       const source=pesFileSnapshotSources([file],id=>advancedPorts.current.postprocess.captureFileDocuments()[id],
+        value=>fileFrameOwner(value).observation)[0];
+       if(!source)throw Error('此后处理作业没有可用的完整结构。');
+       const captured=await source.read(new AbortController().signal);
+       frame={...captured,structure:scientificFrameForModel(captured.structure)};
+      }else{
+       const displayed=await readCurrentWorkspaceSource(true,true);
+       frame={documentId:owner.id,revision:displayed.ref.revision,label:owner.label,
+        structure:scientificFrameForCanvasModel(displayed.structure,currentSourceCanvas(owner)),originFrame:displayed.ref};
+       constraints=displayed.constraints;
+      }
+     }catch(cause){issue=cause instanceof Error?cause.message:String(cause);}
+     if(!sameMcpPresentation(origin,mcpPresentationOrigin()))return;
+     registry.assertCurrent(stamp);
+     if(owner.sourceEpoch!==sourceEpoch)return;
+     registry.setModule(module);
+     pesModuleSource.current={stamp:registry.stamp(),projectEpoch,sourceEpoch,frame,constraints,issue};
+     setError('');
+     return;
+    }
+   }
+   registry.setModule(module);setError('');
+  }catch(cause){setError(cause instanceof Error?cause.message:String(cause));}
  }
  async function readCurrentWorkspaceSource(preferObserved=true,editingContext=false):Promise<ElectronicStateSourceContext>{
   const stamp=registry.stamp(),entry=registry.assertCurrent(stamp),snapshot=entry.store.getSnapshot();
@@ -2185,12 +2350,17 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   let alive=true;
   const unsubscribe=desktop.onApplicationClosePreparation(request=>{
    void (async()=>{
+    if(request.scope==='window')projectWindowClosePending.current=true;
     try {
-     await Promise.all([...ownerAdapters.current.values()].map(adapter=>adapter.flush()));
+     const waiting=await desktop.completeApplicationClosePreparation!({requestId:request.requestId,status:'waiting'});
+     if(!alive||!waiting.accepted)return;
      const meaningful=registry.getSnapshot().documents.some(entry=>entry.store.getSnapshot().draft.dirty||entry.inputDirty.gaussian||entry.inputDirty.orca||Boolean(entry.conformerGroup)||Boolean(entry.pesGroup)||Boolean(entry.legacyResult))||Object.keys(advancedPorts.current.postprocess.documents).length>0||Object.keys(advancedPorts.current.postprocess.fileDocuments).length>0||projectInfo.current.dirty;
-     await desktop.completeApplicationClosePreparation!({requestId:request.requestId,status:'waiting'});
      const twoDNotice=twoDRuntime.current?.hasContent()?'关闭窗口会清除本次二维会话草稿和编辑历史；保存.es只保存正式项目，不保存此临时画板。已生成的三维和正式来源按项目保存。':undefined;
-     if((meaningful||projectRunning.current||twoDNotice)&&!await projectClose.current(projectRunning.current,twoDNotice)){await desktop.completeApplicationClosePreparation!({requestId:request.requestId,status:'cancelled'});return;}
+     const running=projectRunning.current();
+     const stopOwnedWork=request.scope==='window'&&running?prepareOwnedProjectStop.current():undefined;
+     if((meaningful||running||twoDNotice)&&!await projectClose.current(running,twoDNotice,stopOwnedWork)){await desktop.completeApplicationClosePreparation!({requestId:request.requestId,status:'cancelled'});return;}
+     // The owner may accept new work after a close choice became visible.
+     if(request.scope==='window'&&projectRunning.current())throw Error('本项目仍有活动任务或已有新的计算，请重新确认关闭。');
      await twoDRuntime.current?.stop();
      for(const entry of registry.getSnapshot().documents){entry.store.markApplied();for(const engine of ['gaussian','orca'] as const)if(entry.drafts[engine]!==undefined)registry.setDraft(entry.id,engine,entry.drafts[engine]!,false);}
      await Promise.all([...ownerAdapters.current.values()].map(adapter=>adapter.flush()));
@@ -2201,6 +2371,8 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      const error=cause instanceof Error?cause.message:String(cause);
      setError(error);
      await desktop.completeApplicationClosePreparation!({requestId:request.requestId,status:'failed',error}).catch(()=>{});
+    } finally {
+     if(request.scope==='window')projectWindowClosePending.current=false;
     }
    })();
   });
@@ -2238,19 +2410,34 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    setError(prepared.warnings.join('；'));
   }finally{if(libraryLoadController.current===controller)libraryLoadController.current=null;if(epoch===importEpoch.current){setReading(false);importController.current=null;}}
  }
- async function openTwoDFiles(files:ScientificSourceFile[],signal?:AbortSignal):Promise<boolean>{
+ async function openTwoDFiles(files:ScientificSourceFile[],signal?:AbortSignal,agent?:WorkspaceImportAgent):Promise<boolean>{
   try{
    signal?.throwIfAborted();
    if(files.length!==1)throw Error('请每次导入一个二维文件或一张图片；同一图纸内的多个片段会共同导入。');
+   const readScope=()=>({projectEpoch:projectIdentityEpoch.current,serial:twoDLoadEpoch.current,draft:twoDFileRef.current,visible:twoDVisibleRef.current});
+   const canPresent=()=>!agent||agent.show&&(!agent.presentation||sameMcpPresentation(agent.presentation,mcpPresentationOrigin()));
+   const before=readScope();guardTwoDImport(before,before,canPresent(),signal);
    if(twoDRuntime.current?.isBusy())throw Error('二维操作仍在运行，请先停止或等待结束。');
-   const serial=++twoDLoadEpoch.current;
+   const start={...before,serial:++twoDLoadEpoch.current};
+   const guard=()=>guardTwoDImport(start,readScope(),canPresent(),signal);
    const loaded=await readTwoDImportFile(files[0],signal);
    if(loaded.source){const [{parseTwoDDraft},{twoDIndigoConverter,assertTwoDEditorKet}]=await Promise.all([import('../../modeling/two-d'),import('./two-d-editor-service')]);const draft=await parseTwoDDraft(loaded.source.data,{sourceId:loaded.source.id,filename:loaded.name,indigo:twoDIndigoConverter});assertTwoDEditorKet(draft.ket);}
-   signal?.throwIfAborted();if(serial!==twoDLoadEpoch.current)return false;
-   if(twoDRuntime.current?.hasContent()){setTwoDVisible(true);if(!await twoDRuntime.current.confirmReplacement())return false;}
-   signal?.throwIfAborted();if(serial!==twoDLoadEpoch.current||twoDRuntime.current?.isBusy())throw Error('二维载入已取消或当前操作尚未结束，旧草稿已保留。');
-   twoDOrigin.current='imported';twoDFileRef.current=loaded;setTwoDFile(loaded);setTwoDVisible(true);setError('');return true;
-  }catch(cause){const message=cause instanceof Error?cause.message:String(cause);if(twoDVisibleRef.current&&twoDRuntime.current)twoDRuntime.current.reportError(message,{kind:'import',sourceName:files.map(file=>file.name).join('、')||undefined});else setError(message);return false;}
+   guard();
+   if(twoDRuntime.current?.hasContent()){
+    const wasVisible=twoDVisibleRef.current;
+    if(!wasVisible)setTwoDVisible(true);
+    const accepted=await twoDRuntime.current.confirmReplacement(signal);
+    if(!accepted){
+     if(agent&&!wasVisible&&start.serial===twoDLoadEpoch.current&&start.projectEpoch===projectIdentityEpoch.current)setTwoDVisible(false);
+     signal?.throwIfAborted();return false;
+    }
+   }
+   guard();if(twoDRuntime.current?.isBusy())throw Error('当前二维操作尚未结束，旧草稿已保留。');
+   const show=canPresent();
+   twoDOrigin.current='imported';twoDFileRef.current=loaded;setTwoDFile(loaded);
+   if(show){setTwoDVisible(true);setError('');}
+   agent?.created(loaded.id,show);return true;
+  }catch(cause){if(agent)throw cause;const message=cause instanceof Error?cause.message:String(cause);if(twoDVisibleRef.current&&twoDRuntime.current)twoDRuntime.current.reportError(message,{kind:'import',sourceName:files.map(file=>file.name).join('、')||undefined});else setError(message);return false;}
  }
  async function openAssistantImage(file:File,signal:AbortSignal){
   const projectEpoch=projectIdentityEpoch.current;
@@ -2300,27 +2487,58 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    if(cleanup.length)throw new AggregateError([cause,...cleanup],'二维提交失败，部分新建资源仍待收尾。');throw cause;
   }finally{twoDCommitting.current=false;}
  }
+ function chooseImportedGeometry(name:string,jobs:readonly TrajectoryResult[],signal:AbortSignal){
+  return new Promise<{job:TrajectoryResult;index:number}|null>(resolve=>{
+   const finish=(value:{job:TrajectoryResult;index:number}|null)=>{
+    signal.removeEventListener('abort',cancel);setImportGeometryChoice(null);resolve(value);
+   };
+   const cancel=()=>finish(null);
+   if(signal.aborted){cancel();return;}
+   setImportGeometryChoice({name,jobs,choose:(job,index)=>finish({job,index}),cancel});
+   signal.addEventListener('abort',cancel,{once:true});
+  });
+ }
  const importFiles=useCallback(async(files:ScientificSourceFile[],resultChoice:'ask'|'analysis'|'structure'|'auto'='ask',
-   agent?:{show:boolean;signal:AbortSignal;created(id:string):void;issues(messages:string[]):void}):Promise<void>=>{
+   agent?:WorkspaceImportAgent,origin:'open'|'drop'='open'):Promise<void>=>{
+  function verifyAgentScope(){
+   agent?.signal.throwIfAborted();
+   if(agent?.expectedProjectEpoch!==undefined&&agent.expectedProjectEpoch!==String(projectIdentityEpoch.current))throw Error('导入所属项目已变化。');
+  }
+  verifyAgentScope();
   if(agent&&(importController.current||advancedPorts.current.postprocess.isBusy()))throw Error('当前导入尚在进行。');
   if(importResourceClosures.current.failedCount){const message='结构来源的读取资源仍待关闭，请先重试取消读取。';setError(message);if(agent)throw Error(message);return;}
-  try{const candidates=await Promise.allSettled(files.map(isTwoDImportFile));if(candidates.some(value=>value.status==='fulfilled'&&value.value)){if(files.length!==1)throw Error('二维图纸或图片请单独导入，其他文件尚未处理。');const opened=await openTwoDFiles(files);if(agent){if(!opened)throw Error('二维导入取消或失败。');if(twoDFileRef.current)agent.created(twoDFileRef.current.id);if(!agent.show)setTwoDVisible(false);}return;}}catch(cause){setError(cause instanceof Error?cause.message:String(cause));if(agent)throw cause;return;}
-  if(resultChoice==='analysis'||resultChoice==='ask'&&registry.getSnapshot().module==='analysis'){await postprocess.read(files,agent?null:postprocess.fileOwnerId??postprocess.ownerId,undefined,'smart',agent?{onCreated:agent.created,canNavigate:()=>agent.show,throwOnFailure:true,signal:agent.signal}:undefined);return;}
+  try{const candidates=await Promise.allSettled(files.map(isTwoDImportFile));verifyAgentScope();if(candidates.some(value=>value.status==='fulfilled'&&value.value)){if(files.length!==1)throw Error('二维图纸或图片请单独导入，其他文件尚未处理。');const opened=await openTwoDFiles(files,agent?.signal,agent);if(agent&&!opened)throw toolError('TWO_D_IMPORT_CANCELLED','二维导入已取消，原草稿已保留。');return;}}catch(cause){if(agent)throw cause;setError(cause instanceof Error?cause.message:String(cause));return;}
+  if(resultChoice==='analysis'){await postprocess.read(files,null,undefined,'smart',agent?{onCreated:agent.created,canNavigate:()=>agent.show&&(!agent.presentation||sameMcpPresentation(agent.presentation,mcpPresentationOrigin())),throwOnFailure:true,signal:agent.signal}:undefined);return;}
   if(resultChoice==='ask'){
-   try{const descriptions:string[]=[];for(const file of files){const source=resultFile(file);try{const identity=await identifyPostprocessSource(source);if(identity.kind!=='unsupported')descriptions.push(previewImportDescription(identity.kind,new TextDecoder().decode(await source.readRange(0,Math.min(source.size,1024*1024)))));}catch{/* The selected operation reports this file's read failure without hiding independent files from the choice. */}finally{await source.close?.();}}
-    if(descriptions.length){resultImportChoice.current?.('cancel');setResultImportDescriptions(descriptions);setResultImportRequest(files);const choice=await new Promise<'analysis'|'structure'|'cancel'>(resolve=>{resultImportChoice.current=resolve;});if(choice!=='cancel')await importFiles(files,choice);return;}
+   try{
+    let hasXyz=files.some(file=>/\.(?:ext)?xyz$/i.test(file.name));
+    const descriptions:string[]=[];
+    if(!hasXyz)for(const file of files){
+     const source=resultFile(file);
+     try{
+      const identity=await identifyPostprocessSource(source);
+      if(identity.kind==='xyz'){hasXyz=true;break;}
+      if(identity.kind!=='unsupported')descriptions.push(previewImportDescription(identity.kind,new TextDecoder().decode(await source.readRange(0,Math.min(source.size,1024*1024)))));
+     }catch{/* The selected operation reports this file's read failure without hiding independent files from the choice. */}
+     finally{await source.close?.();}
+    }
+    if(!hasXyz&&registry.getSnapshot().module==='analysis'){
+     const pp=advancedPorts.current.postprocess;
+     await pp.read(files,pp.fileOwnerId??pp.ownerId);return;
+    }
+    if(!hasXyz&&descriptions.length){resultImportChoice.current?.('cancel');setResultImportDescriptions(descriptions);setResultImportRequest(files);const choice=await new Promise<'analysis'|'structure'|'cancel'>(resolve=>{resultImportChoice.current=resolve;});if(choice!=='cancel')await importFiles(files,choice);return;}
    }catch(cause){setError(cause instanceof Error?cause.message:String(cause));return;}
   }
   importController.current?.abort();const controller=new AbortController();importController.current=controller;
-  const epoch=++importEpoch.current,initial=registry.getSnapshot(),lease=initial.activeViewId?registry.stamp():null;
+  const epoch=++importEpoch.current,presentation=agent?.presentation??mcpPresentationOrigin(),fileImportProjectEpoch=projectIdentityEpoch.current;
+  const canPresent=()=>!controller.signal.aborted&&(agent?.show??true)&&sameMcpPresentation(presentation,mcpPresentationOrigin());
   const readScope={epoch,settled:false};importReadScope.current=readScope;
   const cancelAgentImport=()=>controller.abort();
   agent?.signal.addEventListener('abort',cancelAgentImport,{once:true});
   if(agent?.signal.aborted)controller.abort();
   setReading(true);setReadProgress(null);setError('');
-  const guard=()=>{if(epoch!==importEpoch.current||controller.signal.aborted)throw new Error('模型导入已取消。');if(lease)registry.assertIdentityCurrent(lease);else if(registry.getSnapshot().activationEpoch!==initial.activationEpoch)throw new Error('活动上下文已变化，请重新导入。');};
+  const guard=()=>{if(epoch!==importEpoch.current||controller.signal.aborted||fileImportProjectEpoch!==projectIdentityEpoch.current)throw new Error('模型导入所属项目已变化或已取消。');};
   let parsed:WorkspaceImportItem[]=[],committed=false;
-  const fileOnlyImports:ScientificSourceFile[]=[],fileImportProjectEpoch=projectIdentityEpoch.current;
    const sourceIssues:string[]=[];
    const sourceIssue=(file:ScientificSourceFile,cause:unknown)=>{guard();sourceIssues.push(`${file.name}：${cause instanceof Error?cause.message:String(cause)}`);};
   try{
@@ -2339,7 +2557,21 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
       let source;
       if(identity.kind==='gaussian-output'||identity.kind==='orca-output'){
        const scientific=await readPostprocessFileOutput(input,{signal:controller.signal});
-       if(isScientificFileSource(scientific)){await scientific.dispose();guard();fileOnlyImports.push(file);continue;}
+       if(isScientificFileSource(scientific)){
+        try{
+         guard();
+         const jobs=scientific.jobs.filter((job):job is TrajectoryResult=>'frames' in job&&job.frames.length>0);
+         if(!jobs.length)throw Error('这个输出文件没有可提取的完整几何。');
+         const last=jobs.at(-1)!;
+         const chosen=jobs.length>1&&!agent&&canPresent()?await chooseImportedGeometry(file.name,jobs,controller.signal):{job:last,index:last.frames.length-1};
+         guard();
+         if(!chosen)continue;
+         const {job,index}=chosen,raw=await job.getFrame(index,controller.signal);
+         const structure={...raw,notes:[...raw.notes,`来源 ${file.name} · ${job.label} · 第 ${index+1} 帧（${job.status}）`]};
+         parsed.push(...modelFragmentsFromStructures([structure]).map(fragment=>({kind:'model' as const,fragment})));
+        }finally{await scientific.dispose();}
+        continue;
+       }
        source=scientific;
       }
       else if(identity.kind==='xyz'||identity.kind==='hess')source=await readPostprocessAuxiliary(input,{signal:controller.signal});
@@ -2349,7 +2581,10 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
       }catch(cause){sourceIssue(file,cause);}finally{try{await importResourceClosures.current.close(input.id);}catch(cause){setImportCloseFailed(true);throw cause;}}
     }
      if(ordinary.length)parsed.push(...await importWorkspaceItems(ordinary,{signal:controller.signal,onSourceError:sourceIssue}));
-    }else parsed=await importWorkspaceItems(files,{signal:controller.signal,onSourceError:sourceIssue,onProgress:(done,total)=>{if(epoch===importEpoch.current)setReadProgress(total?Math.round(100*done/total):null);}});guard();
+    }else parsed=await importWorkspaceItems(files,{signal:controller.signal,onSourceError:sourceIssue,
+     onProgress:(done,total)=>{if(epoch===importEpoch.current)setReadProgress(total?Math.round(100*done/total):null);},
+     ...(origin==='drop'?{adoptXyz:advancedPorts.current.postprocess.captureXyzDrop(controller.signal,canPresent)}:{}),
+    });guard();
    const prepared=await prepareWorkspaceImportModels(parsed,{port:createChemistryPort(),signal:controller.signal,guard});guard();parsed=prepared.items;
    const resultWorkingStructures=new Map<import('../../results/contracts').TrajectoryResult,Structure>();
    for(const item of parsed)if(item.kind==='result'){
@@ -2357,24 +2592,28 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     const working=editableImportedStructureElectronicState(periodicWorkingStructure(source.structure));
     resultWorkingStructures.set(item.result,scientificFrameForModel(working));
    }
-   const importedModelIds:string[]=[];
+   const importedModelIds:string[]=[],xyzResultOwners=new Map<ScientificSourceFile,string[]>(),present=canPresent();
+   if(present&&parsed.some(item=>item.kind!=='diagnostic'))advancedPorts.current.postprocess.selectFile(null);
    for(const item of parsed){
     if(item.kind==='model'){
-     const entry=registry.addDocument(item.fragment.structure,undefined,item.fragment,undefined,undefined,agent?.show??true);
+     if(agent?.sourceNote)item.fragment.structure.notes.push(agent.sourceNote);
+     const entry=registry.addDocument(item.fragment.structure,undefined,item.fragment,undefined,undefined,present);
      importedModelIds.push(entry.id);agent?.created(entry.id);
     }else if(item.kind==='result'){
-     const entry=registry.addEditableResultDocument(item.result,resultWorkingStructures.get(item.result)!,agent?.show??true);
+     const entry=registry.addEditableResultDocument(item.result,resultWorkingStructures.get(item.result)!,present);
+     if(item.xyzSource){
+      const owners=xyzResultOwners.get(item.xyzSource);
+      if(owners)owners.push(entry.id);else xyzResultOwners.set(item.xyzSource,[entry.id]);
+     }
      installAnalysisGuard(entry);agent?.created(entry.id);
     }else agent?.created(item.diagnostic.id);
    }
-   if(importedModelIds.length)await registerImportedModelSources(importedModelIds,files);
+   if(present&&parsed.filter(item=>item.kind!=='diagnostic').at(-1)?.kind==='result')registry.setModule('analysis');
+   committed=true;
+   if(importedModelIds.length)await registerImportedModelSources(importedModelIds,agent?.sourceManifest?[...files,agent.sourceManifest]:files);
+   for(const [file,owners] of xyzResultOwners)await registerImportedModelSources(owners,agent?.sourceManifest?[file,agent.sourceManifest]:[file]);
    addSourceDiagnostics(parsed.flatMap(item=>item.kind==='diagnostic'?[item.diagnostic]:[]));
-    committed=true;if((agent?.show??true)&&parsed.filter(item=>item.kind!=='diagnostic').at(-1)?.kind==='result')registry.setModule('analysis');
-    for(const file of fileOnlyImports){
-     try{await postprocess.read([file],null,undefined,'smart',{onCreated:agent?.created,canNavigate:()=>agent?.show??true,guard:()=>{if(epoch!==importEpoch.current||controller.signal.aborted||projectIdentityEpoch.current!==fileImportProjectEpoch)throw Error('来源导入上下文已变化，未接入旧文件。');},signal:controller.signal,throwOnFailure:true});}
-     catch(cause){if(epoch!==importEpoch.current||controller.signal.aborted||projectIdentityEpoch.current!==fileImportProjectEpoch)throw cause;sourceIssues.push(`${file.name}：${cause instanceof Error?cause.message:String(cause)}`);}
-    }
-    const issues=[...sourceIssues,...prepared.warnings];agent?.issues(issues);setError(issues.join('；'));
+    const issues=[...sourceIssues,...prepared.warnings];agent?.issues(issues);if(parsed.length||issues.length)setError(issues.join('；'));
   }catch(cause){if(epoch===importEpoch.current&&(!controller.signal.aborted||importResourceClosures.current.failedCount))setError(cause instanceof Error?cause.message:String(cause));if(agent)throw cause;}
   finally{agent?.signal.removeEventListener('abort',cancelAgentImport);if(!committed)await Promise.all(parsed.flatMap(item=>item.kind==='result'?[Promise.resolve(item.result.dispose())]:item.kind==='diagnostic'?[Promise.resolve(item.diagnostic.dispose())]:[]));readScope.settled=true;if(epoch===importEpoch.current){setReadProgress(null);if(!importResourceClosures.current.pendingCount){setReading(false);setImportCloseFailed(false);importController.current=null;}else{setReading(true);setImportCloseFailed(true);}}}
  },[registry,desktop,postprocess.read,addSourceDiagnostics]);
@@ -2422,18 +2661,18 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   const {source:document,...settings}=request;
   const frame=await readCurrentWorkspaceSource(true,true);
   registry.assertCurrent(owner);
-  const geometry=scientificFrameForModel(frame.structure),selected=document.draft.structure;
-  if(workspaceSourceGeometryKey(geometry)!==workspaceSourceGeometryKey(selected)||
+  const geometry=frame.structure,selected=document.draft.structure;
+  if(workspaceSourceGeometryKey({...geometry,bonds:undefined})!==workspaceSourceGeometryKey({...selected,bonds:undefined})||
    frame.structure.charge!==selected.charge||frame.structure.multiplicity!==selected.multiplicity)
    throw Error('当前画面已切换，未启动旧帧的优化。');
-  return retainWorkspaceOptimization({...settings,source:document,sourceRef:frame.ref,derivedFrame:true,presentation:'follow',
+  return retainWorkspaceOptimization({...settings,source:{...document,draft:{...document.draft,structure:scientificFrameForCanvasModel(geometry,currentSourceCanvas(registry.document(id)))}},sourceRef:frame.ref,derivedFrame:true,presentation:'follow',
    onRunStarted:(identity,actualRequest)=>{
     if(settings.onRunStarted){settings.onRunStarted(identity,actualRequest);return;}
     if(registry.stamp().documentId!==id)return;
     const group=pes.getController()?.getSnapshot().groups.find(group=>group.id===identity.groupId);
     const node=group?.nodes.find(node=>node.id===group.runs[identity.runId]?.nodeId);
     if(node)activatePesNode(identity.groupId,node);
-   }});
+   }},false);
  }
  function withObservedOptimization(id:string,canvas:AnalysisCanvas|undefined):AnalysisCanvas|undefined{
   if(!canvas?.result||!canvas.readSubmittedScientificFrame||canvas.displayOnlySourcePreview||canvas.onOptimize)return canvas;
@@ -2526,9 +2765,9 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     onLeftToolSurfaceChange:()=>{},
     onAdvancedModelingBack:()=>setAdvancedModelingRoute(route=>route?{...route,task:null}:null),
     onAdvancedModelingRouteChange:setAdvancedModelingRoute,
-    onDeriveStructure:async(candidate,source)=>{const stamp=registry.stamp();if(stamp.documentId!==entry.id)throw Error('当前结构已切换，未创建派生文档。');const route=pagePresentations.current.get(entry.id)?.advancedModelingRoute,frameKey=scientificFrameKey(entry.id),sourceEpoch=entry.sourceEpoch;
+    onDeriveStructure:async(candidate,source,signal)=>{const stamp=registry.stamp();if(stamp.documentId!==entry.id)throw Error('当前结构已切换，未创建派生文档。');const route=pagePresentations.current.get(entry.id)?.advancedModelingRoute,frameKey=scientificFrameKey(entry.id),sourceEpoch=entry.sourceEpoch;
      if(protectedConformerSource(entry.id)){if(sourceCopyBusy.current)throw Error('请先完成当前来源选择。');sourceCopyBusy.current=true;try{if(!await confirmConformerCopy(stamp))return;registry.assertCurrent(stamp);if(registry.document(entry.id).sourceEpoch!==sourceEpoch||scientificFrameKey(entry.id)!==frameKey)throw Error('来源帧已变化，未应用过期变换。');}finally{sourceCopyBusy.current=false;}}
-     const child=registry.deriveDocument(stamp,candidate,undefined,source);if(route)derivedModelingRoutes.current.set(child.id,{category:route.category,task:null});setMainDocumentId(child.id);setError('');},
+     signal?.throwIfAborted();const child=registry.deriveDocument(stamp,candidate,undefined,source);if(route)derivedModelingRoutes.current.set(child.id,{category:route.category,task:null});setMainDocumentId(child.id);setError('');return child.id;},
     onWorkspaceHistory:kind=>{if(viewportControllers.current.get(entry.id)?.isBusy()&&!entry.store.isRuntimeEditingAllowed?.())throw Error('当前文档仍在计算或保存，请结束后再撤销。');if(registry.getSnapshot().module==='input'&&inputControllers.current.get(entry.id)?.history?.(kind))return true;return registry[kind](entry.id);},
     ...presentationFor(entry.id),
     onRequestSourcePick:request=>requestTaskSource(entry.id,request),onImportSources:files=>importTaskSources(entry.id,files),
@@ -2609,10 +2848,11 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   },onReturnToModel:()=>{activateDocument(entry.id);registry.setModule('modeling');},onCipLabelsUsed:cipUsageFor(entry.id,entry.epoch),twoDActive:twoDVisible,active:!fileCurrent&&entry.id===activeId&&!closingPending&&!closeConfirmIds.includes(entry.id)&&!ownerHidden&&!taskWorkspace.opened&&(state.module==='modeling'||state.module==='input'||analysisLayout||advancedLayout||advancedModelingLayout),inputActive:entry.id===inputOwnerId&&state.module==='input'&&!closingPending&&!closeConfirmIds.includes(entry.id)&&!ownerHidden&&!taskWorkspace.opened,inputTaskId:entry.id===inputOwnerId?inputTask?.id:undefined,module:state.views.find(view=>view.documentId===entry.id)?.module??state.module,sources,sharedLayout,toolHost,toolbarHost,inputHost:inputHosts[entry.id]??null,viewportDockTarget:dockTarget,
    batchInputSession:borrowedBatch?.documentId===entry.id?borrowedBatch.session:undefined,onFinishBatchInput:id=>{void finishBatchInput(id).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));},initialCameraView:inheritedViews.current.get(entry.id)?.camera,initialViewTransform:inheritedViews.current.get(entry.id)?.transform,
    workspaceCanUndo:(state.module==='input'&&Boolean(inputControllers.current.get(entry.id)?.canUndo?.()))||registry.canUndo(entry.id),workspaceCanRedo:(state.module==='input'&&Boolean(inputControllers.current.get(entry.id)?.canRedo?.()))||registry.canRedo(entry.id),
-   displaySettings,onDisplaySettingsChange:changeDisplaySettings,onOpenSettings:openDisplaySettings,sharedShowAxes,onSharedShowAxesChange:setSharedShowAxes,toolIntent,onToolIntentChange:setToolIntent,viewportActive,presentationActive:entry.id===displayedDocumentId,legendVisible:entry.id===displayedDocumentId,layoutActions,legendExpanded,onLegendExpandedChange:setLegendExpanded,
+   displaySettings,onDisplaySettingsChange:changeDisplaySettings,onOpenSettings:openDisplaySettings,sharedShowAxes,onSharedShowAxesChange:setSharedShowAxes,toolIntent,onToolIntentChange:setToolIntent,viewportActive,detachedViewportActive:Boolean(detached[entry.id])&&!closingPending&&!closeConfirmIds.includes(entry.id),presentationActive:entry.id===displayedDocumentId,legendVisible:entry.id===displayedDocumentId,layoutActions,legendExpanded,onLegendExpandedChange:setLegendExpanded,
    ...pagePresentations.current.get(entry.id),pesObservation,onRetainedOptimization:retainWorkspaceOptimization,onSamplingSphereRadiusChange:setSamplingSphereRadiusChange,freezeEditingAllowed:workspaceFreezeEditingAllowed(entry)&&!protectedConformerSource(entry.id)&&!pesObservation,
    onAdvancedModelingRouteChange:setAdvancedModelingRoute,onAdvancedModelingBack:()=>setAdvancedModelingRoute(route=>route?{...route,task:null}:null),
    structureAnalysisActive:currentStructureAnalysisActive({documentId:entry.id,activeDocumentId:activeId,displayedDocumentId,module:state.module,selected:structureAnalysisSelected[entry.id]===true,hasResult:Boolean(entry.result||entry.legacyResult),hasPostprocessDocument:Boolean(postprocess.documents[entry.id]),blocked:taskWorkspace.opened||ownerHidden||closingPending||closeConfirmIds.includes(entry.id)||Boolean(detached[entry.id])}),
+   structureAnalysisRequestedPage:structureAnalysisRequestedPage?.documentId===entry.id&&structureAnalysisRequestedPage.projectEpoch===projectIdentityEpoch.current?structureAnalysisRequestedPage:undefined,
    linkedAtomActions:linkedControls.actions,linkedAtomsActive:linkedControls.linked?.documentIds.includes(entry.id),onAtomNumberPick:linkedControls.swapping&&linkedControls.linked?.documentIds.includes(entry.id)?atomId=>linkedControls.pickAtom(entry.id,atomId):undefined,
    workspaceDocumentPickMode:sourcePick?'source':linkedControls.selecting?'link':undefined,workspaceDocumentPickSelected:linkedControls.selected.includes(entry.id),workspaceInputRoles:state.module==='input'&&inputTask?(sourceRoles[inputOwnerId??'']??[]).filter(role=>role.documentId===entry.id).map(role=>({taskId:inputTask.id,role:role.label.includes('反应物')?'reactant':role.label.includes('产物')?'product':'tsGuess',label:role.label})):[]};
  }
@@ -2719,33 +2959,42 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  }));
  const advancedResultsVisible=Boolean(advancedLayout&&advancedSection&&(pesLayout?pesResultsAvailable&&!pesCanvas?.canvas.ordinaryOptimization:
   xtbAnalysisLayout?xtbAnalysisOwnerId:advancedController?.getSnapshot().tasks.some(task=>['sampling','conformer-search','docking'].includes(task.spec.kind))));
- const analysisResultsVisible=Boolean(analysisLayout&&(fileCurrent||analysisCurrent||currentStructureSelected||active?.legacyResult));
- const rightPaneVisible=modelToolsDocked||advancedResultsVisible||analysisResultsVisible;
+ const analysisToolsVisible=Boolean(analysisLayout&&(fileCurrent||analysisCurrent||currentStructureEntry||active?.legacyResult));
+ const rightPaneVisible=modelToolsDocked||advancedResultsVisible||analysisToolsVisible;
  const extractCurrentAnalysis=()=>{const structure=sidebarStructure;return structure&&sidebarFrameReady?structuredClone(structure):null;};
  const uiVersion=useSyncExternalStore(projectUi.subscribe,projectUi.getVersion,projectUi.getVersion);
  const analysisVersion=useSyncExternalStore(subscribeAnalysisProjectState,getAnalysisProjectRevision,getAnalysisProjectRevision);
  const pendingAdvancedProject=useRef<(()=>Promise<AdvancedProjectSnapshot|undefined>)|null>(null);
- const pendingAdvancedRestore=useRef<{read:()=>Promise<AdvancedProjectSnapshot|undefined>;promise:Promise<void>}|null>(null);
+ const pendingAdvancedRestore=useRef<{read:()=>Promise<AdvancedProjectSnapshot|undefined>;controller:AdvancedController;epoch:number;promise:Promise<void>}|null>(null);
  const [advancedRestoreRevision,setAdvancedRestoreRevision]=useState(0);
  const pendingAdvancedProjectChanged=useRef(false);
  const unavailableAdvancedTasks=useRef<()=>readonly string[]>(()=>[]);
  const activeAdvancedTaskUnavailable=advancedSection==='conformer'&&Boolean(activeConformerGroup&&unavailableAdvancedTasks.current().includes(activeConformerGroup.taskId));
  async function ensurePendingAdvancedProject(){
   const read=pendingAdvancedProject.current;if(!read)return;
-  if(!advancedController)throw Error('构象任务owner尚未就绪，请稍后重试。');
-  if(pendingAdvancedRestore.current?.read===read)return pendingAdvancedRestore.current.promise;
-  const projectEpoch=projectIdentityEpoch.current,oldProjection=advancedHydrationProjection.current.project(readAdvanced());
-  const promise=(async()=>{const snapshot=await read();if(pendingAdvancedProject.current!==read||projectIdentityEpoch.current!==projectEpoch)throw Error('项目来源已更换，未恢复旧构象内容。');if(snapshot)advancedController.restoreProjectSnapshot(snapshot,{adoptDecodedScience:true});if(unavailableAdvancedTasks.current().length)setError(`${unavailableAdvancedTasks.current().length} 个高级任务的结构资产无法读取，原引用已保留；其他完整任务已恢复。`);advancedHydrationProjection.current.record(readAdvanced(),oldProjection);pendingAdvancedProject.current=null;setAdvancedRestoreRevision(value=>value+1);})();
-  pendingAdvancedRestore.current={read,promise};
+  const controller=advancedIntegration.current.controller,epoch=projectIdentityEpoch.current;
+  if(!controller)throw Error('构象任务owner尚未就绪，请稍后重试。');
+  const existing=pendingAdvancedRestore.current;
+  if(existing?.read===read&&existing.controller===controller&&existing.epoch===epoch)return existing.promise;
+  const oldProjection=advancedHydrationProjection.current.project(advancedProjection(controller));
+  const promise=(async()=>{
+   const snapshot=await read();
+   if(pendingAdvancedProject.current!==read||projectIdentityEpoch.current!==epoch||advancedIntegration.current.controller!==controller||restoringProject.current)throw Error('项目来源已更换，未恢复旧构象内容。');
+   if(snapshot)controller.restoreProjectSnapshot(snapshot,{adoptDecodedScience:true});
+   const unavailable=unavailableAdvancedTasks.current().length;
+   if(unavailable)setError(`${unavailable} 个高级任务的结构资产无法读取，原引用已保留；其他完整任务已恢复。`);
+   advancedHydrationProjection.current.record(advancedProjection(controller),oldProjection);
+   pendingAdvancedProject.current=null;setAdvancedRestoreRevision(value=>value+1);
+  })();
+  pendingAdvancedRestore.current={read,controller,epoch,promise};
   try{await promise;}finally{if(pendingAdvancedRestore.current?.promise===promise)pendingAdvancedRestore.current=null;}
  }
  const pendingProjectDetaches=useRef<Record<string,{x:number;y:number;width:number;height:number}>>({});
  const restoringProjectDetaches=useRef(new Set<string>());
  const [projectDetachRevision,setProjectDetachRevision]=useState(0);
  const restoringProject=useRef(false);
- const [restoringDocumentViews,setRestoringDocumentViews]=useState(false);
  const [detachedProjectSaveEpoch,setDetachedProjectSaveEpoch]=useState(0);
- const projectRevision=JSON.stringify([state.documents.map(entry=>[entry.id,entry.label,entry.labelOrigin,entry.store.getSnapshot().revision,entry.drafts,entry.retiredInputDrafts,entry.inputDraftCopyIssues,entry.trajectory?.currentFrameId]),state.module,borrowedBatch?.session.id,borrowedBatch?.input.taskId,order,conformerGroups,displaySettings,workbench.layout,uiVersion,analysisVersion,advancedHydrationProjection.current.project(advancedStatusProjection),Object.keys(postprocess.documents),Object.values(postprocess.fileDocuments).map(value=>[value.id,postprocessFileDocumentVersion(value)]),postprocess.fileOwnerId,fileSidebarCollapsed,sourceDiagnostics.map(item=>item.id),citationState,plots.map(plot=>[plot.id,plot.kind]),taskSnapshotPages,detachedProjectSaveEpoch,xtbElectronicDrafts,xtbTaskSelections,xtbMethodDrafts,pes.revision,collapsedPesGroups]);
+ const projectRevision=JSON.stringify([state.documents.map(entry=>[entry.id,entry.label,entry.labelOrigin,entry.store.getSnapshot().revision,entry.drafts,entry.retiredInputDrafts,entry.inputDraftCopyIssues,entry.trajectory?.currentFrameId]),state.module,borrowedBatch?.session.id,borrowedBatch?.input.taskId,order,conformerGroups,displaySettings,workbench.layout,uiVersion,analysisVersion,advancedHydrationProjection.current.project(advancedStatusProjection),Object.keys(postprocess.documents),postprocess.wizardDrafts,Object.values(postprocess.fileDocuments).map(value=>[value.id,postprocessFileDocumentVersion(value)]),postprocess.fileOwnerId,fileSidebarCollapsed,sourceDiagnostics.map(item=>item.id),citationState,plots.map(plot=>[plot.id,plot.kind]),taskSnapshotPages,detachedProjectSaveEpoch,xtbElectronicDrafts,xtbTaskSelections,xtbMethodDrafts,pes.revision,collapsedPesGroups,tabGroups,optimization.calculationLevel]);
  const capturedProjectRevisions=useRef(new Map<string,number>());
  const capturedProjectModels=useRef(new Map<string,WorkspaceModelSnapshot>());
  const projectMDSnapshotSources=useRef<unknown>(undefined),capturedProjectMDSnapshotSources=useRef<unknown>(undefined);
@@ -2763,14 +3012,14 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    capturedProjectModels.current=modelSnapshots;
    const cameras=Object.fromEntries(state.documents.map(entry=>[entry.id,viewportControllers.current.get(entry.id)?.getCameraView?.()??viewportStates.current.get(entry.id)?.cameraView??null]));
    const windowPlacements=await desktop?.readProjectWindowPlacements?.();
-   const advanced=pendingAdvancedProject.current?(options.reuse&&!pendingAdvancedProjectChanged.current?undefined:await pendingAdvancedProject.current()):advancedController?.exportProjectSnapshot({shareImmutableScience:true});
+   const advanced=pendingAdvancedProject.current?(options.reuse&&!pendingAdvancedProjectChanged.current?undefined:await pendingAdvancedProject.current()):advancedIntegration.current.controller?.exportProjectSnapshot({shareImmutableScience:true});
    const sourceDiagnosticSnapshots=await Promise.all(sourceDiagnosticsRef.current.map(item=>encodeDiagnostic(item,writer)));
    const capturedBatch=borrowedBatchRef.current;
    const borrowedBatchAsset=capturedBatch?await writeBorrowedBatchInput(capturedBatch,writer):retainedUnreadableBatchAsset.current;
    if(borrowedBatchRef.current!==capturedBatch||capturedBatch&&(registry.getSnapshot().inputTask?.id!==capturedBatch.input.taskId||registry.document(capturedBatch.documentId).epoch!==capturedBatch.documentEpoch))throw Error('保存期间批量输入会话已变化，未提交旧快照。');
    const retainedFileDocuments=postprocess.captureFileDocuments();
    const captured=await captureWorkspaceProject({registry,documents:postprocess.documents,fileDocuments:retainedFileDocuments,preservedFileSources:preservedProjectFileSources.current,generated:postprocess.generated,advanced,...pes.capture(),ui:projectUi.capture(),writer,reader:_reader,reuse:options.reuse,modelSnapshots,
-    shell:{...retainedProjectShell.current,borrowedBatchAsset,pesDocuments:pesWorkspaceBindings(registry.getSnapshot().documents),pesGroupNames:{...restoredPesNames.current,...Object.fromEntries((pes.controller?.getSnapshot().groups??[]).map(group=>[group.id,group.name]))},collapsedPesGroups,postprocessFileOwnerId:postprocess.fileOwnerId,postprocessFileSidebarCollapsed:Object.fromEntries(Object.entries(fileSidebarCollapsed).filter(([id])=>Boolean(postprocess.fileDocuments[id]))),deckMode,multiMode,order,mainDocumentId,displaySettings,sharedShowAxes,conformerGroups,conformerFrameOrders,plots:retainedFilePathPlots(plots,retainedFileDocuments),workbench:workbench.layout,cameras,windowPlacements,advancedObservations,advancedAnalysisBindings,xtbAnalysisSelections,...(()=>{const value=restoreWorkspaceXtbSettings({electronicDrafts:xtbElectronicDrafts,taskSelections:xtbTaskSelections,methodDrafts:xtbMethodDrafts});return {xtbElectronicDrafts:value.electronicDrafts,xtbTaskSelections:value.taskSelections,xtbMethodDrafts:value.methodDrafts};})(),structureAnalysisSelected,legendExpanded,taskSnapshotPages:Object.fromEntries(Object.entries(taskSnapshotPagesRef.current).filter(([,row])=>registry.getSnapshot().documents.some(entry=>entry.id===row.documentId)||Boolean(postprocess.fileDocuments[row.documentId]))),sourceDiagnostics:sourceDiagnosticSnapshots,citationState:retainedCitationState(citationStateRef.current,new Set(retainedCitationOwnerIds(registry.getSnapshot().documents,postprocess.captureFileDocuments()))),...(projectMDSnapshotSources.current===undefined?{}:{mdSnapshotSources:projectMDSnapshotSources.current})}});
+    shell:{...retainedProjectShell.current,calculationLevel:legacyCalculationPending.current?undefined:optimizationRef.current.calculationLevel,borrowedBatchAsset,pesDocuments:pesWorkspaceBindings(registry.getSnapshot().documents),pesGroupNames:{...restoredPesNames.current,...Object.fromEntries((pes.controller?.getSnapshot().groups??[]).map(group=>[group.id,group.name]))},collapsedPesGroups,tabGroups:restoreTabGroupPresentation(tabGroups,registry.getSnapshot().documents),postprocessFileOwnerId:postprocess.fileOwnerId,postprocessWizardDrafts:postprocess.captureWizardDrafts(),postprocessFileSidebarCollapsed:Object.fromEntries(Object.entries(fileSidebarCollapsed).filter(([id])=>Boolean(postprocess.fileDocuments[id]))),deckMode,multiMode,order,mainDocumentId,displaySettings,sharedShowAxes,conformerGroups,conformerFrameOrders,plots:retainedFilePathPlots(plots,retainedFileDocuments),workbench:workbench.layout,cameras,windowPlacements,advancedObservations,advancedAnalysisBindings,xtbAnalysisSelections,...(()=>{const value=restoreWorkspaceXtbSettings({electronicDrafts:xtbElectronicDrafts,taskSelections:xtbTaskSelections,methodDrafts:xtbMethodDrafts});return {xtbElectronicDrafts:value.electronicDrafts,xtbTaskSelections:value.taskSelections,xtbMethodDrafts:value.methodDrafts};})(),structureAnalysisSelected,legendExpanded,taskSnapshotPages:Object.fromEntries(Object.entries(taskSnapshotPagesRef.current).filter(([,row])=>registry.getSnapshot().documents.some(entry=>entry.id===row.documentId)||Boolean(postprocess.fileDocuments[row.documentId]))),sourceDiagnostics:sourceDiagnosticSnapshots,citationState:retainedCitationState(citationStateRef.current,new Set(retainedCitationOwnerIds(registry.getSnapshot().documents,postprocess.captureFileDocuments()))),...(projectMDSnapshotSources.current===undefined?{}:{mdSnapshotSources:projectMDSnapshotSources.current})}});
    capturedProjectMDSnapshotSources.current=captured.shell.mdSnapshotSources;return captured;
    }finally{projectActivity.current.capturing=false;}
   },
@@ -2784,6 +3033,9 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    try{
    // Prepare every incoming identity and field before retiring the current view.
    const restored=await decodeWorkspaceProject(value,reader,{deferPublication:true,transientAdvancedReads:true}),shell=restored.shell as Record<string,any>;
+   const savedCalculationLevel=checkedProjectCalculationLevel(shell.calculationLevel);
+   const savedActiveId=restored.registry?.views.find(view=>view.id===restored.registry?.activeViewId)?.documentId;
+   const savedPesGroup=Object.values(shell.pesDocuments??{}).find((link:any)=>link?.documentId===savedActiveId) as {groupId?:string}|undefined;
    const restoredBatch=await restoreBorrowedBatchInput(shell.borrowedBatchAsset,restored.registry,reader);
    decodedFileSources=restored.fileSources;
    preparedRegistry=registry.prepareProjectRestore(restoredBatch.registry,{results:restored.results});
@@ -2801,6 +3053,9 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    // requesting a synchronous unmount, which React otherwise cannot perform.
    await Promise.resolve();
    flushSync(()=>setRestoringDocumentViews(true));
+   // Project files can restore the same document and source IDs with new readers.
+   lastScientificCanvases.current.clear();
+   trajectoryFrames.current.clear();
     decodedFileSources=restored.fileSources;
     const restoredDiagnostics=restored.diagnostics;
     for(const id of [...documentRuntimeOwners.current.keys()])runtimeCloses.push(await prepareDocumentRuntimeClose(id));
@@ -2810,11 +3065,14 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     ownerAdapters.current.clear();viewportStates.current.clear();viewportControllers.current.clear();callbacks.current.clear();
     for(const id of [...Object.keys(postprocess.captureFileDocuments()),...postprocess.pendingFileCloses()]){const issues=await postprocess.closeFile(id);if(issues.length)throw Error(`旧文件来源尚未释放：${issues.join('；')}`);}
     await preparedRegistry.commit();registryInstalled=true;
+     // Even same-window reopen installs a new owner for the newly committed graph.
+     unavailableAdvancedTasks.current=restored.unavailableAdvancedTaskIds;pendingAdvancedProjectChanged.current=false;
+     installAdvancedController(restored.readAdvanced);
     restoredConformerReaders.current=new WeakSet(registry.getSnapshot().documents.flatMap(entry=>entry.trajectory&&entry.legacyResult?[entry.legacyResult]:[]));
     for(const prepared of runtimeCloses)prepared.commit();await restored.publish(registry);setCitationOpen(null);setCitationState(restoredCitationState);
     borrowedBatchRef.current=restoredBatch.batch;setBorrowedBatch(restoredBatch.batch);setCancelBatchConfirm(false);retainedUnreadableBatchAsset.current=restoredBatch.unreadableAsset;setBatchInputRecoveryNotice(restoredBatch.notice);
     retainedProjectShell.current=structuredClone(restored.retainedShell);projectMDSnapshotSources.current=shell.mdSnapshotSources;capturedProjectMDSnapshotSources.current=undefined;capturedProjectModels.current=new Map();
-    postprocess.restoreProjectDocuments(restored.sources,restored.generated);
+    postprocess.restoreProjectDocuments(restored.sources,restored.generated,shell.postprocessWizardDrafts);
     preservedProjectFileSources.current={...restored.fileSourceIssues};
     postprocess.restoreFileDocuments(restored.fileSources,typeof shell.postprocessFileOwnerId==='string'?shell.postprocessFileOwnerId:null);setFileSidebarCollapsed(Object.fromEntries(Object.entries(shell.postprocessFileSidebarCollapsed??{}).filter(([id,value])=>Boolean(restored.fileSources[id])&&typeof value==='boolean')) as Record<string,boolean>);fileSourcesInstalled=true;
     const taskPages=Object.fromEntries(Object.entries(shell.taskSnapshotPages??{}).filter((entry):entry is [string,{documentId:string;sourceId:string;taskId:string;runId:string|null;libraryId:string;sourceSetId?:string;sourceVersion?:string}]=>{const row=entry[1] as Record<string,unknown>|null;return Boolean(row&&['documentId','sourceId','taskId','libraryId'].every(key=>typeof row[key]==='string')&&(typeof row.runId==='string'||row.runId===null&&typeof row.sourceSetId==='string'&&!!row.sourceSetId&&typeof row.sourceVersion==='string'&&!!row.sourceVersion)&&(restored.sources[row.documentId as string]?.result.source.id===row.sourceId||restored.fileSources[row.documentId as string]?.output.source.identity.id===row.sourceId));}));taskSnapshotPagesRef.current=taskPages;setTaskSnapshotPages(taskPages);setRequestedTaskCursors({});
@@ -2822,9 +3080,9 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     // Late cleanup callbacks still carry the prior generation and are rejected.
     projectUi.hydrate(restored.data.ui);
     await Promise.all(sourceDiagnosticsRef.current.map(item=>Promise.resolve(item.dispose())));sourceDiagnosticsRef.current=restoredDiagnostics;setSourceDiagnostics(restoredDiagnostics);setDiagnosticsOpen(false);
-    setDeckMode(shell.deckMode??'single');setMultiMode(shell.multiMode??'tiled');setOrder(shell.order??[]);setMainDocumentId(shell.mainDocumentId??null);
+    setDeckMode(shell.deckMode??'single');setMultiMode(shell.multiMode??'tiled');setOrder(shell.order??[]);setTabRename(null);setTabMenu(null);tabDrag.current=null;setMainDocumentId(shell.mainDocumentId??null);
     if(shell.displaySettings)changeDisplaySettings(shell.displaySettings);setSharedShowAxes(shell.sharedShowAxes===true);
-    setConformerGroups(shell.conformerGroups??{});setConformerFrameOrders(shell.conformerFrameOrders??{});setPlots(retainedFilePathPlots(shell.plots??[],restored.fileSources));
+    setConformerGroups(shell.conformerGroups??{});setConformerFrameOrders(restoreConformerFrameOrders(shell.conformerFrameOrders??{}));setPlots(retainedFilePathPlots(shell.plots??[],restored.fileSources));
     setAdvancedObservations(shell.advancedObservations??{});setAdvancedAnalysisBindings(shell.advancedAnalysisBindings??{});setXtbAnalysisSelections(shell.xtbAnalysisSelections??{});setStructureAnalysisSelected(shell.structureAnalysisSelected??{});setLegendExpanded(shell.legendExpanded!==false);
     xtbElectronicLeases.current.clear();xtbWorkingBindings.current.clear();setXtbElectronicContexts({});setXtbElectronicDrafts(xtbSettings.electronicDrafts);setXtbTaskSelections(xtbSettings.taskSelections);setXtbMethodDrafts(xtbSettings.methodDrafts);
     if(shell.workbench)workbench.updateLayout(shell.workbench);
@@ -2833,8 +3091,17 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     inheritedViews.current.clear();pendingCameraRestores.current.clear();
     for(const [id,camera]of Object.entries(shell.cameras??{}))if(Array.isArray(camera)){if(registry.stamp().documentId===id)pendingCameraRestores.current.set(id,{stamp:registry.stamp(),view:camera as number[]});inheritedViews.current.set(id,{camera:camera as number[]});}
     restoredPesNames.current=Object.fromEntries(Object.entries(shell.pesGroupNames??{}).filter((row):row is [string,string]=>typeof row[1]==='string'));setCollapsedPesGroups(Object.fromEntries(Object.entries(shell.collapsedPesGroups??{}).filter((row):row is [string,boolean]=>typeof row[1]==='boolean')));
-    pes.restore(restored.pesAsset,restored.readPes,shell.pesDocuments);setPesCanvases(new Map());
-    unavailableAdvancedTasks.current=restored.unavailableAdvancedTaskIds;pendingAdvancedProject.current=restored.readAdvanced;pendingAdvancedProjectChanged.current=false;setAdvancedRestoreRevision(value=>value+1);
+    setOptimization(optimizationRef.current=newProjectOptimization(savedCalculationLevel));
+    legacyCalculationPending.current=Boolean(!savedCalculationLevel&&restored.pesAsset);
+    pes.restore(restored.pesAsset,restored.readPes,shell.pesDocuments,snapshot=>{
+     if(!legacyCalculationPending.current)return;
+     legacyCalculationPending.current=false;
+     const level=snapshot&&legacyProjectCalculationLevel(snapshot,savedPesGroup?.groupId);
+     if(level)setOptimization(optimizationRef.current={...optimizationRef.current,calculationLevel:level});
+    });
+    setTabGroups(restoreTabGroupPresentation(shell.tabGroups,registry.getSnapshot().documents));
+    setPesCanvases(new Map());
+     setAdvancedRestoreRevision(value=>value+1);
     if(restored.issues.length)setError(`项目已载入；${restored.issues.length}项数据暂不可用，原引用保留。`);
    }catch(error){for(const prepared of runtimeCloses){if(registryInstalled)prepared.commit();else prepared.cancel();}preparedRegistry?.cancel();if(!fileSourcesInstalled)await Promise.allSettled(Object.values(decodedFileSources).map(document=>disposePostprocessFileDocument(document,async id=>{await desktop?.commandOrbitals?.(id,{operation:'close'});})));throw error;}
    finally{if(restoringProject.current)flushSync(()=>{restoringProject.current=false;setRestoringDocumentViews(false);});}
@@ -2842,7 +3109,80 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const projectClose=useRef(project.prepareClose);projectClose.current=project.prepareClose;
  projectActivity.current.busy=project.busy;
  const projectInfo=useRef(project);projectInfo.current=project;
- const projectRunning=useRef(false);projectRunning.current=twoDBusy||state.documents.some(entry=>['starting','running','pausing','paused','stopping'].includes(entry.runtime.phase))||Boolean(advancedController?.getSnapshot().activeNative)||Boolean(advancedController?.getSnapshot().queue.length)||Boolean(pes.controller?.getSnapshot().groups.some(group=>pesRunActive(group)));
+ const liveDocumentPhase=(phase:string)=>['starting','running','pausing','paused','stopping'].includes(phase);
+ const activeAdvanced=(status:string)=>['queued','running','stopping'].includes(status);
+ const standaloneOptimizationActive=(status:string)=>liveDocumentPhase(status)||status==='finalizing';
+ const standaloneOptimizations=()=>registry.getSnapshot().documents.flatMap(entry=>{
+  const runtime=scienceModelRuntime(entry.store);
+  return runtime?.runs().filter(run=>run.kind==='opt'&&standaloneOptimizationActive(run.status)).map(run=>({runtime,runId:run.runId}))??[];
+ });
+ const projectRunning=useRef<()=>boolean>(()=>false);
+ projectRunning.current=()=>(twoDRuntime.current?.isBusy()??twoDBusy)||registry.getSnapshot().documents.some(entry=>liveDocumentPhase(entry.runtime.phase))||
+  !!advancedIntegration.current.controller?.getSnapshot().tasks.some(task=>task.runs.some(run=>activeAdvanced(run.status)))||
+  !!pes.getController()?.getSnapshot().groups.some(group=>pesRunActive(group))||standaloneOptimizations().length>0;
+ const prepareOwnedProjectStop=useRef<()=>()=>Promise<void>>(() => async()=>{});
+ prepareOwnedProjectStop.current=()=>{
+  const epoch=projectIdentityEpoch.current,board=twoDRuntime.current;
+  const advanced=advancedIntegration.current.controller;
+  const advancedRuns=advanced?.getSnapshot().tasks.flatMap(task=>task.runs.filter(run=>activeAdvanced(run.status))
+   .map(run=>({taskId:task.id,runId:run.id,queued:run.status==='queued'})))??[];
+  const pesController=pes.getController();
+  const groups=pesController?.getSnapshot().groups.filter(group=>pesRunActive(group)).map(group=>({
+   id:group.id,runIds:new Set(Object.values(group.runs).filter(run=>liveDocumentPhase(run.status)).map(run=>run.request.id)),
+  }))??[];
+  const runtimes=[...documentRuntimeOwners.current.entries()].filter(([,value])=>
+   value.owner.xtb.getSnapshot().running||liveDocumentPhase(value.owner.dynamics.getSnapshot().status));
+  const optimizations=standaloneOptimizations();
+  return async()=>{
+   if(projectIdentityEpoch.current!==epoch)throw Error('关闭确认期间项目已变化。');
+   const stops=runtimes.map(async([id,runtime])=>{
+    if(documentRuntimeOwners.current.get(id)!==runtime)return;
+    const {xtb,dynamics}=runtime.owner;
+    const stopXtb=xtb.stop().then(()=>{if(xtb.getSnapshot().running)throw Error('本项目 xTB 优化的停止尚未确认。');});
+    const stopDynamics=(async()=>{
+     const initial=dynamics.getSnapshot();
+     if(!liveDocumentPhase(initial.status))return;
+     let unsubscribe=()=>{};
+     const settled=new Promise<void>(resolve=>{
+      const check=()=>{if(!liveDocumentPhase(dynamics.getSnapshot().status))resolve();};
+      unsubscribe=dynamics.subscribe(check);check();
+     });
+     try{
+      if(initial.status!=='stopping')await dynamics.stop();
+      if(initial.sessionId){
+       if(!desktop?.waitForDynamicsClose)throw Error('当前环境无法确认本项目的动态进程已关闭。');
+       await desktop.waitForDynamicsClose(id,initial.sessionId);
+      }
+      await settled;
+     }finally{unsubscribe();}
+    })();
+    await Promise.all([stopXtb,stopDynamics]);
+   });
+   if(advanced)stops.push((async()=>{
+    await Promise.all(advancedRuns.filter(run=>run.queued).map(run=>advanced.stop(run.taskId,run.runId)));
+    await Promise.all(advancedRuns.filter(run=>!run.queued).map(run=>advanced.stop(run.taskId,run.runId)));
+   })());
+   if(pesController)for(const group of groups)stops.push(settlePesWorkspaceRuns(pesController,group.id,undefined,group.runIds));
+   for(const {runtime,runId} of optimizations)stops.push((async()=>{
+    const read=()=>runtime.runs().find(run=>run.runId===runId);
+    const initial=read();
+    if(!initial||!standaloneOptimizationActive(initial.status))return;
+    let unsubscribe:(()=>void)|undefined;
+    const settled=new Promise<void>(resolve=>{
+     const check=()=>{const run=read();if(run&&!standaloneOptimizationActive(run.status))resolve();};
+     unsubscribe=runtime.subscribe?.(check);check();
+    });
+    try{
+     if(initial.status!=='stopping'&&initial.status!=='finalizing')await runtime.stop(runId);
+     await settled;
+    }finally{unsubscribe?.();}
+   })());
+   if(board)stops.push(board.stop().then(()=>{}));
+   const settled=await Promise.allSettled(stops);
+   const failed=settled.find(result=>result.status==='rejected');
+   if(failed?.status==='rejected')throw failed.reason;
+  };
+ };
  useEffect(()=>{
   if(!hostBridge)return;
   for(const [id,placement]of Object.entries(pendingProjectDetaches.current)){
@@ -2856,7 +3196,13 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     .finally(()=>{restoringProjectDetaches.current.delete(id);delete pendingProjectDetaches.current[id];setProjectDetachRevision(value=>value+1);});
   }
  },[hostBridge,registry,documentSignature,state.version,projectDetachRevision]);
- useEffect(()=>{if(restoringDocumentViews||state.module!=='advanced'||pesLayout||!advancedController||!pendingAdvancedProject.current)return;void ensurePendingAdvancedProject().catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));},[state.module,pesLayout,advancedController,restoringDocumentViews,advancedRestoreRevision]);
+ useEffect(()=>{
+  if(restoringDocumentViews||state.module!=='advanced'||pesLayout||!advancedController||!pendingAdvancedProject.current)return;
+  const epoch=projectIdentityEpoch.current;
+  void ensurePendingAdvancedProject().catch(cause=>{
+   if(projectIdentityEpoch.current===epoch&&advancedIntegration.current.controller===advancedController)setError(cause instanceof Error?cause.message:String(cause));
+  });
+ },[state.module,pesLayout,advancedController,restoringDocumentViews,advancedRestoreRevision]);
  useEffect(()=>{if(restoringDocumentViews||!(pesLayout||state.module==='modeling'&&retainedPesEntries.length>0)||!pes.controller||!pes.pending.current)return;void pes.ensure().catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));},[pesLayout,state.module,retainedPesEntries.length,pes.controller,pes.loaded,restoringDocumentViews]);
  const [deleteGroup,setDeleteGroup]=useState<string|null>(null),[deletingGroup,setDeletingGroup]=useState(false);
  async function confirmDeleteGroup(){
@@ -2887,6 +3233,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  mcpFramePorts.current={
   registry,projectEpoch:()=>projectIdentityEpoch.current,activeTarget:readMcpActiveFrameTarget,
   file:id=>advancedPorts.current.postprocess.captureFileDocuments()[id],
+  fileIds:()=>Object.keys(advancedPorts.current.postprocess.captureFileDocuments()),
   binding:id=>advancedPorts.current.postprocess.documents[id],
   canvas:id=>{
    if(id!==readMcpActiveFrameTarget()||ownerHidden||taskWorkspace.opened||closingPending)return undefined;
@@ -2899,6 +3246,14 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   cursor:id=>trajectoryFrames.current.get(id),
   conformerTask:id=>advancedIntegration.current.controller?.getSnapshot().tasks.find(task=>task.id===id),
   resolveTarget(ref){
+   const series=parsePesSeriesCollectionRef(ref);
+   if(series){
+    const group=pes.getController()?.getSnapshot().groups.find(row=>row.id===series.groupId),run=group?.runs[series.runId];
+    const collection=run&&retainedPesSeriesCollections(run).find(row=>row.seriesId===series.seriesId);
+    const target=run&&registry.getSnapshot().documents.find(entry=>entry.pesGroup?.groupId===series.groupId&&entry.pesGroup?.nodeId===run.nodeId);
+    if(!collection||!target)throw Error('运行已关闭或指定的势能面序列未保留。');
+    return {targetId:target.id,collectionId:collection.collectionId};
+   }
    const optimization=parseOptimizationCollectionRef(ref);
    if(optimization){
     const group=pes.getController()?.getSnapshot().groups.find(row=>row.id===optimization.groupId),run=group?.runs[optimization.runId];
@@ -2927,6 +3282,15 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    const run=group?.runs[collectionId.slice(0,-4)];
    if(run&&run.nodeId===link?.nodeId&&retainedOptimizationCollection(run)?.collectionId===collectionId)return run;
   },
+  retainedPesRuns(targetId){
+   const link=registry.getSnapshot().documents.find(row=>row.id===targetId)?.pesGroup;
+   const group=link&&pes.getController()?.getSnapshot().groups.find(row=>row.id===link.groupId);
+   const node=group?.nodes.find(row=>row.id===link?.nodeId);
+   return node?.runIds.flatMap(id=>{
+    const run=group?.runs[id];
+    return run?.nodeId===node.id&&run.workerSettled?[run]:[];
+   })??[];
+  },
   pesRecord(targetId,recordId){
    const entry=registry.getSnapshot().documents.find(row=>row.id===targetId),owner=entry?.pesGroup,controller=pes.getController();
    const group=owner&&controller?.getSnapshot().groups.find(row=>row.id===owner.groupId),node=group?.nodes.find(row=>row.id===owner?.nodeId);
@@ -2944,7 +3308,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    }
    return captureCurrentAdvancedSource(true);
   },
-  async activate(owner){
+  async activate(owner,index){
    if(sourcePickLive.current||selectingMembers.current)throw Error('请先完成当前来源或关联成员选择。');
    taskWorkspace.leave();
    const pp=advancedPorts.current.postprocess;
@@ -2963,6 +3327,9 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      const key=JSON.stringify(['workspace','workspace-page.advancedSection']);
      projectUi.set(key,{...projectUi.get<Record<string,AdvancedSection|null>>(key,{}),[entry.id]:'path'});
      registry.setModule('advanced');
+     const origin=owner.retainedPesSeries?owner.result?.frames[index??0]?.pesOrigin:undefined;
+     if(origin&&origin.groupId===entry.pesGroup.groupId&&origin.nodeId===entry.pesGroup.nodeId&&!origin.recordId)
+      pes.getController()?.selectFrame(origin.groupId,origin.nodeId,origin.runId,origin.seriesId,origin.frameId);
     }else registry.setModule(entry.trajectory?'modeling':'analysis');
    });
   },
@@ -3022,7 +3389,11 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   const epoch=()=>JSON.stringify([projectIdentityEpoch.current,projectInfo.current.currentProject()?.projectId??null]);
   const groupRef=(kind:'pes-group'|'conformer-group',id:string)=>JSON.stringify([kind,id]);
   const groupFor=(entry:WorkspaceDocumentEntry)=>entry.pesGroup?groupRef('pes-group',entry.pesGroup.groupId):entry.conformerGroup?groupRef('conformer-group',entry.conformerGroup.taskId):undefined;
-  const collapsed=(entry:WorkspaceDocumentEntry)=>entry.pesGroup?collapsedPesGroups[entry.pesGroup.groupId]===true:entry.conformerGroup?conformerGroups[entry.conformerGroup.taskId]?.collapsed===true:false;
+  const collapsed=(entry:WorkspaceDocumentEntry)=>{
+   const id=tabGroup(entry);
+   if(!id)return false;
+   return availablePesGroups.has(id)?collapsedPesGroups[id]===true:tabGroups.groups[id]?.collapsed??conformerGroups[id]?.collapsed===true;
+  };
   function projectModelTab(entry:WorkspaceDocumentEntry):WorkspaceTabRecord{
    const doc=entry.store.getSnapshot(),detached=Boolean(detachedPlacement.current[entry.id]);
    const visible=!ownerHidden&&!taskWorkspace.isOpen()&&!detached&&tabDocuments.some(row=>row.id===entry.id)&&!collapsed(entry);
@@ -3060,7 +3431,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    return {tabs:rows,layout:deckMode,workspaceRevision:JSON.stringify([epoch(),deckMode,rows.filter(row=>row.kind==='model-tab'||row.kind==='pes-group'||row.kind==='conformer-group').map(row=>[row.ref,row.revision,row.visible,row.actions])])};
   }
   function assertAvailable(){
-   if(projectActivity.current.busy||projectActivity.current.capturing||restoringProject.current||closingTransactions.current.size||discardImpactRef.current||pesClosing||deleteGroup)throw Error('工作台正在保存、恢复或处理关闭确认。');
+   if(projectWindowClosePending.current||projectActivity.current.busy||projectActivity.current.capturing||restoringProject.current||closingTransactions.current.size||discardImpactRef.current||pesClosing||deleteGroup)throw Error('工作台正在保存、恢复或处理关闭确认。');
    if(sourcePickLive.current||selectingMembers.current)throw Error('当前工作台正在选择任务来源或关联成员。');
   }
   function retainedTab(target:WorkspaceTabRecord){
@@ -3124,8 +3495,10 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    if(command.action==='reorder'){
     const shown=read().tabs.filter(row=>row.kind==='model-tab'&&row.visible).map(row=>row.ref);
     const wanted=new Set(command.refs);if(wanted.size!==shown.length||command.refs.length!==shown.length||shown.some(id=>!wanted.has(id)))throw Error('排序范围须为当下可见模型标签的完整 ID 列表。');
-    let index=0;const next=documents.map(entry=>wanted.has(entry.id)?command.refs[index++]:entry.id);
-    flushSync(()=>setOrder(next));return {status:'configured',order:next};
+    let index=0;
+    const next=tabOrderItems.map(id=>wanted.has(id)?command.refs[index++]:id);
+    for(const entry of documents)if(!tabEntries.has(entry.id))next.push(entry.id);
+    flushSync(()=>setOrder(next));return {status:'configured',order:next.filter(id=>!tabMembers.has(id))};
    }
    if(!('ref'in command))throw Error('缺少标签。');
    const row=read().tabs.find(entry=>entry.ref===command.ref);if(!row)throw Error('标签已变化。');
@@ -3142,7 +3515,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    }
    const name=command.name?.trim();
    if(command.action==='rename'&&row.kind==='model-tab'){
-    if(!name)throw Error('请输入模型名。');registry.rename(row.ref,name);publishMetadata(row.ref);return {status:'configured',ref:row.ref,label:registry.document(row.ref).label};
+    if(!name)throw Error('请输入模型名。');renameModelTab(row.ref,name);return {status:'configured',ref:row.ref,label:registry.document(row.ref).label};
    }
    if(row.kind!=='pes-group'&&row.kind!=='conformer-group')throw Error('待操作对象不是模型任务组。');
    if(command.action==='group-collapse'){
@@ -3163,10 +3536,16 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  function modelContext():ModelToolContext {
   return {
    registry,tabs:mcpTabContext(),isDetached:id=>Boolean(detachedPlacement.current[id]),currentModel:()=>{const id=readMcpActiveFrameTarget();return id&&registry.getSnapshot().documents.some(row=>row.id===id)?id:undefined;},
+   resultCamera(ref){
+    const target=mcpResult(ref),result=target.result;
+    if(!result||!('frames' in result))throw toolError('CAMERA_UNAVAILABLE','此引用没有可用的科学结果视口。',{targetRef:ref});
+    const visible=readMcpActiveFrameTarget()===target.ownerId&&!ownerHidden&&!taskWorkspace.opened&&!closingPending;
+    return resolveResultCamera(visible?resultRegistry?.resultViews.values()??[]:[],{ownerId:target.ownerId,result},projectIdentityEpoch.current);
+   },
    assertTarget(id,kind){
     if(id)mcpEntry(id);
     if(kind==='read')return;
-    if(ownerHidden||closingPending||projectActivity.current.busy||projectActivity.current.capturing||restoringProject.current)throw Error('当前工作台正在关闭、恢复或保存，请完成后再操作。');
+    if(ownerHidden||closingPending||projectWindowClosePending.current||projectActivity.current.busy||projectActivity.current.capturing||restoringProject.current)throw Error('当前工作台正在关闭、恢复或保存，请完成后再操作。');
     if(importController.current||libraryLoadController.current||sourceCopyBusy.current||editChoiceInFlight.current)throw Error('当前工作台已有正在处理的来源操作。');
     if(sourcePickLive.current||selectingMembers.current)throw Error('当前工作台正在选择任务来源或关联成员。');
     if(kind==='view'&&taskWorkspace.opened)throw Error('请先切回模型工作台以显示目标。');
@@ -3190,6 +3569,43 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     return entry;
    },
    presentModel:(id,mode,call)=>presentConfiguredModel(id,'modeling',mode,call),
+   async presentSelection(id,mode,call){
+    const gated=configurationPresentationGate(mode,call);if(gated)return gated;
+    const actual=readMcpActiveFrameTarget();
+    return {mode,status:actual===id?'selected':'view-unavailable',target:id,activeTarget:actual,module:registry.getSnapshot().module,
+     nativeView:actual===id&&mode==='foreground'?await presentWorkspaceWindow(mode):undefined};
+   },
+   async presentTransform(id,request,mode,derived,call){
+    if(!derived){
+     const gated=configurationPresentationGate(mode,call);if(gated)return gated;
+    }else if(call?.signal.aborted||registry.stamp().documentId!==id){
+     return {mode,status:'superseded',target:id};
+    }
+    mcpEntry(id);
+    if(detachedPlacement.current[id])return coreContext.show({target:{kind:'model',ref:id},module:'advanced-modeling',presentation:mode},call);
+    const operationRoute:NonNullable<AdvancedModelingRoute>=(()=>{
+     switch(request.type){
+      case 'assign-cell':case 'edit-cell':case 'cell':return {category:'periodic',task:'cell-editor'};
+      case 'crystal':return {category:'periodic',task:request.operation==='slab'||request.operation==='supercell'?request.operation:'symmetry'};
+      case 'supercell':case 'wrap':case 'axes':case 'finite-cluster':return {category:'periodic',task:request.type};
+      case 'vacuum':return {category:'periodic',task:'slab'};
+      case 'matrix':return {category:'geometry',task:'rotate'};
+      default:return {category:'geometry',task:request.type};
+     }
+    })();
+    // The derived tab already contains the applied geometry. Opening a new
+    // live draft here would render a second, unrelated transform over it.
+    const route:AdvancedModelingRoute=derived?{category:operationRoute.category,task:null}:operationRoute;
+    taskWorkspace.leave();activateDocument(id);
+    const key=JSON.stringify(['workspace','workspace-page.advancedModelingRoute']);
+    flushSync(()=>{
+     projectUi.set(key,{...projectUi.get<Record<string,AdvancedModelingRoute>>(key,{}),[id]:route});
+     registry.setModule('advanced-modeling');
+    });
+    const actual=readMcpActiveFrameTarget();
+    return {mode,status:actual===id?'selected':'view-unavailable',target:id,activeTarget:actual,module:registry.getSnapshot().module,route,operationRoute,
+     nativeView:mode==='foreground'?await presentWorkspaceWindow(mode):undefined};
+   },
    openSketch:openTwoDManual,
    sketch:()=>twoDRuntime.current,
    captureSketchGuard:(modelRef,revision)=>captureTwoDGuard({modelRef,revision}),
@@ -3220,14 +3636,17 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     return {ref:row.modelRef,revision:row.revision as number|undefined};
    throw Error('计算目标需要模型引用或帧引用。');
   }
-  async function resolveSource(target:unknown,signal?:AbortSignal,electronic?:BaseElectronicStateValues){
-   assertCurrent();signal?.throwIfAborted();
-   const {ref,revision}=targetValue(target),source=await mcpLiveSource(ref,signal,electronic);
+  function checkSource<T extends ElectronicStateSourceContext>(source:T,revision:number|undefined,signal?:AbortSignal){
    assertCurrent();signal?.throwIfAborted();
    if(revision!==undefined&&source.ref.revision!==revision)throw toolError('model-conflict','目标模型修订已变化，请重新读取。',{
     modelRef:source.ref.documentId,documentEpoch:source.ref.documentEpoch,revision:source.ref.revision,
    });
    return source;
+  }
+  async function resolveSource(target:unknown,signal?:AbortSignal,electronic?:BaseElectronicStateValues){
+   assertCurrent();signal?.throwIfAborted();
+   const {ref,revision}=targetValue(target),source=await mcpLiveSource(ref,signal,electronic);
+   return checkSource(source,revision,signal);
   }
   function prepareCalculationSource(source:AdvancedFrameSource,kind:'wavefunction'|'conformer'){
    assertCurrent();
@@ -3252,6 +3671,14 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   }
   return {
    resolveSource,
+   async resolveConformerDiscoverySource(target,signal){
+    assertCurrent();signal?.throwIfAborted();
+    const {ref,revision}=targetValue(target);
+    const source=ref&&!isFrameReference(ref)
+     ?await captureWorkspaceElectronicSourceContext(mcpModelCapture(ref,signal))
+     :await frameAccess.readScientificFrame(ref??mcpCurrentFrameRef(),signal);
+    return checkSource(source,revision,signal);
+   },
    async advanced(){assertCurrent();if(pendingAdvancedProject.current)await ensurePendingAdvancedProject();assertCurrent();return advancedIntegration.current.controller??undefined;},
    async pes(){assertCurrent();await pes.ensure();assertCurrent();return pes.getController()??undefined;},
    resources(){assertCurrent();const value=computeSnapshotRef.current;
@@ -3262,7 +3689,8 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     const original=owner.document;
     const structure=scientificFrameForModel(source.structure);
     const document={...original,sharedConstraints:source.constraints??original.sharedConstraints,draft:{...original.draft,structure}};
-    const prepared=prepareOrdinaryOptimization(readWorkspaceOptimizationPreferences(),structure,options);
+    await prepareProjectOptimization();
+    const prepared=prepareOrdinaryOptimization(optimizationRef.current,structure,options);
     const input=ordinaryOptimizationInput(document,prepared.preferences,prepared.xtbOptions);
     await checkGxtb(prepared.method);
     await pes.ensure();
@@ -3271,12 +3699,22 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     if(retained.documentEpoch!==owner.documentEpoch||retained.sourceEpoch!==owner.sourceEpoch||retained.document.revision!==original.revision)
      throw Error('目标科学帧的来源已变化，本次尚未提交。');
     const controller=pes.getController();
-    if(!controller)throw Error('势能面工作台尚未就绪。');
-    const geometry:PesGeometry={documentId:owner.targetId,revision:original.revision,label:source.label,
-     structure,originFrame:source.ref};
-    if(prepared.sharedMethodPreferences)writeWorkspaceOptimizationPreferences(prepared.sharedMethodPreferences);
-    const group=pes.createInitialGroup(geometry,document.sharedConstraints);
-    const result=controller.startOrdinaryOptimization(group.id,group.initialNodeId,geometry,{...input,retainTrajectory:true});
+    if(!controller?.available)throw Error('当前运行环境未连接结构优化器。');
+    const existingGroupId=registry.getSnapshot().documents.find(entry=>entry.id===owner.targetId)?.pesGroup?.groupId;
+    const existing=controller.getSnapshot().groups.find(group=>group.id===existingGroupId);
+    const origin=source.ref.pesOrigin;
+    const geometry:PesGeometry={documentId:owner.targetId,revision:original.revision,label:source.label,structure,originFrame:source.ref,
+     ...(existing&&origin?.groupId===existing.id?{source:origin}:{})};
+    const selectedLevel=prepared.sharedMethodPreferences?.calculationLevel;
+    if(selectedLevel){
+      calculationLevel.update({method:selectedLevel.method});
+      controller.syncProjectCalculationLevel();
+    }
+    const group=existing??pes.createInitialGroup(geometry,document.sharedConstraints);
+    const node=existing?controller.createWorkbench(group.id,geometry):group.nodes[0];
+    const target=pes.register(group.id,node);
+    const result=controller.startOrdinaryOptimization(group.id,node.id,{...geometry,documentId:target.id,revision:target.store.getSnapshot().revision},
+     {...input,retainTrajectory:options.retainTrajectory===true});
     const runId=result.runIds.at(-1)!;
     const request=controller.getSnapshot().groups.find(row=>row.id===group.id)!.runs[runId].request;
     return {kind:'pes',...request.runIdentity,request:pesRequestEvidence(request)};
@@ -3304,6 +3742,16 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     if(!active||active.pesGroup?.groupId!==groupId||registry.getSnapshot().module!=='advanced'||advancedSectionRef.current!=='path')return undefined;
     return currentPesCanvas(pesCanvasesRef.current,active)?.readScanGeometry?.();
    },
+   readPesWorkbenchGeometry(groupId:string,nodeId:string){
+    assertCurrent();
+    const activeId=readMcpActiveFrameTarget();
+    const active=registry.getSnapshot().documents.find(entry=>entry.id===activeId);
+    if(!active||active.pesGroup?.groupId!==groupId||active.pesGroup.nodeId!==nodeId)return undefined;
+    const view=currentPesCanvas(pesCanvasesRef.current,active);
+    if(view?.readSubmittedFrame)return view.readSubmittedFrame()??null;
+    if(view?.observation||protectedPesDocument(active))return null;
+    return undefined;
+   },
    presentPesConfiguration,
    async presentConformerConfiguration(taskId:string,mode:McpPresentationMode,call?:McCall){
     const gated=configurationPresentationGate(mode,call);
@@ -3319,6 +3767,18 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     return coreContext.show({target:{kind:'run',ref:run.runId},presentation:mode},call);
    },
    prepareWavefunctionSource:async source=>prepareCalculationSource(source,'wavefunction'),
+   wavefunctionAnalysis(taskId,runId,artifactId){
+    assertCurrent();
+    const key=`${taskId}:${runId}`;
+    const targetRef=advancedAnalysisDocuments.current.get(key)??advancedAnalysisBindings[key];
+    if(!targetRef)return;
+    const generated=advancedPorts.current.postprocess.generated[targetRef];
+    const source=generated?.document.wavefunction?.source;
+    const provenance=source?.generatedXtb;
+    if(!generated||!source||!provenance||provenance.runIdentity?.taskId!==taskId||provenance.artifactId!==artifactId||
+       !xtbWorkingAnalysisAvailable(generated.ownerId,targetRef))return;
+    return {targetRef,molden:{id:source.result.source.id,name:source.result.source.name}};
+   },
    prepareConformerSource:async source=>prepareCalculationSource(source,'conformer'),
    wavefunctionSettings:ownerId=>xtbMethodDrafts[ownerId],
    onWavefunctionTask(ownerId,selection){assertCurrent();setXtbTaskSelections(previous=>({...previous,[ownerId]:selection}));},
@@ -3368,10 +3828,11 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  },notify=>{
   const subscriptions=new Map<WorkspaceDocumentEntry['store'],()=>void>();
   const sync=()=>{
+   let changed=false;
    const live=new Set(registry.getSnapshot().documents.map(entry=>entry.store));
-   for(const [store,release]of subscriptions)if(!live.has(store)){release();subscriptions.delete(store);}
-   for(const store of live)if(!subscriptions.has(store)){const release=scienceModelRuntime(store)?.subscribe?.(notify);if(release)subscriptions.set(store,release);}
-   notify();
+   for(const [store,release]of subscriptions)if(!live.has(store)){release();subscriptions.delete(store);changed=true;}
+   for(const store of live)if(!subscriptions.has(store)){const release=scienceModelRuntime(store)?.subscribe?.(notify);if(release){subscriptions.set(store,release);changed=true;}}
+   if(changed)notify();
   };
   const release=registry.subscribe(sync),releaseAdvanced=advancedController?.subscribe(notify),releasePaths=pes.getController()?.subscribe(notify);sync();
   return ()=>{release();releaseAdvanced?.();releasePaths?.();for(const dispose of subscriptions.values())dispose();};
@@ -3385,20 +3846,25 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   if(!id||closingTransactions.current.has(id))throw Error('当前没有可用的模型文档。');
   return registry.document(id);
  }
+ function mcpModelCapture(ref:string,signal?:AbortSignal){
+  const entry=mcpEntry(ref),snapshot=entry.store.getSnapshot(),epoch=projectIdentityEpoch.current;
+  if(entry.result||entry.trajectory)throw Error('该对象是只读轨迹，请通过 frames_select 指定帧。');
+  const guard=()=>{const actual=mcpEntry(ref);if(epoch!==projectIdentityEpoch.current||actual.epoch!==entry.epoch||actual.store.getSnapshot().revision!==snapshot.revision||actual.store.hasTransaction?.())throw Error('目标模型在读取期间变化。');};
+  guard();return {document:snapshot,documentEpoch:entry.epoch,label:entry.label,guard,signal};
+ }
+ function mcpCurrentFrameRef(){
+  const frame=frameAccess.current(mcpFrameContext.owner());
+  if(!frame)throw Error('该轨迹尚未确定当前帧，请从 frames_select 选择。');
+  return frame.frameRef;
+ }
  async function mcpLiveSource(ref?:string,signal?:AbortSignal,electronic?:BaseElectronicStateValues){
   signal?.throwIfAborted();
   if(ref&&isFrameReference(ref))return frameAccess.readAdvancedFrame(ref,signal,electronic);
   if(ref){
-   const entry=mcpEntry(ref),snapshot=entry.store.getSnapshot(),epoch=projectIdentityEpoch.current;
-   if(entry.result||entry.trajectory)throw Error('该对象是只读轨迹，请通过 frames_select 指定帧。');
-   const stale=()=>{const actual=mcpEntry(ref);if(epoch!==projectIdentityEpoch.current||actual.epoch!==entry.epoch||actual.store.getSnapshot().revision!==snapshot.revision||actual.store.hasTransaction?.())throw Error('目标模型在读取期间变化。');};
-   stale();const params={document:snapshot,documentEpoch:entry.epoch,label:entry.label,guard:stale,signal};
+   const params=mcpModelCapture(ref,signal);
    return electronic?confirmFrameElectronicState(await captureWorkspaceElectronicSourceContext(params),electronic):captureWorkspaceAdvancedSource(params);
   }
-  const owner=mcpFrameContext.owner();
-  const frame=frameAccess.current(owner);
-  if(!frame)throw Error('该轨迹尚未确定当前帧，请从 frames_select 选择。');
-  return frameAccess.readAdvancedFrame(frame.frameRef,signal,electronic);
+  return frameAccess.readAdvancedFrame(mcpCurrentFrameRef(),signal,electronic);
  }
  function mcpFileJob(ref:string){
   if(!ref.startsWith('["es-file-job",'))return;
@@ -3449,6 +3915,17 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    relatedRuns.find(run=>run.request.runIdentity.runId===selectedRunId)??(relatedRuns.length===1&&(!selectedRunId||id===node?.id)?relatedRuns[0]:undefined);
   return {ownerId:entry.id,result,postprocess:binding,hessianRunId:hessianRun?.request.runIdentity.runId};
  }
+ function showMcpAdvancedSection(documentId:string,section:AdvancedSection,select?:()=>void){
+  activateDocument(documentId);
+  if(registry.stamp().documentId!==documentId)throw toolError('target_not_active','当前窗口未能激活指定的任务文档。',{documentId,section});
+  flushSync(()=>{
+   // Page-scoped React setters captured before activation belong to the old tab.
+   const key=JSON.stringify(['workspace','workspace-page.advancedSection']);
+   projectUi.set(key,{...projectUi.get<Record<string,AdvancedSection|null>>(key,{}),[documentId]:section});
+   select?.();
+   registry.setModule('advanced');
+  });
+ }
  async function mcpOpenAnalysis(ref:string){
   if(sourcePickLive.current||selectingMembers.current)throw Error('请先结束当前的来源选择。');
   const pp=advancedPorts.current.postprocess;
@@ -3468,20 +3945,21 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   const generated=pp.generated[ref];
   const id=generated?.ownerId??ref;mcpEntry(id);
   if(generated&&!xtbWorkingAnalysisAvailable(id,ref))throw Error('该波函数分析来源已变更。');
-  activateDocument(id);
   if(generated){
    const run=generated.document.wavefunction?.source.generatedXtb?.runIdentity;
-   flushSync(()=>{
+   showMcpAdvancedSection(id,'xtb2',()=>{
     if(run&&advancedAnalysisBindings[`${run.taskId}:${run.runId}`]===ref)
      setXtbTaskSelections(previous=>({...previous,[id]:{taskId:run.taskId,runId:run.runId}}));
-    registry.setModule('advanced');setAdvancedSection('xtb2');
    });
+  }else{
+   activateDocument(id);
+   flushSync(()=>{if(!mcpEntry(id).result&&!mcpEntry(id).legacyResult&&!pp.getDocument(id))setStructureAnalysisSelected(previous=>({...previous,[id]:true}));registry.setModule('analysis');});
   }
-  else flushSync(()=>{if(!mcpEntry(id).result&&!mcpEntry(id).legacyResult&&!pp.getDocument(id))setStructureAnalysisSelected(previous=>({...previous,[id]:true}));registry.setModule('analysis');});
  }
  function fileContext():WorkspaceFileContext{
   return {importFiles,postprocess:()=>advancedPorts.current.postprocess,
    attachmentEpoch:()=>projectIdentityEpoch.current,
+   presentationOrigin:mcpPresentationOrigin,
    modelAttachmentOwners:()=>registry.getSnapshot().documents.flatMap(entry=>{
     const pp=advancedPorts.current.postprocess,document=pp.getDocument(entry.id);
     if(!document||!registry.analysisAvailable(entry.id)||closingTransactions.current.has(entry.id))return [];
@@ -3496,20 +3974,12 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     const epoch=projectIdentityEpoch.current;
     const assertProject=()=>{if(projectIdentityEpoch.current!==epoch)throw Error('导出所属项目已变化。');};
     async function exactFrame(ref:string){
-     const identity=JSON.parse(ref) as unknown;
-     if(!Array.isArray(identity)||identity[0]!=='es-frame-v1'||typeof identity[1]!=='string')throw Error('帧引用无效，请重新选择。');
-     const targetId=identity[1],collectionId=typeof identity[2]==='string'?identity[2]:undefined;
-     const before=frameAccess.context().owner(targetId,collectionId);
-     const snapshot=await frameAccess.readScientificFrame(ref,signal);
-     const assertCurrent=()=>{
-      assertProject();
-      const current=frameAccess.context().owner(targetId,collectionId);
-      if(current.documentEpoch!==before.documentEpoch||current.sourceEpoch!==before.sourceEpoch||current.document.revision!==before.document.revision||current.collection?.revision!==before.collection?.revision)throw Error('所选帧的来源或文档已变化。');
-     };
+     const {owner,source:snapshot,guard}=await frameAccess.captureFrame(ref,signal);
+     const assertCurrent=()=>{assertProject();guard();};
      assertCurrent();
-     return {document:captureStructureExportDocument(before.document,snapshot.structure),source:{...snapshot.ref,frameRef:ref},assertCurrent};
+     return {document:captureStructureExportDocument(owner.document,snapshot.structure),source:{...snapshot.ref,frameRef:ref},assertCurrent};
     }
-    if(target?.startsWith('['))return exactFrame(target);
+    if(target&&isFrameReference(target))return exactFrame(target);
     const id=target??readMcpActiveFrameTarget();
     if(!id)throw Error('当前窗口没有结构或科学来源。');
     const selectedFile=advancedPorts.current.postprocess.captureFileDocuments()[id];
@@ -3544,7 +4014,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
  const coreContext:CoreToolContext={
   registry,changes:mcpChanges,batchReceipts,project:()=>projectInfo.current.currentProject(),save:(asNew,target)=>projectInfo.current.save(asNew,false,target,true),
   reopen:options=>{
-   if(projectRunning.current)throw toolError('project_running','项目仍有运行中的计算，请在结算后重开。');
+   if(projectRunning.current())throw toolError('project_running','项目仍有运行中的计算，请在结算后重开。');
    return projectInfo.current.reopen(options);
   },
   tools:()=>mcpCatalog,
@@ -3604,6 +4074,8 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      rows.push({kind:'run',ref:runId,label:run.request.operation,nodeId:run.nodeId,groupId:group.id,status:run.status,targetId:target?.id});
      if(target)for(const record of pesPathRecords(run))if(record.frames.length)rows.push({kind:'collection',ref:pesRecordRef(target.id,record.id),targetId:target.id,collectionId:record.id,
       ownerId:target.id,groupId:group.id,runId,label:`${run.request.operation} · ${record.phase} · ${record.step}`,frameCount:record.frames.length});
+     if(target)for(const series of retainedPesSeriesCollections(run))rows.push({kind:'collection',ref:series.collectionRef,targetId:target.id,collectionId:series.collectionId,
+      ownerId:target.id,groupId:group.id,runId,label:series.label,seriesId:series.rawSeriesId});
      const retainedOpt=target&&retainedOptimizationCollection(run);
      if(target&&retainedOpt)rows.push({kind:'collection',ref:retainedOpt.collectionRef,targetId:target.id,collectionId:retainedOpt.collectionId,
       label:'优化保留轨迹',ownerId:target.id,groupId:group.id,runId,frameCount:run.result?.frames.length??0});
@@ -3671,7 +4143,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    }
    if(row.kind==='job'){taskWorkspace.openTask(ref);return {target:ref,status:'requested',nativeView:await reveal()};}
    if(row.kind==='collection'){
-    const collectionId=String(row.collectionId),targetId=parseConformerRunCollectionRef(ref)||parseOptimizationCollectionRef(ref)||ref.startsWith('["es-pes-record-v1",')?ref:String(row.targetId??ref);
+    const collectionId=String(row.collectionId),targetId=parseConformerRunCollectionRef(ref)||parseOptimizationCollectionRef(ref)||parsePesSeriesCollectionRef(ref)||ref.startsWith('["es-pes-record-v1",')?ref:String(row.targetId??ref);
     const prepared=await mcpFrameContext.prepareOwner?.(targetId,collectionId,call?.signal);
     const owner=mcpFrameContext.owner(prepared?.targetId??targetId,prepared?.collectionId??collectionId);
     if(!current())return superseded();
@@ -3679,17 +4151,18 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     return showTrajectory(owner,owner.currentIndex??0);
    }
    taskWorkspace.leave();
-   if(row.kind==='model'){mcpEntry(ref);activateDocument(ref);navigateModule((args.module??'modeling') as typeof state.module);}
+   if(row.kind==='model'){mcpEntry(ref);activateDocument(ref);await navigateModule((args.module??'modeling') as typeof state.module);}
    else if(['result','source','diagnostic'].includes(row.kind)){const resolved=mcpResult(ref);await mcpOpenAnalysis(resolved.navigationRef??resolved.ownerId);}
    else if(row.kind==='file-job')await mcpOpenAnalysis(ref);
    else if(row.kind==='run'&&row.modelRef){activateDocument(String(row.modelRef));flushSync(()=>registry.setModule('modeling'));}
    else if(row.kind==='pes-node'||row.kind==='run'&&row.nodeId){const group=pes.getController()?.getSnapshot().groups.find(g=>g.id===row.groupId),node=group?.nodes.find(n=>n.id===(row.nodeId??ref));if(!group||!node)throw Error('势能面节点已关闭。');activatePesNode(group.id,node);}
-   else if(row.kind==='task'||row.kind==='run'){const taskId=row.taskId??ref,entry=registry.getSnapshot().documents.find(e=>e.conformerGroup?.taskId===taskId&&e.conformerGroup.role==='initial')??registry.getSnapshot().documents.find(e=>xtbTaskSelections[e.id]?.taskId===taskId);if(!entry)throw Error('此任务目前没有绑定可显示的文档。');activateDocument(entry.id);flushSync(()=>{registry.setModule('advanced');setAdvancedSection(entry.conformerGroup?'conformer':'xtb2');});}
+   else if(row.kind==='task'||row.kind==='run'){const taskId=row.taskId??ref,entry=registry.getSnapshot().documents.find(e=>e.conformerGroup?.taskId===taskId&&e.conformerGroup.role==='initial')??registry.getSnapshot().documents.find(e=>xtbTaskSelections[e.id]?.taskId===taskId);if(!entry)throw Error('此任务目前没有绑定可显示的文档。');showMcpAdvancedSection(entry.id,entry.conformerGroup?'conformer':'xtb2');}
    else if(row.kind!=='project')throw Error('该对象没有独立视图。');
    const nativeView=await reveal(row.kind==='model'?ref:undefined);
    return {target:ref,status:nativeView?.view==='detached'?'located':'selected',activeTarget:readMcpActiveFrameTarget(),module:registry.getSnapshot().module,activeViewId:registry.getSnapshot().activeViewId,nativeView};
   },
   importFiles:(a,c,attach)=>mcpFiles.importFiles(a,c,attach),
+  structureSource:(a,c)=>mcpFiles.structureSource(a,c),
   exportFile:(a,c)=>mcpFiles.exportFile(a,c)
  };
  function mcpPresentationOrigin(){
@@ -3820,39 +4293,188 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   if(!controller)throw new Error('当前模型尚未就绪，请稍后重试。');
   await controller.dispatch({type:'file-action',action:request.action});
  };
+ function renameModelTab(id:string,name:string){
+  const entry=registry.document(id);
+  if(closingTransactions.current.has(id))return;
+  const link=entry.pesGroup,controller=pes.getController();
+  registry.rename(id,name);
+  if(link&&controller?.getSnapshot().groups.some(group=>group.id===link.groupId&&group.nodes.some(node=>node.id===link.nodeId)))
+   controller.renameNode(link.groupId,link.nodeId,entry.label);
+  publishMetadata(id);
+ }
+ function renameTabGroup(id:string,name:string){
+  if(Object.hasOwn(tabGroups.groups,id)){
+   setTabGroups(previous=>({...previous,groups:{...previous.groups,[id]:{...previous.groups[id],label:name}}}));
+  }else if(availablePesGroups.has(id)){
+   void pes.ensure().then(()=>pes.getController()?.renameGroup(id,name)).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));
+  }else{
+   setConformerGroups(previous=>({...previous,[id]:{...previous[id],collapsed:previous[id]?.collapsed??false,label:name,labelOrigin:'manual'}}));
+  }
+ }
+ function openTabMenu(event:MouseEvent<HTMLElement>,kind:'tab'|'group',id:string){
+  if(sourcePick||linkedControls.selecting)return;
+  event.preventDefault();
+  const target=event.currentTarget,rect=target.getBoundingClientRect();
+  const origin=event.target instanceof HTMLElement?event.target.closest('button')??target:target;
+  setTabMenu({kind,id,anchor:{owner:target.ownerDocument,x:event.clientX||rect.left,y:event.clientY||rect.bottom,returnTo:origin}});
+ }
+ function newTabGroup(){
+  const id=`tab-group-${crypto.randomUUID()}`;
+  setTabGroups(previous=>({...previous,groups:{...previous.groups,[id]:{label:'新建标签组',collapsed:false}}}));
+  setOrder([...tabOrderItems,id,...documents.filter(entry=>!tabEntries.has(entry.id)).map(entry=>entry.id)]);
+  setTabRename({kind:'group',id});
+ }
+ function removeTabGroup(id:string){
+  setTabGroups(previous=>({
+   groups:Object.fromEntries(Object.entries(previous.groups).filter(([key])=>key!==id)),
+   members:Object.fromEntries(Object.entries(previous.members).filter(([,group])=>group!==id)),
+  }));
+  setOrder(previous=>previous.filter(key=>key!==id));
+ }
+ function tabPointerHandlers(kind:'tab'|'group',id:string){
+  return {
+   onPointerDown(event:ReactPointerEvent<HTMLButtonElement>){
+    suppressTabClick.current=false;
+    if(event.button!==0||sourcePick||linkedControls.selecting)return;
+    tabDrag.current={kind,id,pointerId:event.pointerId,x:event.clientX,y:event.clientY,moved:false};
+    event.currentTarget.setPointerCapture(event.pointerId);
+   },
+   onPointerMove(event:ReactPointerEvent<HTMLButtonElement>){
+    const drag=tabDrag.current;
+    if(drag?.pointerId===event.pointerId&&workspaceTabDragMoved(drag.x,drag.y,event.clientX,event.clientY))drag.moved=true;
+   },
+   onPointerCancel(){tabDrag.current=null;},
+   onLostPointerCapture(){tabDrag.current=null;},
+   onKeyDown(event:React.KeyboardEvent<HTMLButtonElement>){
+    if(event.key!=='Escape'||!tabDrag.current)return;
+    const {pointerId}=tabDrag.current;
+    tabDrag.current=null;suppressTabClick.current=true;
+    if(event.currentTarget.hasPointerCapture(pointerId))event.currentTarget.releasePointerCapture(pointerId);
+    event.preventDefault();event.stopPropagation();
+   },
+   onPointerUp(event:ReactPointerEvent<HTMLButtonElement>){
+    const drag=tabDrag.current;
+    if(!drag||drag.pointerId!==event.pointerId)return;
+    tabDrag.current=null;
+    if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
+    if(!drag.moved&&!workspaceTabDragMoved(drag.x,drag.y,event.clientX,event.clientY))return;
+    suppressTabClick.current=true;
+    const bounds=tabs.current?.getBoundingClientRect();
+    if(!bounds)return;
+    const insideTarget=workspaceTabTargetContains({x:bounds.left-10,y:bounds.top-10,width:bounds.width+20,height:bounds.height+20},event.clientX,event.clientY);
+    const intent=resolveWorkspaceTabDropIntent({moved:true,source:drag.id,expectedSource:id,detached:false,insideTarget});
+    if(intent==='detach'){
+     if(drag.kind==='tab')void detachDocument(drag.id,event.screenX,event.screenY);
+     return;
+    }
+    if(intent!=='reorder')return;
+    const hit=event.currentTarget.ownerDocument.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-tab-document-id],[data-tab-group-header]');
+    const target=tabs.current?.contains(hit??null)?hit:undefined;
+    const targetTab=tabEntries.get(target?.dataset.tabDocumentId??'');
+    const targetGroup=target?.dataset.tabGroupHeader??tabGroup(targetTab);
+    const targetBox=target?.getBoundingClientRect(),after=!!targetBox&&event.clientX>targetBox.left+targetBox.width/2;
+    const orderToMove=[...tabOrderItems,...documents.filter(entry=>!tabEntries.has(entry.id)).map(entry=>entry.id)];
+    if(drag.kind==='group'){
+     if(targetGroup===drag.id)return;
+     const block=[drag.id,...(tabMembers.get(drag.id)??[]).map(entry=>entry.id)];
+     const anchor=targetGroup?(after?tabMembers.get(targetGroup)?.at(-1)?.id??targetGroup:targetGroup):targetTab?.id;
+     setOrder(moveWorkspaceTabItems(orderToMove,block,anchor,after));return;
+    }
+    const entry=tabEntries.get(drag.id);
+    if(!entry||targetTab?.id===entry.id)return;
+    const previousGroup=tabGroup(entry),ownedGroup=scientificTabGroup(entry);
+    if(ownedGroup&&targetGroup!==ownedGroup){
+     setError('任务组自有标签与原任务关联。可以拖动组标题调整位置。');
+     return;
+    }
+    if(targetGroup!==previousGroup&&targetGroup){
+     if(availablePesGroups.has(targetGroup)){
+      const group=pes.getController()?.getSnapshot().groups.find(row=>row.id===targetGroup);
+      const issue=!isOrdinaryPesTabCandidate(entry)?'请将普通模型标签拖入势能面组。'
+       :!group?'势能面组的初始结构尚未就绪。'
+       :pesTabAdmissionIssue(group,entry.store.getSnapshot().draft.structure);
+      if(issue){setError(issue);return;}
+     }else if(!Object.hasOwn(tabGroups.groups,targetGroup)){
+      setError('构象搜索组由原任务管理。');return;
+     }
+    }
+    if(targetGroup!==previousGroup){
+     setTabGroups(previous=>{
+      const members={...previous.members};
+      if(targetGroup)members[entry.id]=targetGroup;
+      else delete members[entry.id];
+      return {...previous,members};
+     });
+     setError('');
+    }
+    const anchor=targetTab?.id??(targetGroup?tabMembers.get(targetGroup)?.at(-1)?.id??targetGroup:undefined);
+    setOrder(moveWorkspaceTabItems(orderToMove,[entry.id],anchor,targetTab?after:true));
+   },
+  };
+ }
+ function skipPointerActivation(event:MouseEvent<HTMLButtonElement>){
+  const skip=event.detail>0&&suppressTabClick.current;suppressTabClick.current=false;
+  return skip;
+ }
+ function renderDocumentTab(entry:WorkspaceDocumentEntry,group?:{id:string;collapsed:boolean;style:CSSProperties},last=false){
+  const snapshot=entry.store.getSnapshot();
+  const initialIndex=entry.conformerGroup?.role==='initial'?entry.conformerGroup.initialIndex??1:1;
+  const label=entry.conformerGroup?.role==='initial'&&entry.labelOrigin==='automatic'?(initialIndex===1?'initial':`initial_${String(initialIndex).padStart(3,'0')}`):entry.label;
+  const active=entry.id===displayedDocumentId;
+  return <WorkspaceTab key={entry.id} className={group?'workspace-tab-group-member':''} active={active} label={label} dirty={snapshot.draft.dirty}
+   containerProps={{'data-tab-document-id':entry.id,...group?{'data-task-id':group.id,'data-group-last':last}:{},style:{...group?.style,...(group?.collapsed?{display:'none'}:{})},onContextMenu:event=>openTabMenu(event,'tab',entry.id)}}
+   editor={tabRename?.kind==='tab'&&tabRename.id===entry.id?<WorkspaceTabNameEditor label="标签名称" name={label} onFinish={name=>{setTabRename(null);if(name&&name!==label)renameModelTab(entry.id,name);}}/>:undefined}
+   onActivate={event=>{
+    if(skipPointerActivation(event))return;
+    if(sourcePick)selectTaskSource(entry.id);
+    else if(linkedControls.selecting)linkedControls.toggleMember(entry.id);
+    else if(active&&event.detail>0)setTabRename({kind:'tab',id:entry.id});
+    else activateDocument(entry.id);
+   }}
+   actions={<button className="workspace-tab-close" aria-label={'关闭文档 '+entry.label} title="关闭当前文档" onClick={()=>requestClose(entry.id)}><WorkspaceTabCloseIcon/></button>}
+   buttonProps={{'aria-controls':'doc-'+entry.id,'data-link-selected':linkedControls.selected.includes(entry.id),...tabPointerHandlers('tab',entry.id)}}/>;
+ }
+ function renderTabGroup(id:string,members:readonly WorkspaceDocumentEntry[],index:number){
+  const generic=tabGroups.groups[id],isPes=availablePesGroups.has(id);
+  const pesGroup=isPes?pes.getController()?.getSnapshot().groups.find(group=>group.id===id):undefined;
+  const conformer=conformerGroups[id];
+  const label=generic?.label??(isPes?pesGroup?.name??restoredPesNames.current[id]??'势能面探索':conformer?.label??`sampling-${automaticStem(members[0]?.label??'conformer')}`);
+  const collapsed=generic?.collapsed??(isPes?collapsedPesGroups[id]===true:conformer?.collapsed===true);
+  const active=members.some(entry=>entry.id===displayedDocumentId);
+  const status=pesGroup&&pesRunActive(pesGroup)?'running':advancedGroupStatuses.get(id);
+  const groupStatus=status==='running'?'运行中':status==='queued'?'排队中':status==='stopping'?'正在停止':status==='failed'?'失败':status==='checkpoint'?'待继续':'';
+  const style={'--task-group-hue':String([158,207,40,278,338][index%5])} as CSSProperties;
+  const renaming=tabRename?.kind==='group'&&tabRename.id===id;
+  function toggle(){
+   if(generic)setTabGroups(previous=>({...previous,groups:{...previous.groups,[id]:{...generic,collapsed:!collapsed}}}));
+   else if(isPes)setCollapsedPesGroups(previous=>({...previous,[id]:!collapsed}));
+   else setConformerGroups(previous=>({...previous,[id]:{...previous[id],label,collapsed:!collapsed}}));
+  }
+  return <Fragment key={id}><span className="workspace-tab-group" data-tab-group-header={id} data-task-id={id} data-collapsed={collapsed} data-active={active} style={style}
+   onContextMenu={event=>openTabMenu(event,'group',id)}>
+   <button type="button" className="workspace-tab-group-fold" aria-expanded={!collapsed} aria-label={`${collapsed?'展开':'收起'} ${label}`} onClick={toggle}>{collapsed?'▸':'▾'}</button>
+   {renaming?<WorkspaceTabNameEditor label="标签组名称" name={label} onFinish={name=>{setTabRename(null);if(name&&name!==label)renameTabGroup(id,name);}}/>
+    :<button type="button" title={`${label} · ${members.length} 个页面${groupStatus?' · '+groupStatus:''}`} {...tabPointerHandlers('group',id)} onClick={event=>{
+     if(skipPointerActivation(event)||sourcePick||linkedControls.selecting)return;
+     if((active||!members.length)&&event.detail>0)setTabRename({kind:'group',id});
+     else if(members.length){if(collapsed)toggle();activateDocument(members[0].id);}
+    }}>{label}</button>}
+   <button type="button" className="workspace-tab-close" aria-label={(generic?'取消标签分组 ':isPes?'删除势能面组 ':'删除构象搜索组 ')+label}
+    title={generic?'取消分组并保留标签':!isPes&&groupStatus?'请先停止任务后删除组':'删除整个组'}
+    disabled={!generic&&!isPes&&['running','queued','stopping'].includes(status??'')} onClick={()=>{
+     if(generic)removeTabGroup(id);
+     else if(isPes)setPesClosing({groupId:id,label});
+     else setDeleteGroup(id);
+    }}><WorkspaceTabCloseIcon/></button>
+  </span>{members.map((entry,memberIndex)=>renderDocumentTab(entry,{id,collapsed,style},memberIndex===members.length-1))}</Fragment>;
+ }
  const modelTabs=(
    <div className="workspace-tabs-row">
-    <div ref={tabs} className="workspace-document-tabs" role="tablist" aria-label="模型文档">{tabDocuments.map((entry,index)=>{const snapshot=entry.store.getSnapshot(),groupId=tabGroup(entry),pesGroup=entry.pesGroup&&pes.controller?.getSnapshot().groups.find(group=>group.id===entry.pesGroup!.groupId),group=groupId?(entry.pesGroup?{label:pesGroup?.name??restoredPesNames.current[groupId]??'势能面探索',collapsed:collapsedPesGroups[groupId]===true}:conformerGroups[groupId]??{label:`sampling-${automaticStem(entry.label)}`,collapsed:false}):undefined;
-     let tabLabel=entry.label;
-     if(entry.conformerGroup?.role==='initial'&&entry.labelOrigin==='automatic'){
-      const initialIndex=entry.conformerGroup.initialIndex??1;
-      tabLabel=initialIndex===1?'initial':`initial_${String(initialIndex).padStart(3,'0')}`;
-     }
-     const first=Boolean(groupId&&tabGroup(tabDocuments[index-1])!==groupId),count=groupId?tabDocuments.filter(value=>tabGroup(value)===groupId).length:0;
-     const latestStatus=pesGroup&&pesRunActive(pesGroup)?'running':groupId?advancedGroupStatuses.get(groupId):undefined;
-     const groupStatus=latestStatus==='running'?'运行中':latestStatus==='queued'?'排队中':latestStatus==='stopping'?'正在停止':latestStatus==='failed'?'失败':latestStatus==='checkpoint'?'待继续':'';
-     const groupIndex=groupId?Math.max(0,Object.keys(conformerGroups).indexOf(groupId)):0,groupStyle=groupId?{'--task-group-hue':String([158,207,40,278,338][groupIndex%5])} as CSSProperties:undefined;
-     const last=Boolean(groupId&&tabGroup(tabDocuments[index+1])!==groupId);
-     return <Fragment key={entry.id}>{first&&groupId&&group&&<span className="workspace-tab-group" data-task-id={groupId} data-collapsed={group.collapsed} data-active={tabDocuments.some(value=>tabGroup(value)===groupId&&value.id===displayedDocumentId)} style={groupStyle}>
-      {renamingGroup===groupId?<input autoFocus aria-label="任务组名称" defaultValue={group.label} onBlur={event=>{const label=event.currentTarget.value.trim();if(label&&entry.pesGroup){void pes.ensure().then(()=>pes.controller?.renameGroup(groupId,label)).catch(cause=>setError(cause instanceof Error?cause.message:String(cause)));}else if(label)setConformerGroups(previous=>({...previous,[groupId]:{...group,label,labelOrigin:'manual'}}));setRenamingGroup(null);}} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur();if(event.key==='Escape')setRenamingGroup(null);}}/>:<button type="button" aria-expanded={!group.collapsed} aria-label={`${group.collapsed?'展开':'收起'} ${group.label}`} title={`${group.label} · ${count} 个页面${groupStatus?' · '+groupStatus:''}；双击重命名任务组`} onDoubleClick={()=>setRenamingGroup(groupId)} onClick={()=>entry.pesGroup?setCollapsedPesGroups(previous=>({...previous,[groupId]:!group.collapsed})):setConformerGroups(previous=>({...previous,[groupId]:{...group,collapsed:!group.collapsed}}))}>{group.collapsed?'▸':'▾'} {group.label}</button>}
-      <button type="button" className="workspace-tab-close" aria-label={(entry.pesGroup?'删除势能面组 ':'删除构象搜索组 ')+group.label} title={!entry.pesGroup&&groupStatus?'请先停止任务后删除组':'删除整个组'} disabled={!entry.pesGroup&&Boolean(groupStatus&&['运行中','排队中','正在停止'].includes(groupStatus))} onClick={event=>{event.stopPropagation();if(entry.pesGroup)setPesClosing({groupId,label:group.label});else setDeleteGroup(groupId);}}><WorkspaceTabCloseIcon/></button>
-     </span>}<WorkspaceTab className={groupId?'workspace-tab-group-member':''} containerProps={{'data-tab-document-id':entry.id,...groupId?{'data-task-id':groupId,'data-group-last':last}:{},style:{...groupStyle,...(group?.collapsed?{display:'none'}:{})}}} active={entry.id===displayedDocumentId} label={tabLabel} dirty={snapshot.draft.dirty} onActivate={()=>sourcePick?selectTaskSource(entry.id):linkedControls.selecting?linkedControls.toggleMember(entry.id):activateDocument(entry.id)}
-     actions={<button className="workspace-tab-close" aria-label={'关闭文档 '+entry.label} title="关闭当前文档" onClick={()=>requestClose(entry.id)}><WorkspaceTabCloseIcon/></button>}
-     buttonProps={{'aria-controls':'doc-'+entry.id,...{'data-link-selected':linkedControls.selected.includes(entry.id)},
-      onPointerDown:event=>{if(event.button!==0||sourcePick||linkedControls.selecting)return;tabDrag.current={id:entry.id,pointerId:event.pointerId,x:event.clientX,y:event.clientY,moved:false};event.currentTarget.setPointerCapture(event.pointerId);},
-      onPointerMove:event=>{const drag=tabDrag.current;if(drag?.pointerId===event.pointerId&&workspaceTabDragMoved(drag.x,drag.y,event.clientX,event.clientY))drag.moved=true;},
-      onPointerCancel:()=>{tabDrag.current=null;},
-      onLostPointerCapture:()=>{tabDrag.current=null;},
-      onKeyDown:event=>{const drag=tabDrag.current;if(event.key==='Escape'&&drag){tabDrag.current=null;if(event.currentTarget.hasPointerCapture(drag.pointerId))event.currentTarget.releasePointerCapture(drag.pointerId);event.preventDefault();event.stopPropagation();}},
-      onPointerUp:event=>{const drag=tabDrag.current;tabDrag.current=null;if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);if(!drag?.moved)return;const bounds=tabs.current?.getBoundingClientRect();if(!bounds)return;
-       const insideTarget=workspaceTabTargetContains({x:bounds.left-10,y:bounds.top-10,width:bounds.width+20,height:bounds.height+20},event.clientX,event.clientY);
-       const intent=resolveWorkspaceTabDropIntent({moved:drag.moved,source:drag.id,expectedSource:entry.id,detached:false,insideTarget});
-       if(intent==='detach'){void detachDocument(drag.id,event.screenX,event.screenY);return;}if(intent!=='reorder')return;
-       const target=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-tab-document-id]')?.dataset.tabDocumentId;
-       if(target&&target!==drag.id){const ids=documents.map(value=>value.id),from=ids.indexOf(drag.id),to=ids.indexOf(target);ids.splice(from,1);ids.splice(to,0,drag.id);setOrder(ids);}
-      }}}/></Fragment>;})}
+    <div ref={tabs} className="workspace-document-tabs" role="tablist" aria-label="模型文档">{tabRowIds.map((id,index)=>tabMembers.has(id)?renderTabGroup(id,tabMembers.get(id)!,index):renderDocumentTab(tabEntries.get(id)!))}
      {documents.filter(entry=>detached[entry.id]).map(entry=><div className="workspace-detached-tab" key={entry.id}><button type="button" aria-label={'停靠模型 '+entry.label} title="将独立三维视口贴回主窗口" disabled={closeConfirmIds.includes(entry.id)} onClick={()=>void dockDetachedDocument(entry.id)}>{entry.label} · 贴回</button></div>)}
-     <button type="button" className="workspace-tab-new" aria-label="新建模型文档" title="新建模型" onClick={createDocument}>＋</button></div>
+     <button type="button" className="workspace-tab-new" aria-label="新建模型文档" title="新建模型" onClick={createDocument}>＋</button>
+     <button type="button" className="workspace-tab-group-new" aria-label="新建标签组" title="新建标签组" onClick={newTabGroup}><FolderPlus size={15} aria-hidden="true"/></button></div>
+    {tabMenu&&<WorkspaceTabMenu anchor={tabMenu.anchor} onClose={()=>setTabMenu(null)} onRename={()=>{setTabRename({kind:tabMenu.kind,id:tabMenu.id});setTabMenu(null);}}/>}
     <div className="workspace-layout-actions">
      {activeId&&activeId===displayedDocumentId&&!active?.result&&hostBridge?.detachWorkspaceDocument&&!detached[activeId]&&
       <button type="button" aria-label="浮出三维视口" title="浮出当前模型的三维视口" onClick={event=>{const box=event.currentTarget.getBoundingClientRect(),view=event.currentTarget.ownerDocument.defaultView!;void detachDocument(activeId,view.screenX+box.left,view.screenY+box.bottom);}}>浮出视口</button>}
@@ -3862,17 +4484,25 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     </div>
    </div>
  );
- return <><Suspense fallback={twoDVisible?<div role="status" className="workspace-global-error">正在载入二维编辑器…</div>:null}>{twoDFile&&<TwoDImportWorkspace key={twoDFile.id} file={twoDFile} visible={twoDVisible} captureGuard={captureTwoDGuard} onCommit={commitTwoD} onClose={closeTwoD} onImportFiles={openTwoDFiles} onRuntime={setTwoDRuntime} onBusyChange={setTwoDBusy}/>}</Suspense><ProjectUiRestoreBoundary restoring={restoringDocumentViews}>{()=> <>{citationOpen&&<ProjectUiScope store={citationUiStore} scope={['citations']}><CitationDialog assertCurrent={()=>{if(citationOpen.identity!==citationIdentity())throw new Error("项目文档已变化，请关闭后重新打开文献导出。");}} facts={citationOpen.facts} retainedDocumentIds={retainedCitationOwnerIds(state.documents,postprocess.fileDocuments)} warnings={citationOpen.warnings} registry={citationRegistryData as CitationRegistry} version={applicationVersion.displayVersion} documentId={citationOpen.documentId} documentLabel={registry.getSnapshot().documents.find(entry=>entry.id===citationOpen.documentId)?.label??postprocess.fileDocuments[citationOpen.documentId??'']?.output.source.identity.name} fixedDocument={citationOpen.fixed} decisions={citationState.decisions} onDecisions={decisions=>setCitationState(previous=>({...previous,decisions}))} ownerDocument={tabs.current?.ownerDocument} onClose={()=>setCitationOpen(null)}/></ProjectUiScope>}<WorkspaceRenderBoundary onSave={asNew=>project.save(asNew)} status={project.status} projectName={project.project?.indexPath} resetKey={project.project?.indexPath} onReturn={()=>returnToAvailableModel(displayedDocumentId??undefined)} recoveryControls={<>{registry.getSnapshot().documents.map(entry=>runtimeRecovery(entry.id))}</>}><div ref={rootElement} className="sciyue-workspace-v18" data-testid="workspace-v18" data-project-path={project.project?.indexPath??''} data-project-busy={project.busy} data-module={taskWorkspace.opened?'tasks':state.module} data-model-left-panel={state.module==='modeling'&&leftToolOpen} data-shared-models={sharedLayout} data-source-picking={Boolean(sourcePick)} data-link-selecting={linkedControls.selecting}
+ return <ProjectOptimizationContext.Provider value={{preferences:optimization,read:()=>optimizationRef.current,write:writeProjectOptimization,prepare:prepareProjectOptimization}}><Suspense fallback={twoDVisible?<div role="status" className="workspace-global-error">正在载入二维编辑器…</div>:null}>{twoDFile&&<TwoDImportWorkspace key={twoDFile.id} file={twoDFile} visible={twoDVisible} captureGuard={captureTwoDGuard} onCommit={commitTwoD} onClose={closeTwoD} onImportFiles={openTwoDFiles} onRuntime={setTwoDRuntime} onBusyChange={setTwoDBusy}/>}</Suspense>
+ {!restoringDocumentViews&&citationOpen&&<ProjectUiScope store={citationUiStore} scope={['citations']}><CitationDialog assertCurrent={()=>{if(citationOpen.identity!==citationIdentity())throw new Error("项目文档已变化，请关闭后重新打开文献导出。");}} facts={citationOpen.facts} retainedDocumentIds={retainedCitationOwnerIds(state.documents,postprocess.fileDocuments)} warnings={citationOpen.warnings} registry={citationRegistryData as CitationRegistry} version={applicationVersion.displayVersion} documentId={citationOpen.documentId} documentLabel={registry.getSnapshot().documents.find(entry=>entry.id===citationOpen.documentId)?.label??postprocess.fileDocuments[citationOpen.documentId??'']?.output.source.identity.name} fixedDocument={citationOpen.fixed} decisions={citationState.decisions} onDecisions={decisions=>setCitationState(previous=>({...previous,decisions}))} ownerDocument={tabs.current?.ownerDocument} onClose={()=>setCitationOpen(null)}/></ProjectUiScope>}
+ <WorkspaceRenderBoundary onSave={asNew=>project.save(asNew)} status={project.status} projectName={project.project?.indexPath} resetKey={(project.project?.indexPath??'')+':'+projectIdentityEpoch.current} onReturn={()=>returnToAvailableModel(displayedDocumentId??undefined)} recoveryControls={<>{registry.getSnapshot().documents.map(entry=>runtimeRecovery(entry.id))}</>}><div ref={rootElement} className="sciyue-workspace-v18" data-testid="workspace-v18" data-project-path={project.project?.indexPath??''} data-project-busy={project.busy} data-module={taskWorkspace.opened?'tasks':state.module} data-model-left-panel={state.module==='modeling'&&leftToolOpen} data-shared-models={sharedLayout} data-source-picking={Boolean(sourcePick)} data-link-selecting={linkedControls.selecting}
   onScrollCapture={event=>{const node=event.target as HTMLElement;if(node.dataset.pageScroll)pageScroll.current.set(scrollPageKey+':'+node.dataset.pageScroll,{top:node.scrollTop,left:node.scrollLeft});}}
   onDragOverCapture={event=>{if(event.dataTransfer.types.includes('Files')){event.preventDefault();event.dataTransfer.dropEffect='copy';}}}
-  onDropCapture={event=>{if(event.target instanceof Element&&event.target.closest('[data-agent-compose],[data-es-assistant-composer],[data-testid="model-2d-window"]'))return;if(taskWorkspace.opened){event.preventDefault();return;}if(event.dataTransfer.files.length){event.preventDefault();event.stopPropagation();void importFiles(Array.from(event.dataTransfer.files));}}}>
-  <nav className="workspace-module-rail" aria-label="功能模块"><button type="button" className="workspace-symbol workspace-global-settings" aria-label="全局设置" title="全局设置 · Lactone Studio（非官方修改版）" onClick={()=>setEnvironmentOpen(true)}>LS</button>{modules.map(([id,label,Icon])=><button key={id} title={label} aria-label={label} aria-pressed={!taskWorkspace.opened&&state.module===id} onClick={()=>navigateModule(id)}><Icon size={20}/><span>{label}</span></button>)}<button type="button" title="任务中心" aria-label="任务中心" aria-pressed={taskWorkspace.opened} onClick={()=>{closeTwoD();taskWorkspace.open();}}><ListChecks size={20}/><span>任务中心</span></button><small>{applicationVersion.label}</small></nav>
-  <AgentPanel onOpenImage={openAssistantImage}><div className="es-agent-workspace-content">{taskWorkspace.opened&&<div className="workspace-document-area" data-testid="external-task-workspace"><div className="workspace-tabs-row"><div className="workspace-layout-actions" style={{marginLeft:'auto'}}><button type="button" className="button-primary" onClick={()=>void citationOpenAction.current().catch(cause=>setError(cause instanceof Error?cause.message:String(cause)))}>导出文献</button></div></div>{taskWorkspace.center}</div>}
+  onDropCapture={event=>{if(event.target instanceof Element&&event.target.closest('[data-agent-compose],[data-es-assistant-composer],[data-testid="model-2d-window"],[data-postprocess-file-drop]'))return;if(taskWorkspace.opened||restoringDocumentViews){event.preventDefault();return;}if(event.dataTransfer.files.length){event.preventDefault();event.stopPropagation();void importFiles(Array.from(event.dataTransfer.files),'ask',undefined,'drop');}}}>
+  <nav className="workspace-module-rail" aria-label="功能模块" inert={restoringDocumentViews}><button type="button" className="workspace-symbol workspace-global-settings" aria-label="全局设置" title="全局设置 · Lactone Studio（非官方修改版）" onClick={()=>setEnvironmentOpen(true)}>LS</button>{modules.map(([id,label,Icon])=><button key={id} title={label} aria-label={label} aria-pressed={!taskWorkspace.opened&&state.module===id} onClick={()=>navigateModule(id)}><Icon size={20}/><span>{label}</span></button>)}<button type="button" title="任务中心" aria-label="任务中心" aria-pressed={taskWorkspace.opened} onClick={()=>{closeTwoD();taskWorkspace.open();}}><ListChecks size={20}/><span>任务中心</span></button><small>{applicationVersion.label}</small></nav>
+  {/* Assistant and terminal belong to the window; a project restore replaces their workspace content. */}
+  <AgentPanel onOpenImage={openAssistantImage}><div className="es-agent-workspace-content">
+  <ProjectUiRestoreBoundary restoring={restoringDocumentViews}>{()=> <>{taskWorkspace.opened&&<div className="workspace-document-area" data-testid="external-task-workspace"><div className="workspace-tabs-row"><div className="workspace-layout-actions" style={{marginLeft:'auto'}}><button type="button" className="button-primary" onClick={()=>void citationOpenAction.current().catch(cause=>setError(cause instanceof Error?cause.message:String(cause)))}>导出文献</button></div></div>{taskWorkspace.center}</div>}
   <div className="workspace-document-area" style={{'--shared-input-width':workbench.layout.paneSizes.leftWidth+'%',...(taskWorkspace.opened?{display:'none'}:{})} as CSSProperties}>
    {!analysisLayout&&modelTabs}
    {recoveryBridge&&<ConformerRecoveryPanel bridge={recoveryBridge} disabled={project.busy||reading||postprocess.busy||closingPending}
+    pes={desktop?.listPesRecovery?{list:desktop.listPesRecovery,open:openSavedPesRun,opened:item=>{
+     const run=pes.getController()?.getSnapshot().groups.find(group=>group.id===item.runIdentity.groupId)?.runs[item.runIdentity.runId];
+     return run?.status==='completed';
+    }}:undefined}
     opened={(item:ConformerRecoveryItem)=>state.documents.some(entry=>(entry.analysisBinding?.result??entry.legacyResult??entry.result)?.id===`recovered-${item.kind}-${item.id}`)}
-    captureGuard={()=>{const epoch=projectIdentityEpoch.current,view=registry.getSnapshot().activeViewId;return ()=>{if(projectIdentityEpoch.current!==epoch||registry.getSnapshot().activeViewId!==view)throw Error('工作区已切换，请在目标工作区打开恢复结果。');};}}
+    captureGuard={()=>{const origin=mcpPresentationOrigin();return ()=>{if(!sameMcpPresentation(origin,mcpPresentationOrigin()))throw Error('工作区已切换，请在目标工作区打开恢复结果。');};}}
     publish={result=>{installAnalysisGuard(registry.addEditableResultDocument(result,scientificFrameForModel(result.initialStructure)));registry.setModule('analysis');}}/>}
    {active?.result&&!analysisLayout&&<div className="workspace-result-actions"><button onClick={createDocument}>新建</button><button disabled={reading} onClick={()=>fileInput.current?.click()}>导入</button></div>}
    {(reading||importCloseFailed||postprocess.readState!=='idle')&&<div role="status" className="workspace-reading" data-testid="workspace-source-reading" data-read-state={importCloseFailed?'cancelling':postprocess.readState==='idle'?'reading':postprocess.readState}>
@@ -3894,14 +4524,15 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      {active?.result?<p className="postprocess-note">请先从结果中取帧建模，再进行结构变换。</p>:<OwnedSharedSurface channel={leftToolSurface} owner={leftToolOwner}/>}
     </aside>
     {analysisLayout&&<div className="workspace-analysis-panel workspace-workflow-panel desktop-mode"><WorkflowSessionBar label="后处理" actions={Object.keys(postprocess.fileDocuments).length?<label className="trajectory-stage-choice">来源<select aria-label="后处理文件来源" value={postprocess.fileOwnerId??''} onChange={event=>{postprocess.selectFile(event.target.value||null);registry.invalidateActivation();}}><option value="">当前模型 / 已有分析</option>{Object.values(postprocess.fileDocuments).map(value=><option key={value.id} value={value.id}>{value.output.source.identity.name}</option>)}</select></label>:undefined}/>{fileCurrent&&<div className="postprocess-actions workflow-session-actions ui-control-surface">{currentFileSidebarCollapsed&&<button type="button" onClick={()=>setFileSidebarCollapsed(previous=>({...previous,[fileCurrent.id]:false}))}>展开后处理侧栏</button>}<button type="button" aria-label="关闭后处理文件来源" onClick={()=>{void postprocess.closeFile(fileCurrent.id).then(issues=>{if(issues.length)setError(issues.join('；'));});}}>关闭来源</button></div>}<div key={postprocess.stage} className="workflow-panel-content postprocess-source-panel-host" data-testid="postprocess-sidebar-presentation" hidden={currentFileSidebarCollapsed}><PostprocessSidebar showTitle={false} engine={postprocess.engine} task={postprocess.task} stage={postprocess.stage} onStage={postprocess.setStage} onEngine={postprocess.selectEngine} onTask={postprocess.selectTask}
-       slots={postprocessDocumentFileSlots(fileCurrent??sidebarDocument)} fileDocument={fileCurrent} onFileJob={fileCurrent?jobId=>void postprocess.selectFileJob(fileCurrent.id,jobId):undefined}
+       slots={postprocessDocumentFileSlots(fileCurrent?(postprocess.fileSelectionMatches?fileCurrent:undefined):sidebarDocument)} fileDocument={fileCurrent} pendingFileJobId={postprocess.pendingFileJobId} onFileJob={fileCurrent?jobId=>{registry.invalidateActivation();void postprocess.selectFileJob(fileCurrent.id,jobId);}:undefined}
       result={sidebarFrameReady?sidebarResult??null:null} currentIndex={sidebarCanvas?.frameIndex??0} busy={postprocess.busy} sourceDifferences={sidebarDocument?postprocessDifferences(sidebarDocument):[]}
       message={fileCurrent?postprocess.notice:sidebarResult?.scientific?.readLimits?.observations?.omitted?`部分科学数据达到读取预算；已保留 ${sidebarResult.frames.length} 个完整帧。`:sidebarResult?.kind==='optimization'&&sidebarResult.status!=='completed'?`优化${sidebarResult.status==='incomplete'?'未完成':sidebarResult.status==='failed'?'异常结束':'状态未知'} · 已读取 ${sidebarResult.frames.length} 帧`:postprocess.notice}
-      onFiles={(_role,files,replace,slotKey,sourceId)=>{if(isExcitationSlot(slotKey))void postprocess.readExcitationFiles(files,slotKey,postprocess.ownerId);else void postprocess.read(files,fileCurrent?postprocess.fileOwnerId:sidebarDocument?postprocess.ownerId:undefined,postprocess.engine,replace?'replace':'smart',undefined,{slotKey,sourceId});}} onRemove={(role,slotKey,sourceId)=>void postprocess.remove(role,slotKey,sourceId)}
+      onDropFiles={files=>{void postprocess.read(files,null);}}
+      onFiles={(_role,files,replace,slotKey,sourceId)=>{if(isExcitationSlot(slotKey))void postprocess.readExcitationFiles(files,slotKey,postprocess.ownerId);else void postprocess.read(files,fileCurrent?(postprocess.fileSelectionMatches?postprocess.fileOwnerId:null):sidebarDocument?postprocess.ownerId:undefined,postprocess.engine,replace?'replace':'smart',undefined,{slotKey,sourceId});}} onRemove={(role,slotKey,sourceId)=>void postprocess.remove(role,slotKey,sourceId)}
       onClose={fileCurrent?()=>setFileSidebarCollapsed(previous=>({...previous,[fileCurrent.id]:true})):undefined}
       onExtract={sidebarFrameReady?()=>{const structure=extractCurrentAnalysis();if(structure)extractFrame(structure);}:undefined}
       onPrepareInput={sidebarFrameReady?()=>{const structure=extractCurrentAnalysis();if(structure){extractFrame(structure);requestNewInputTask();}}:undefined}
-       onOpenLegacy={()=>fileInput.current?.click()}/></div>{currentStructureEntry&&<CurrentStructureAnalysisEntry document={currentStructureEntry.store.getSnapshot()} selected={currentStructureSelected} onOpen={id=>{if(registry.stamp().documentId===id&&!ownerHidden&&!taskWorkspace.opened&&!closingPending)setStructureAnalysisSelected(previous=>({...previous,[id]:true}));}}/>}{sidebarDocument&&postprocess.ownerId&&managedTaskControls(postprocess.ownerId,sidebarDocument)}</div>}
+       onOpenLegacy={()=>fileInput.current?.click()}/></div>{sidebarDocument&&postprocess.ownerId&&managedTaskControls(postprocess.ownerId,sidebarDocument)}</div>}
     <aside className="workspace-input-panel workspace-workflow-panel desktop-mode" hidden={!sharedLayout||state.module!=='input'} aria-label="输入文件任务与设置"><WorkflowSessionBar label="输入文件生成器" actions={borrowedBatch?<button type="button" onClick={()=>setCancelBatchConfirm(true)}>取消批量输入</button>:<button type="button" onClick={requestNewInputTask}>新建输入任务</button>}/>{batchInputRecoveryNotice&&<DismissibleNotice identity={batchInputRecoveryNotice}>{batchInputRecoveryNotice}</DismissibleNotice>}{documents.filter(entry=>!entry.result).map(entry=><div key={entry.id} ref={inputHostRef(entry.id)} className="workflow-panel-content" hidden={entry.id!==inputOwnerId} data-testid="workspace-input-host" data-document-id={entry.id} data-input-task-id={entry.id===inputOwnerId?inputTask?.id:undefined}/>)}</aside>
     {analysisLayout&&<WorkspaceColumnDivider side="left" sizes={analysisColumns.sizes} gridRow="1 / 4" onChange={analysisColumns.update}/>}
     <div className="workspace-input-divider" hidden={analysisLayout||!sharedLayout||(state.module!=='input'&&!analysisLayout&&!advancedLayout&&!advancedModelingLayout&&!(state.module==='modeling'&&leftToolOpen))} role="separator" aria-label="调整参数区宽度" aria-orientation="vertical" tabIndex={0}
@@ -3912,7 +4543,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
       onLostPointerCapture={event=>endWorkspaceDividerDrag(event.currentTarget,event.pointerId)}
       onDoubleClick={()=>workbench.updateLayout(current=>({...current,paneSizes:{...current.paneSizes,leftWidth:27}}))}/>
     <div ref={setToolbarHost} className="workspace-common-toolbar" data-testid="workspace-common-toolbar" hidden={!sharedLayout||!fileCurrent&&!displayedDocumentId}>{!fileCurrent&&<SharedSurface channel={toolbarSurface}/>}</div>
-    <div className="workspace-document-surfaces" onDragOver={event=>{if(event.dataTransfer.types.includes('Files'))event.preventDefault();}} onDrop={event=>{if(!event.dataTransfer.files.length)return;event.preventDefault();event.stopPropagation();void importFiles(Array.from(event.dataTransfer.files));}}>
+    <div className="workspace-document-surfaces" onDragOver={event=>{if(event.dataTransfer.types.includes('Files'))event.preventDefault();}} onDrop={event=>{if(!event.dataTransfer.files.length)return;event.preventDefault();event.stopPropagation();void importFiles(Array.from(event.dataTransfer.files),'ask',undefined,'drop');}}>
      {!displayedDocumentId&&!fileCurrent&&Object.keys(detached).length>0&&<p className="workspace-detached-placeholder" role="status">模型正在独立视口中显示</p>}
      <div style={{display:fileCurrent?'none':'contents'}}>
      <ModelDocumentDeck activeId={displayedDocumentId??''} isDocumentInteractionOwner={id=>Boolean(sourcePickLive.current||selectingMembers.current)||id===displayedDocumentId} mode={analysisLayout||advancedLayout||advancedModelingLayout?'single':sharedLayout?deckMode:'single'} onActivate={activateDocument} onReorder={setOrder} arrangeRequest={arrangeRequest} onLegendHostChange={setLegendHostId}
@@ -3923,7 +4554,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
        {entry.result?<><div className="workspace-legacy-trajectory" hidden={advancedLayout}><TrajectoryWorkspace onPlaybackCanvas={mcpPlaybackCanvasFor(entry.id)} onCipLabelsUsed={cipUsageFor(entry.id,entry.epoch)} result={entry.result} onScientificFrame={value=>trajectoryFrames.current.set(entry.id,value)} active={!fileCurrent&&entry.id===activeId&&!ownerHidden&&!taskWorkspace.opened&&!closingPending&&state.module!=='input'&&!advancedLayout} displaySettings={displaySettings} onDisplaySettingsChange={changeDisplaySettings} onExtract={extractFrame} onPrepareIrc={entry.result.engine==='gaussian'||entry.result.engine==='orca'?structure=>prepareIrc(structure,entry.result!.engine as 'gaussian'|'orca'):undefined} onExport={exportWorkspaceResult} onError={setError}/></div>{advancedLayout&&renderDocument(surface(entry))}</>:<>{renderDocument(surface(entry))}{postprocess.documents[entry.id]&&<div hidden><PostprocessResultView onCipLabelsUsed={cipUsageFor(entry.id,entry.epoch)} onActiveResult={activeResultFor(entry.id,postprocess.documents[entry.id])} requestedTrajectoryCursor={requestedTaskCursors[entry.id]} document={postprocess.documents[entry.id]} modelDocument={entry.store.getSnapshot()} available={registry.analysisAvailable(entry.id)} onCanvas={canvasFor(entry.id)} active={!fileCurrent&&!ownerHidden&&!taskWorkspace.opened&&!closingPending&&(analysisLayout&&(entry.id===displayedDocumentId||Boolean(detached[entry.id])&&entry.id===activeId)||entry.id===xtbAnalysisOwnerId)} selected={!fileCurrent&&analysisLayout&&(entry.id===displayedDocumentId||Boolean(detached[entry.id])&&entry.id===activeId)||entry.id===xtbAnalysisOwnerId}
         toolHost={analysisToolHosts[entry.id]??null} onNewDocument={createDocument} onImportFiles={importFiles} display={displaySettings} onDisplay={changeDisplaySettings} onOpenPlot={openPlot} onExtract={extractFrame} onError={setError} onActivate={()=>{if(entry.id!==xtbAnalysisOwnerId){activateDocument(entry.id);registry.setModule('analysis');}}}/></div>}{entry.legacyResult&&ownedTrajectory(entry)}</>}
       </div></WorkspaceRenderBoundary></ProjectNativeDetailsBoundary></ProjectUiScope>}))}/></div>
-     {Object.values(postprocess.fileDocuments).map(value=><div key={value.id} className="workspace-document-surface" hidden={!analysisLayout||fileCurrent?.id!==value.id} data-testid="scientific-file-workspace" data-file-document-id={value.id}><ProjectUiScope store={projectUi} scope={['scientific-file',value.id]}><ProjectNativeDetailsBoundary><WorkspaceRenderBoundary scope="document" resetKey={value.id} onReturn={()=>returnToAvailableModel()} onSave={asNew=>project.save(asNew)}><ScientificFileResultView onActiveResult={fileFrameOwner(value).publishResult} requestedTrajectoryCursor={requestedTaskCursors[value.id]} onPlaybackCanvas={mcpPlaybackCanvasFor(value.id)} onStructureExportPort={fileStructureExportPort} onCipLabelsUsed={cipUsageFor(value.id)} document={value} active={!ownerHidden&&!taskWorkspace.opened&&!closingPending&&analysisLayout&&fileCurrent?.id===value.id} selected={analysisLayout&&fileCurrent?.id===value.id} toolHost={analysisToolHosts[value.id]??null} toolbarHost={toolbarHost} display={displaySettings} onDisplay={changeDisplaySettings} onObservedFrame={fileFrameOwner(value).publishStructure} onScientificCursor={fileFrameOwner(value).publishCursor} onFileJob={jobId=>void postprocess.selectFileJob(value.id,jobId)} onNewDocument={createDocument} onImportFiles={importFiles} onOpenPlot={openPlot} onExtract={extractFrame} onError={setError} sharedShowAxes={sharedShowAxes} onSharedShowAxesChange={setSharedShowAxes} legendVisible legendExpanded={legendExpanded} onLegendExpandedChange={setLegendExpanded}/></WorkspaceRenderBoundary></ProjectNativeDetailsBoundary></ProjectUiScope></div>)}
+     {Object.values(postprocess.fileDocuments).map(value=><div key={value.id} className="workspace-document-surface" hidden={!analysisLayout||fileCurrent?.id!==value.id} data-testid="scientific-file-workspace" data-file-document-id={value.id}><ProjectUiScope store={projectUi} scope={['scientific-file',value.id]}><ProjectNativeDetailsBoundary><WorkspaceRenderBoundary scope="document" resetKey={value.id} onReturn={()=>returnToAvailableModel()} onSave={asNew=>project.save(asNew)}><ScientificFileResultView onActiveResult={fileFrameOwner(value).publishResult} requestedTrajectoryCursor={requestedTaskCursors[value.id]} onPlaybackCanvas={mcpPlaybackCanvasFor(value.id)} onStructureExportPort={fileStructureExportPort} onCipLabelsUsed={cipUsageFor(value.id)} document={value} active={!ownerHidden&&!taskWorkspace.opened&&!closingPending&&analysisLayout&&fileCurrent?.id===value.id} selected={analysisLayout&&fileCurrent?.id===value.id} toolHost={analysisToolHosts[value.id]??null} toolbarHost={toolbarHost} display={displaySettings} onDisplay={changeDisplaySettings} onObservedFrame={fileFrameOwner(value).publishStructure} onScientificCursor={fileFrameOwner(value).publishCursor} onFileJob={jobId=>{registry.invalidateActivation();void postprocess.selectFileJob(value.id,jobId);}} onNewDocument={createDocument} onImportFiles={importFiles} onOpenPlot={openPlot} onExtract={extractFrame} onError={setError} sharedShowAxes={sharedShowAxes} onSharedShowAxesChange={setSharedShowAxes} legendVisible legendExpanded={legendExpanded} onLegendExpandedChange={setLegendExpanded}/></WorkspaceRenderBoundary></ProjectNativeDetailsBoundary></ProjectUiScope></div>)}
      {state.module==='input'&&active?.result&&<div className="workspace-module-placeholder"><h2>从结果帧创建输入</h2><p>选定结果帧并“取帧建模”，即可使用该结构准备Gaussian或ORCA输入。</p><button onClick={()=>registry.setModule('modeling')}>返回轨迹</button></div>}
      <PostprocessPlotDeck snapshots={plots} active={analysisLayout||xtbAnalysisLayout||pesLayout} visibleFilePlotScope={analysisLayout&&fileCurrent?filePathPlotScope(fileCurrent):null} visibleResultId={pesLayout?pesCanvas?.canvas.result?.id??null:xtbAnalysisLayout?(xtbAnalysisOwnerId?analysisCanvases[xtbAnalysisOwnerId]?.result?.id??null:activeId?xtbAnalysisCanvases[activeId]?.result?.id??null:null):sidebarResult?.id??null} onClose={id=>setPlots(previous=>previous.filter(value=>value.id!==id))}/>
     </div>
@@ -3936,7 +4567,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
      onLostPointerCapture={event=>endWorkspaceDividerDrag(event.currentTarget,event.pointerId)}
      onDoubleClick={()=>resizeTools(DEFAULT_WORKBENCH_PANE_SIZES.rightWidth)}
      onKeyDown={event=>{if(['ArrowLeft','ArrowRight','Home'].includes(event.key)){event.preventDefault();resizeTools(event.key==='Home'?DEFAULT_WORKBENCH_PANE_SIZES.rightWidth:rightWidth+(event.key==='ArrowLeft'?10:-10));}}}/>
-    <aside data-page-scroll="results" className="workspace-common-tools" data-pes={pesLayout||undefined} hidden={!rightPaneVisible} aria-label={advancedResultsVisible?(xtbAnalysisLayout?'XTB2后处理分析':'高级任务进度与结果'):analysisResultsVisible?'后处理显示工具区':'公共建模工具区'}>
+    <aside data-page-scroll="results" className="workspace-common-tools" data-pes={pesLayout||undefined} hidden={!rightPaneVisible} aria-label={advancedResultsVisible?(xtbAnalysisLayout?'XTB2后处理分析':'高级任务进度与结果'):analysisToolsVisible?'后处理显示工具区':'公共建模工具区'}>
      <div className="workspace-model-tools" hidden={!modelToolsDocked}>
       {modelToolsFloat.available&&<div className="workspace-model-tools-heading" data-workspace-tool-grip
        onPointerDown={event=>{if(event.button!==0||event.target!==event.currentTarget)return;toolsDrag.current={pointerId:event.pointerId,x:event.clientX,y:event.clientY};event.currentTarget.setPointerCapture(event.pointerId);}}
@@ -3948,13 +4579,21 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
       <div ref={modelToolsFloat.slotRef}/>
      </div>
      <div ref={setAdvancedResultHost} className="workspace-fill-host" data-testid="workspace-advanced-result-host" hidden={!advancedResultsVisible}/>
+     {currentStructureEntry&&<CurrentStructureAnalysisEntry document={currentStructureEntry.store.getSnapshot()} selected={currentStructureSelected}
+      onOpen={(id,page)=>{
+       if(registry.stamp().documentId===id&&!ownerHidden&&!taskWorkspace.opened&&!closingPending){
+        setStructureAnalysisRequestedPage(page?{documentId:id,projectEpoch:projectIdentityEpoch.current,id:crypto.randomUUID(),kind:page}:undefined);
+        setStructureAnalysisSelected(previous=>({...previous,[id]:true}));
+       }
+      }}/>}
      <div className="analysis-workspace-host" data-testid="workspace-current-structure-tool-host" hidden={!currentStructureSelected}><SharedSurface channel={toolSurface}/></div>
      {Object.entries(postprocess.documents).map(([id,value])=><div key={id} ref={analysisHostRef(id)} hidden={(Boolean(fileCurrent)||!analysisLayout||id!==postprocess.ownerId)&&id!==xtbAnalysisOwnerId} data-testid="postprocess-tool-host" data-document-id={id}><p className="postprocess-note">分析来源：{(activeAnalysisResults[id]?.source===value?activeAnalysisResults[id]?.result:null)?.label??value.result.label}</p></div>)}
      {Object.values(postprocess.fileDocuments).map(value=><div key={value.id} ref={analysisHostRef(value.id)} hidden={!analysisLayout||fileCurrent?.id!==value.id} data-testid="scientific-file-tool-host" data-file-document-id={value.id}/>)}
      {documents.filter(entry=>entry.legacyResult).map(entry=><div key={'legacy-'+entry.id} ref={analysisHostRef(entry.id)} hidden={!analysisLayout||entry.id!==activeId} data-testid="postprocess-tool-host" data-document-id={entry.id}/>)}
     </aside>
    </WorkspaceColumns>
-  </div></div></AgentPanel>
+  </div></>}</ProjectUiRestoreBoundary></div></AgentPanel>
+   {!restoringDocumentViews&&<>
   {modelToolsFloat.render(<div ref={setToolHost} className="workspace-model-tools-content" data-testid="workspace-common-tool-host">{modelToolsAvailable&&active?<OwnedSharedSurface channel={modelToolsSurface} owner={modelToolsOwnerFor(active)}/>:modelToolsFloat.floating&&<p role="status">当前活动页面没有可用的建模工具。</p>}</div>)}
   <input hidden ref={fileInput} type="file" multiple aria-label="导入为新模型文档" onChange={event=>{const files=Array.from(event.target.files??[]);event.target.value='';if(files.length)void importFiles(files);}}/>
 
@@ -3964,7 +4603,7 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
    onConformerInitialFrame={openConformerInitialFrame} activeConformerInitial={activeConformerGroup?.role==='initial'&&activeConformerGroup.initialId?{taskId:activeConformerGroup.taskId,initialId:activeConformerGroup.initialId}:undefined}
    onObserve={source=>observeAdvancedSource(registry.stamp().documentId,source)}
    onExtract={extractAdvancedFrame} onPrepareInput={prepareAdvancedInput} onPrepareBatchInput={prepareBatchInput}
-   onOpenAnalysis={(taskId,runId)=>{const id=advancedAnalysisDocuments.current.get(`${taskId}:${runId}`),generated=id?postprocess.generated[id]:undefined;if(generated){activateDocument(generated.ownerId);registry.setModule('advanced');setAdvancedSection('xtb2');}else if(id){activateDocument(id);registry.setModule('analysis');}else setError('该运行尚未接入可用后处理来源。');}} onError={setError}/>}
+   onOpenAnalysis={(taskId,runId)=>{const id=advancedAnalysisDocuments.current.get(`${taskId}:${runId}`),generated=id?postprocess.generated[id]:undefined;if(generated){activateDocument(generated.ownerId);registry.setModule('advanced');setAdvancedSection('xtb2');}else if(id){activateDocument(id);registry.setModule('analysis');}else setError('该运行尚未接入可用后处理来源。');}} onError={setAdvancedControllerError}/>}
   {pes.controller&&!pes.pending.current&&retainedPesEntries.map(entry=>{
     const binding=entry.pesGroup!;
     const panelActive=pesLayout&&entry.id===active?.id&&!ownerHidden&&!taskWorkspace.opened&&!closingPending&&!pesDeleting;
@@ -3973,18 +4612,19 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
     return <ProjectUiScope key={entry.epoch} store={projectUi} scope={['document',entry.id,'pes']}>
       <PesWorkspaceDock controller={pes.controller!} entry={entry} configurationHost={panelActive?advancedConfigurationHost:null} resultHost={advancedResultHost}
         activationEpoch={state.activationEpoch} active={visible} panelActive={panelActive} display={displaySettings} onDisplay={changeDisplaySettings} onCanvas={pesCanvasPublisher(entry)}
-        onActivateNode={node=>activatePesNode(binding.groupId,node)} onEditFrame={editPesFrame} onOptimize={visible&&entry.id===activeId?startPesOptimization:undefined} onElectronicStateChange={changePesElectronicState}
+        onActivateNode={node=>activatePesNode(binding.groupId,node)} onEditFrame={editPesFrame} onOptimize={visible&&entry.id===activeId?startPesOptimization:undefined}
         onConstraintsChange={changePesConstraints} onOpenPlot={openPlot} additionalSources={panelActive?additionalPesSources:undefined} onError={setError}/>
     </ProjectUiScope>;
   })}
-  {advancedController&&<XtbAnalysisWorkspace controller={advancedController} active={xtbAnalysisLayout&&!ownerHidden&&!taskWorkspace.opened&&!closingPending} displayTargetId={activeId} configurationHost={xtbAnalysisLayout?advancedConfigurationHost:null} resultHost={xtbAnalysisLayout?advancedResultHost:null} computeResources={computeResources} resourceError={computeResourceState.error} analysisBindings={advancedAnalysisBindings} documents={Object.fromEntries(Object.entries(postprocess.generated).map(([key,row])=>[key,row.document]))} modelDocumentFor={id=>registry.getSnapshot().documents.find(entry=>entry.id===id)?.store.getSnapshot()} isAnalysisAvailable={xtbAnalysisSourceAvailable} display={displaySettings} onDisplay={changeDisplaySettings} onCaptureSource={()=>captureCurrentAdvancedSource(true)} onCaptureElectronicSource={captureCurrentElectronicSource} electronicSourceContext={xtbLiveElectronicContext} scientificFrameReady={xtbVisibleScientificFrameReady} scientificFrameIdentity={xtbVisibleScientificIdentity} currentScientificFrameIdentity={currentXtbScientificFrameIdentity} assertConfirmedSourceCurrent={assertConfirmedXtbSourceCurrent} electronicDrafts={xtbElectronicDrafts} onElectronicDraftChange={changeXtbElectronicDraft} prepareElectronicSource={prepareXtbElectronicSource} taskSelections={xtbTaskSelections} onTaskSelectionChange={changeXtbTaskSelection} methodDrafts={xtbMethodDrafts} onMethodDraftChange={changeXtbMethodDraft} assertTargetCurrent={assertXtbTargetCurrent} onObserve={source=>{if(!activeId)return;assertXtbTargetCurrent(activeId);observeAdvancedSource(activeId,source);}} onCanvas={publishXtbCanvas} onAnalysisSelection={publishXtbAnalysisSelection} renderManagedTaskControls={({documentId,document,running})=>managedTaskControls(documentId,document,running)} onOpenPlot={openPlot} onExtract={extractFrame} onPrepareInput={structure=>{extractFrame(structure);requestNewInputTask();}} onError={setError}/>}
+  {advancedController&&<XtbAnalysisWorkspace controller={advancedController} active={xtbAnalysisLayout&&!ownerHidden&&!taskWorkspace.opened&&!closingPending} displayTargetId={activeId} configurationHost={xtbAnalysisLayout?advancedConfigurationHost:null} resultHost={xtbAnalysisLayout?advancedResultHost:null} computeResources={computeResources} resourceError={computeResourceState.error} analysisBindings={advancedAnalysisBindings} documents={Object.fromEntries(Object.entries(postprocess.generated).map(([key,row])=>[key,row.document]))} modelDocumentFor={id=>registry.getSnapshot().documents.find(entry=>entry.id===id)?.store.getSnapshot()} isAnalysisAvailable={xtbAnalysisSourceAvailable} display={displaySettings} onDisplay={changeDisplaySettings} onCaptureSource={()=>captureCurrentAdvancedSource(true)} onCaptureElectronicSource={captureCurrentElectronicSource} electronicSourceContext={xtbLiveElectronicContext} scientificFrameReady={xtbVisibleScientificFrameReady} scientificFrameIdentity={xtbVisibleScientificIdentity} currentScientificFrameIdentity={currentXtbScientificFrameIdentity} assertConfirmedSourceCurrent={assertConfirmedXtbSourceCurrent} electronicDrafts={xtbElectronicDrafts} onElectronicDraftChange={changeXtbElectronicDraft} prepareElectronicSource={prepareXtbElectronicSource} taskSelections={xtbTaskSelections} onTaskSelectionChange={changeXtbTaskSelection} methodDrafts={xtbMethodDrafts} onMethodDraftChange={changeXtbMethodDraft} assertTargetCurrent={assertXtbTargetCurrent} onObserve={source=>{if(!activeId)return;assertXtbTargetCurrent(activeId);observeAdvancedSource(activeId,source);}} onCanvas={publishXtbCanvas} onAnalysisSelection={publishXtbAnalysisSelection} renderManagedTaskControls={({documentId,document,running})=>managedTaskControls(documentId,document,running)} onOpenPlot={openPlot} onExtract={extractFrame} onPrepareInput={structure=>{extractFrame(structure);requestNewInputTask();}} onError={setAdvancedControllerError}/>}
   {pesClosing&&<DialogShell aria-label="关闭势能面内容" className="modal" backdropClassName="modal-backdrop" ownerDocument={tabs.current?.ownerDocument} onCancel={cancelPesClose}><h2>{pesClosing.nodeId?'关闭势能面标签':'删除势能面任务组'}</h2><p>{pesClosing.label}的相关计算结束后，将关闭对应页面和其中的结果记录。</p><div className="modal-buttons"><button disabled={pesDeleting} onClick={cancelPesClose}>取消</button><button className="button-primary" disabled={pesDeleting} onClick={()=>void confirmPesClose()}>{pesDeleting?'正在收尾':'确认'}</button></div></DialogShell>}
   {postprocess.dialog}
   {diagnosticsOpen&&sourceDiagnostics.length>0&&<SourceDiagnostics items={sourceDiagnostics} onClose={()=>setDiagnosticsOpen(false)} onRemove={removeSourceDiagnostic}/>}
   {pendingSourceCopy&&<DialogShell aria-label="在新标签页继续" className="modal workspace-scientific-edit-choice" backdropClassName="modal-backdrop" onCancel={()=>pendingSourceCopy.resolve(false)}><h2>在新标签页继续</h2><p>{pendingSourceCopy.purpose==='file-import'?'在新标签页载入文件，原构象帧保留。':pendingSourceCopy.purpose==='xtb-electronic-state'?'当前计算来源和旧波函数将保留原始电子态。复制当前完整帧，在新标签页设置本次单点。':<>当前帧属于构象搜索，原始帧将保留。<br/>将复制当前帧，在新标签页继续本次操作。</>}</p><div className="modal-buttons"><button onClick={()=>pendingSourceCopy.resolve(false)}>取消</button><button className="button-primary" onClick={()=>pendingSourceCopy.resolve(true)}>{pendingSourceCopy.purpose==='file-import'?'在新标签页载入文件':'在新标签页继续'}</button></div></DialogShell>}
   {pendingEdit&&pendingEdit.request.documentId===activeId&&!detachedPlacement.current[pendingEdit.request.documentId]&&<DialogShell aria-label={protectedConformerSource(pendingEdit.request.documentId)?'在新标签页继续':pendingConformerInitialEdit?'修改构象初始结构':'修改来源结构'} className="modal workspace-scientific-edit-choice" backdropClassName="modal-backdrop" ownerDocument={tabs.current?.ownerDocument} initialFocus={()=>tabs.current?.ownerDocument.querySelector<HTMLElement>('[data-scientific-edit-copy]')??null} onCancel={()=>{if(!editChoiceBusy)void resolveScientificEdit('cancel');}}><h2>{protectedConformerSource(pendingEdit.request.documentId)?'在新标签页继续':pendingConformerInitialEdit?'修改构象初始结构':'修改来源结构'}</h2><p>{protectedConformerSource(pendingEdit.request.documentId)?'当前帧属于构象搜索，原始帧将保留。将复制当前帧，在新标签页继续本次操作。':pendingConformerInitialEdit?'已有采样或优化设置及结果将保留原来源；修改后须重新确认电荷与自旋多重度，确认时采用当前帧。增删原子或改变元素后须建立新搜索。确认后继续本次修改？':'此修改会使当前结构的后处理结果暂不可用。撤销相关修改后可恢复。'}</p>{pendingEditError&&<DismissibleNotice identity={pendingEdit}>{pendingEditError}</DismissibleNotice>}<div className="modal-buttons"><button data-scientific-edit-copy className="button-primary" disabled={editChoiceBusy} onClick={()=>void resolveScientificEdit('copy')}>{protectedConformerSource(pendingEdit.request.documentId)?'在新标签页继续':'在新标签页建模'}</button>{!protectedConformerSource(pendingEdit.request.documentId)&&<button disabled={editChoiceBusy} onClick={()=>void resolveScientificEdit('current')}>{pendingConformerInitialEdit?'确认修改':'在当前标签页建模'}</button>}<button disabled={editChoiceBusy} onClick={()=>void resolveScientificEdit('cancel')}>取消</button></div></DialogShell>}
   {structureLibraryOpen&&<StructureLibrary display={displaySettings} onClose={()=>{libraryLoadController.current?.abort();setStructureLibraryOpen(false);}} onLoad={loadLibraryStructure}/>}
-  {resultImportRequest&&<DialogShell aria-label="识别到计算结果" className="modal workspace-import-choice" backdropClassName="modal-backdrop" ownerDocument={tabs.current?.ownerDocument} onCancel={()=>resolveResultImport('cancel')}><h2>{resultImportDescriptions.map(value=>`识别为 ${value}`).join('；')}</h2><p>查看计算结果与波函数，或载入最后完整结构继续建模。</p><div className="modal-buttons"><button onClick={()=>resolveResultImport('analysis')}>进入后处理</button><button onClick={()=>resolveResultImport('structure')}>只载入结构</button><button onClick={()=>resolveResultImport('cancel')}>取消导入</button></div></DialogShell>}
+  {resultImportRequest&&<DialogShell aria-label="识别到计算结果" className="modal workspace-import-choice" backdropClassName="modal-backdrop" ownerDocument={tabs.current?.ownerDocument} onCancel={()=>resolveResultImport('cancel')}><h2>{resultImportDescriptions.map(value=>`识别为 ${value}`).join('；')}</h2><p>查看计算结果与波函数，或载入完整结构继续建模。</p><div className="modal-buttons"><button onClick={()=>resolveResultImport('analysis')}>进入后处理</button><button onClick={()=>resolveResultImport('structure')}>只载入结构</button><button onClick={()=>resolveResultImport('cancel')}>取消导入</button></div></DialogShell>}
+  {importGeometryChoice&&<ImportGeometryDialog {...importGeometryChoice} ownerDocument={tabs.current?.ownerDocument}/>}
   {(newInputTarget||preparedInputTarget||advancedInputTarget)&&<DialogShell aria-label="新建输入任务确认" className="modal" backdropClassName="modal-backdrop" ownerDocument={tabs.current?.ownerDocument} onCancel={()=>{setNewInputTarget(null);setPreparedInputTarget(null);setAdvancedInputTarget(null);}}><h2>新建输入任务？</h2><p>当前输入草稿将被替换，请先导出需要保留的输入。模型结构与冻结不会删除。</p><div className="modal-buttons"><button onClick={()=>{setNewInputTarget(null);setPreparedInputTarget(null);setAdvancedInputTarget(null);}}>取消</button><button onClick={()=>{if(advancedInputTarget)prepareAdvancedInput(advancedInputTarget.source,true);else if(preparedInputTarget)prepareIrc(preparedInputTarget.structure,preparedInputTarget.engine,true);else if(newInputTarget)startNewInputTask(newInputTarget);}}>放弃当前草稿并新建</button></div></DialogShell>}
   {cancelBatchConfirm&&borrowedBatch&&<DialogShell aria-label="取消批量输入" className="modal" backdropClassName="modal-backdrop" ownerDocument={tabs.current?.ownerDocument} onCancel={()=>setCancelBatchConfirm(false)}><h2>取消批量输入？</h2><p>关闭临时代表帧并恢复原文档；原轨迹与已保存文件保留。</p><div className="modal-buttons"><button onClick={()=>setCancelBatchConfirm(false)}>继续配置</button><button onClick={()=>void finishBatchInput(borrowedBatch.session.id)}>取消批量输入</button></div></DialogShell>}
   <output hidden data-testid="workspace-input-session-state">{JSON.stringify({taskId:inputTask?.id??null,ownerDocumentId:inputOwnerId??null,activationEpoch:inputTask?.activationEpoch??null,activeDocumentId:activeId,module:state.module})}</output>
@@ -3995,5 +4635,8 @@ function ProjectWorkspaceShell({renderDocument,projectUi}:{renderDocument(surfac
   {deleteGroup&&<DialogShell aria-label="删除整个构象搜索组" className="modal" backdropClassName="modal-backdrop" onCancel={()=>{if(!deletingGroup)setDeleteGroup(null);}}><h2>删除整个构象搜索组？</h2><p>将移除“{conformerGroups[deleteGroup]?.label??'构象搜索'}”的初猜、采样/优化页面和本次任务结果。</p><p>项目目录外的原始文件和导出文件保留。</p><div className="modal-buttons"><button disabled={deletingGroup} onClick={()=>setDeleteGroup(null)}>取消</button><button disabled={deletingGroup} className="button button-primary" onClick={()=>void confirmDeleteGroup()}>{deletingGroup?'正在删除…':'删除整个组'}</button></div></DialogShell>}
   {closingPending?<DialogShell aria-label="正在丢弃内容" className="modal" backdropClassName="modal-backdrop" ownerDocument={tabs.current?.ownerDocument} onCancel={()=>{}}><span role="status">正在丢弃内容并释放关联资源…</span></DialogShell>:closing&&discardImpact&&<DialogShell aria-label="丢弃内容确认" className="modal" backdropClassName="modal-backdrop" ownerDocument={tabs.current?.ownerDocument} onCancel={()=>void cancelClose(closing)}><h2>丢弃这些内容？</h2><p>将从当前工作区永久移除以下内容及列出的下游结果，不能撤销。</p><ul>{discardImpact.impactLabels.map(label=><li key={label}>{label}</li>)}</ul><p>外部原始文件、已导出文件和此前手动保存的项目保留。</p><div className="modal-buttons"><button onClick={()=>void cancelClose(closing)}>取消</button><button className="button button-primary" onClick={()=>void executeDiscard(discardImpact)}>丢弃</button></div></DialogShell>}
   <output hidden data-testid="workspace-document-state">{JSON.stringify({activeDocumentId:activeId,displayedDocumentId,toolTargetDocumentId:activeId,activeViewId:state.activeViewId,activationEpoch:state.activationEpoch,module:state.module,deckMode,detached,documents:state.documents.map(entry=>({id:entry.id,epoch:entry.epoch,revision:entry.store.getSnapshot().revision,sourceEpoch:entry.sourceEpoch,label:entry.label,runtime:entry.runtime,analysisAvailable:registry.analysisAvailable(entry.id),analysisBindingId:entry.store.getSnapshot().analysisBindingId??null}))})}</output>
- </div></WorkspaceRenderBoundary>{taskWorkspace.dialog}{project.dialog}</>}</ProjectUiRestoreBoundary></>;
+   </>}
+ </div></WorkspaceRenderBoundary>
+ {!restoringDocumentViews&&<>{taskWorkspace.dialog}{project.dialog}</>}
+ </ProjectOptimizationContext.Provider>;
 }

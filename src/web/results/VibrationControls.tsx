@@ -23,7 +23,7 @@ import { useProjectState, useProjectUiRestored, useProjectUiScope, useProjectUiS
 import { bindStaticVibrationPose, bindVibrationAnimation, createVibrationAnimation, readVibrationPresentedAngle } from './vibration-animation';
 import { useResultsMcp } from './results-mcp-context';
 import { citationDocumentIdFromScope } from '../../citations/workspace-facts';
-import { mountVibrationView, type VibrationViewPatch, type VibrationViewPort } from './vibration-view-port';
+import { mountVibrationView, type VibrationViewPatch, type RamanViewPort, type VibrationViewPort } from './vibration-view-port';
 
 /** Confirmed editable initial parameters; applying them remains an explicit action. */
 export const DEFAULT_RAMAN_STOKES_PARAMETERS = { laserWavelengthNm: 532, temperatureK: 298.15 } as const;
@@ -160,19 +160,25 @@ export default function VibrationControls(p: VibrationControlsProps) {
   const ownerId=citationDocumentIdFromScope(projectScope?.scope??[])??p.result.id;
   const sourceLease=useMemo(()=>crypto.randomUUID(),[p.result.id,p.result.scientific,p.result.source.sha256,p.currentIndex,projectScope?.generation]);
   const mcpOwner=useRef<VibrationViewPort>(null!);
+  const ramanControls=useRef<RamanViewPort>(null);
   useLayoutEffect(()=>{
     mcpOwner.current={
       read(){
         const angle=projection&&p.active?readVibrationPresentedAngle(projection.structure.atoms):undefined;
-        const frame=p.result.frames[p.currentIndex];
+        const frame=p.result.frames[p.currentIndex],raman=ramanControls.current?.read();
         return {viewRef,ownerId,resultId:p.result.id,sourceId:p.result.source.id,sourceSha256:p.result.source.sha256,
           jobIndex:p.result.jobIndex,frameIndex:p.currentIndex,sourceFrameIndex:frame?.sourceFrameIndex,active:p.active&&playIdentity===identity,
-          revision:JSON.stringify([viewRef,sourceLease,matchingSet,activeMode,amplitude,periodMs,playing,manual,isPlaying?null:phase,scaled,factor]),
+          revision:JSON.stringify([viewRef,sourceLease,matchingSet,activeMode,amplitude,periodMs,playing,manual,isPlaying?null:phase,scaled,factor,raman?.parameters??null]),
+          raman,
           sets:sets.map((set,index)=>({index,modeCount:set.modes.filter(mode=>mode.kind!=='rotation'&&mode.kind!=='translation').length,selected:index===matchingSet})),
           setIndex:matchingSet,modes:modes.map(mode=>({mode:mode.displayIndex,sourceMode:mode.sourceIndex,frequencyCmInverse:mode.originalFrequency,
             correctedFrequencyCmInverse:mode.correctedFrequency,sourceLine:mode.sourceLine})),mode:activeMode,hasDisplacements:!!valid,
           amplitudeAngstrom:amplitude,periodMs,playing:isPlaying,manualDisplacementAngstrom:manual,
           scene:angle===undefined?{status:projection&&p.active?'preparing':'unavailable'}:{status:'presented',phase:Math.sin(angle),angleRadians:angle}};
+      },
+      applyRaman(parameters){
+        if(!p.active||playIdentity!==identity||!ramanControls.current)throw Error('请先激活目标振动分析页。');
+        ramanControls.current.apply(parameters);
       },
       configure(patch:VibrationViewPatch){
         if(!p.active||playIdentity!==identity)throw Error('请先激活目标振动分析页。');
@@ -204,6 +210,7 @@ export default function VibrationControls(p: VibrationControlsProps) {
   },[viewRef,ownerId,p,playIdentity,identity,projection,sourceLease,matchingSet,activeMode,amplitude,periodMs,playing,manual,isPlaying,phase,scaled,factor,sets,modes,valid,changeMode,setSetIndex,setAmplitude,setPeriodMs,changePlayback,setManual]);
   useLayoutEffect(()=>resultsMcp?mountVibrationView(resultsMcp,viewRef,{
     read:()=>mcpOwner.current.read(),configure:patch=>mcpOwner.current.configure(patch),
+    applyRaman:parameters=>mcpOwner.current.applyRaman!(parameters),
   }):undefined,[resultsMcp,viewRef]);
   // Animation phase belongs to the viewport projection, not the static mode
   // table. Keep both its projection and React subtree stable during playback.
@@ -211,7 +218,7 @@ export default function VibrationControls(p: VibrationControlsProps) {
   const modeTableView=useMemo(()=><SpectroscopyTable hideTitle projection={modeTable} fileName="Ester-Studio-vibration-modes.txt" selectionScope={`${identity}:${matchingSet}:vibration-modes`} selectedKey={String(selected)} selectionLabel="模式" onSelect={key=>changeMode(Number(key))} onPreview={key=>setPreview(key===null?null:Number(key))} format={{decimals,onDecimalsChange:setDecimals,ariaLabel:'振动模式表'}} revealRow={revealMode?.identity===`${identity}:${matchingSet}`?revealMode:undefined}/>,[modeTable,identity,matchingSet,selected,changeMode,decimals,setDecimals,revealMode]);
   const infraredView=useMemo(()=>units.length?<SpectroscopyControls kind="ir" appearanceKey={`${identity}:${matchingSet}`} presentation="section" title="红外谱" decimals={decimals} identity={`${identity}:${matchingSet}:${scaled}:${factor}:${intensityUnit}`} axis="cm⁻¹" fwhmUnit="cm⁻¹" defaultFwhm={16} build={build} selectedIndex={selected} onSelectIndex={selectSpectrumMode} sourceIndex={(line,sourceIndex)=>modes.find(item=>item.sourceLine===line&&item.sourceIndex===sourceIndex)?.displayIndex}
     intensityUnits={units} initialIntensityUnit={intensityUnit}/>:<AnalysisTaskSection title="红外谱"><p className="postprocess-note">当前模式未输出红外强度。</p></AnalysisTaskSection>,[units,decimals,identity,matchingSet,scaled,factor,intensityUnit,build,selected,selectSpectrumMode,modes]);
-  const ramanView=useMemo(()=><RamanControls modes={modes} decimals={decimals} onDecimalsChange={setDecimals} identity={`${identity}:${matchingSet}`} selectedIndex={selected} onSelectIndex={selectSpectrumMode} onPreviewIndex={setPreview} defaults={{...DEFAULT_RAMAN_STOKES_PARAMETERS,...p.ramanDefaults}} scaleFactor={scaled?factor:1}/>,[modes,decimals,setDecimals,identity,matchingSet,selected,selectSpectrumMode,p.ramanDefaults,scaled,factor]);
+  const ramanView=useMemo(()=><RamanControls nativeControls={ramanControls} modes={modes} decimals={decimals} onDecimalsChange={setDecimals} identity={`${identity}:${matchingSet}`} selectedIndex={selected} onSelectIndex={selectSpectrumMode} onPreviewIndex={setPreview} defaults={{...DEFAULT_RAMAN_STOKES_PARAMETERS,...p.ramanDefaults}} scaleFactor={scaled?factor:1}/>,[modes,decimals,setDecimals,identity,matchingSet,selected,selectSpectrumMode,p.ramanDefaults,scaled,factor]);
   const report = (error: unknown) => callbacks.current.onError?.(error instanceof Error ? error.message : String(error));
   if (!modes.length) return <InputSettingsCard title="振动"><p className="postprocess-note">当前帧未输出振动模式。</p></InputSettingsCard>;
   const targetLabel=frequencyTargetLabel(sets[matchingSet]?.electronicTarget);

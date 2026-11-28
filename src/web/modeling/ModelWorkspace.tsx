@@ -19,7 +19,8 @@ import { getBuilderTemplate } from '../../core/builder-templates';
 import { geometryGuide, coordinateSize } from '../../core/geometry-guides';
 import { emptyMeasurementSession, transientMeasurement, pickSessionMeasurement, pickSessionBondMeasurement, clearPendingMeasurement, clearSessionMeasurements, retainMeasurementSession, activateMeasurementRecord } from './measurement-state';
 import { applyToolSessionMeasurement, planToolSessionTransition, readWorkspaceOptimizationPreferences, writeWorkspaceOptimizationPreferences, parseWorkspaceOptimizationPreferences, OPTIMIZATION_PREFERENCE_EVENT, OPTIMIZATION_PREFERENCE_KEY, type WorkspaceOptimizationPreferences, type ToolSessionIntent, type ToolSessionState } from './tool-session';
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, lazy, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { ProjectOptimizationContext } from './project-calculation-level';
 import type { ModelWorkspaceBaseProps } from './ModelWorkspaceProps';
 import { builderApplyResult, type BuilderCommand } from '../../core/builder-draft';
 import { createModelStore, getFrozenAtomIds, getMovableAtomIds, ModelConflictError } from '../../core/modeling';
@@ -50,7 +51,7 @@ import { defaultPlacementCommand } from '../../modeling/application/default-plac
 import { captureOrcaAssignments, captureOrcaCoordinates, getOrcaMovableAtomIds } from '../../modeling/application/orca-bridge';
 import { createModelInteraction, elementForHoldTap } from './interaction';
 import ModelViewport from './ModelViewport';
-import type {CameraZoomControls} from './render/adapter';
+import type {ViewportCameraControls} from './render/adapter';
 import ViewportErrorBoundary from './ViewportErrorBoundary';
 import { type CellPresentationOptions } from '../../core/modeling/cell-presentation';
 import {workspaceCurrentProtectionDocument} from './workspace-source-validity';
@@ -125,15 +126,16 @@ import type {ModelViewportProps} from './ModelViewport';
 import {useCurrentCipUsage} from './use-cip-usage';
 import { transferSlabCameraView } from './slab-preview-presentation';
 import { XtbController, type XtbOptions, type XtbState } from '../../modeling/xtb/controller';
+import { bondOrderStructureKey } from '../../modeling/bond-orders';
 import { nextXtbDisplayObservation, projectXtbPreview, xtbOptimizationDisplayStatus, type XtbDisplayObservation } from './xtb-preview';
 import { getMDProtectionInfo, supportsMDIntegrator } from '../../modeling/dynamics/md-methods';
 import type { DynamicsConfig } from '../../modeling/dynamics/controller';
 import type { DynamicsOperation } from '../../modeling/dynamics/contracts';
 import { desktopBridge } from '../../modeling/platform/desktop';
-import {adoptOrdinaryOptimizationGeometry,finalizeStandaloneOrdinaryOptimization,observeOrdinaryOptimizationTiming,ordinaryOptimizationInput,prepareOrdinaryOptimization,standaloneOptimizationRequest} from './pes-ordinary-optimization';
+import {adoptOrdinaryOptimizationGeometry,finalizeStandaloneOrdinaryOptimization,observeOrdinaryOptimizationTiming,ordinaryOptimizationInput,ordinaryOptimizationStartupText,prepareOrdinaryOptimization,standaloneOptimizationRequest} from './pes-ordinary-optimization';
 import {selectWorkspaceOptimizationMethod,workspaceOptimizationMethodAvailable,workspaceNetSettings,workspaceOptimizationKind,workspaceXtbSettings} from './tool-session';
 
-import {PES_SCHEMA,type PesFrame,type PesRequest,type PesResult} from '../../modeling/pes/contracts';
+import {PES_SCHEMA,isPesNetMethod,type PesFrame,type PesRequest,type PesResult} from '../../modeling/pes/contracts';
 import {ordinaryOptimizationError,ordinaryOptimizationStatus,projectOrdinaryOptimizationStructure} from '../../modeling/pes/ordinary-optimization-geometry';
 import {validPesFrame} from '../../modeling/pes/frames';
 import {trajectoryPlaybackEventCurrent,type WorkspaceViewportState,type WorkspaceViewportEvent,type WorkspaceViewportController,type WorkspaceModelCommandPort,type ModelBondPerceptionRequest} from './workspace-viewport';
@@ -197,6 +199,7 @@ export interface ModelWorkspaceProps extends ModelWorkspaceBaseProps {
   sharedShowAxes?: boolean;
   onSharedShowAxesChange?(value: boolean): void;
   viewportActive?: boolean;
+  detachedViewportActive?: boolean;
   legendVisible?: boolean;
   layoutActions?: ReactNode;
   onLegendSurfaceChange?(surface: ReactNode): void;
@@ -211,6 +214,7 @@ export interface ModelWorkspaceProps extends ModelWorkspaceBaseProps {
   freezeEditingAllowed?:boolean;
   /** Explicit current-model postprocessing route; does not activate editing/runtime. */
   structureAnalysisActive?: boolean;
+  structureAnalysisRequestedPage?:{id:string;kind:'surface'};
   analysisCanvas?: import('../results/analysis-canvas').AnalysisCanvas;
   presentationActive?: boolean;
   workspaceDocumentPickMode?: 'source' | 'link';
@@ -230,7 +234,7 @@ export interface ModelWorkspaceProps extends ModelWorkspaceBaseProps {
   advancedModelingRoute?:AdvancedModelingRoute;
   onAdvancedModelingRouteChange?(route:AdvancedModelingRoute):void;
   onAdvancedModelingBack?():void;
-  onDeriveStructure?(candidate:StructureTransformCandidate,source?:ModelDocument):void|Promise<void>;
+  onDeriveStructure?(candidate:StructureTransformCandidate,source?:ModelDocument,signal?:AbortSignal):string|void|Promise<string|void>;
   onRetainedOptimization?:RetainedOrdinaryOptimization;
   onWorkspaceHistory?(kind:'undo'|'redo'):boolean;
   workspaceCanUndo?:boolean;workspaceCanRedo?:boolean;
@@ -303,6 +307,14 @@ function initialStore(props: ModelWorkspaceProps) {
   const coordinates = props.orcaJobRequest ? captureOrcaCoordinates(props.structure, props.orcaJobRequest.settings) : props.jobRequest ? captureGaussianCoordinates(props.structure, props.jobRequest.settings) : undefined;
   const assignments = props.assignments ?? (props.orcaJobRequest ? captureOrcaAssignments(props.structure, props.orcaJobRequest.settings) : undefined);
   return createModelStore(props.structure, assignments, coordinates);
+}
+
+export function runtimeViewportConsumesPreview(props:Pick<ModelWorkspaceProps,'viewportActive'|'detachedViewportActive'|'active'>):boolean {
+  return Boolean(props.detachedViewportActive)||(props.viewportActive??props.active)!==false;
+}
+
+export function sameViewportAtomIds(previous:readonly string[]|undefined,next:readonly string[]|undefined):boolean {
+  return previous===next||Boolean(previous&&next&&previous.length===next.length&&previous.every((id,index)=>id===next[index]));
 }
 
 export default function ModelWorkspace(props: ModelWorkspaceProps) {
@@ -385,7 +397,9 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   const [cameraView,setCameraView]=useState<number[]|undefined>(()=>props.initialCameraView?[...props.initialCameraView]:undefined);
   const initialCameraPending=useRef(Boolean(props.initialCameraView));
   const viewportGetter=useRef<(()=>number[])|null>(null);
-  const viewportZoom=useRef<CameraZoomControls|null>(null);
+  const viewportZoom=useRef<ViewportCameraControls|null>(null);
+  const analysisCameraControls=props.analysisCanvas?.onCameraControls;
+  useLayoutEffect(()=>{analysisCameraControls?.(viewportZoom.current);return()=>analysisCameraControls?.(null);},[analysisCameraControls]);
   const sourceViewportGetter=useRef<(()=>number[])|null>(null);
   const [sourceCameraView,setSourceCameraView]=useState<number[]>();
   const [linkedSlabView,setLinkedSlabView]=useState(true);
@@ -473,7 +487,7 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   const [saveFormat, setSaveFormat] = useState<ModelFormat>('xyz'), [saveModal, setSaveModal] = useState(false),[saveModalWithCell,setSaveModalWithCell]=useState(false),[saveBusy,setSaveBusy]=useState(false);
   const [saveState, setSaveState] = useState<{ format: ModelFormat; token?: string; snapshot: ModelDocument; request?: JobRequest | OrcaJobRequest; withCell:boolean; assertCurrent():void } | null>(null);
   const saveModalSource=useRef<ModelDocument|undefined>(undefined);
-  const preparedTransformSources=useRef(new WeakMap<StructureTransformCandidate,{source:ModelDocument;key:string}>());
+  const preparedTransformSources=useRef(new WeakMap<StructureTransformCandidate,{source:ModelDocument;key:string;crystal?:CrystalResult}>());
   const saveModalGuard = useRef<(()=>void)|null>(null), saveBusyRef=useRef(false), asyncAlive = useRef(true);
   const xtbContext = useRef<{ store: ModelStore; documentId: string; generation: number; lease?: WorkspaceActivationStamp; referenceStructure?: Structure } | null>(null);
   const xtb = useMemo(() => props.documentRuntime?.xtb??new XtbController({ store, bridge: desktopBridge(), chemistry: createChemistryPort(),allowWorkingEdits:true,captureSource:()=>captureOperationSource(),
@@ -488,26 +502,32 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   const continuationBackendBlocked=gxtbRunBlocked(gxtbBackend,xtbState.continuationMethod??'');
   useEffect(()=>{let alive=true;void desktopBridge()?.info().then(info=>{if(alive)setPeriodicGfn2Available(info.periodicGfn2BondOrders===true);}).catch(()=>{if(alive)setPeriodicGfn2Available(false);});return()=>{alive=false;};},[]);
   const xtbDisplayObservation=useRef<XtbDisplayObservation|undefined>(undefined);
+  const previewVisible=runtimeViewportConsumesPreview(props);
   const xtbSourceDocument=xtb.getWorkingSourceDocument(),dynamicsSourceDocument=dynamics.getWorkingSourceDocument();
-  const xtbFrameCurrent=xtbState.workingSource?.documentId===model.id&&(xtbState.workingSource.revision===model.revision||xtbState.running&&runtimePreviewSourceCurrent(xtb.getWorkingOwnerDocument(),model));
-  const dynamicsFrameCurrent=!['pending','retained'].includes(dynamicState.resultAdoption??'')&&dynamicState.workingSource?.documentId===model.id&&(dynamicState.workingSource.revision===model.revision||['starting','running','pausing','paused','stopping'].includes(dynamicState.status)&&runtimePreviewSourceCurrent(dynamics.getWorkingOwnerDocument(),model));
-  const shownDynamicsFrame=displayedDynamicsFrame(dynamicState);
+  const xtbFrameCurrent=previewVisible&&xtbState.workingSource?.documentId===model.id&&(xtbState.workingSource.revision===model.revision||xtbState.running&&runtimePreviewSourceCurrent(xtb.getWorkingOwnerDocument(),model));
+  const dynamicsFrameCurrent=previewVisible&&!['pending','retained'].includes(dynamicState.resultAdoption??'')&&dynamicState.workingSource?.documentId===model.id&&(dynamicState.workingSource.revision===model.revision||['starting','running','pausing','paused','stopping'].includes(dynamicState.status)&&runtimePreviewSourceCurrent(dynamics.getWorkingOwnerDocument(),model));
+  const shownDynamicsFrame=previewVisible?displayedDynamicsFrame(dynamicState):undefined;
   // Final adoption advances the Store revision. Refit that confirmed last
   // geometry once without allowing an old run to display over a later edit.
   const dynamicsDisplayFrameCurrent=dynamicsFrameCurrent||dynamicState.mode==='md'&&['stopped','completed','error'].includes(dynamicState.status)
     &&dynamicState.workingSource?.documentId===model.id&&!!shownDynamicsFrame
     &&graphFingerprint(model.draft.structure)===graphFingerprint(shownDynamicsFrame.structure)
     &&coordinatesFingerprint(model.draft.structure)===coordinatesFingerprint(shownDynamicsFrame.structure);
-  const shownXtbFrame=(props.viewportActive??props.active)===false||!xtbFrameCurrent?undefined:xtbState.previewFrame;
+  const shownXtbFrame=xtbFrameCurrent?xtbState.previewFrame:undefined;
   const sharedOptimization=useRef<{documentId:string;method:string;runId:string;stop():Promise<void>}|null>(null);
   const sharedOptimizationPending=useRef(false);
   const retainedOptimizationAdoptions=useRef(new Set<AbortController>());
   const scienceRuns=scienceModelReceipts(store);
   const [sharedOptimizationFrame,setSharedOptimizationFrame]=useState<{id:string;revision:number;structure:Structure;markCommitted?:()=>void}>();
+  const resumeSharedOptimizationPreview=useRef<(()=>void)|null>(null);
   useLayoutEffect(()=>{
-    if(props.active!==false&&sharedOptimizationFrame?.id===model.id&&sharedOptimizationFrame.revision===model.revision)
+    if(previewVisible)resumeSharedOptimizationPreview.current?.();
+    else setSharedOptimizationFrame(undefined);
+  },[previewVisible]);
+  useLayoutEffect(()=>{
+    if(previewVisible&&sharedOptimizationFrame?.id===model.id&&sharedOptimizationFrame.revision===model.revision)
       sharedOptimizationFrame.markCommitted?.();
-  },[props.active,model.id,model.revision,sharedOptimizationFrame]);
+  },[previewVisible,model.id,model.revision,sharedOptimizationFrame]);
   const [optimizationStatus,setSharedOptimizationStatus]=useState<{documentId:string;method:string;device?:unknown;identity?:string;text:string;error?:string;errorCode?:string}>();
   const sharedOptimizationStatus=optimizationStatus?.documentId===model.id?optimizationStatus:undefined;
   const [sharedOptimizationEvidence,setSharedOptimizationEvidence]=useState<{request:PesRequest;result:PesResult}>();
@@ -526,21 +546,27 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     const xtbPreview=projectXtbPreview(model,shownXtbFrame,xtb.getWorkingOwnerDocument());
     return workspaceLiveViewportDocument({model:!props.analysisCanvas?bondDocument:model,observationOnly:props.observationOnly,canvasDocument:bondCanvasDocument?{...model,...bondCanvasDocument,selection:workingSelection}:undefined,useWorkspaceImageExport:props.analysisCanvas?.useWorkspaceImageExport,
       structurePreview:!referenceCapture.viewportCapture&&structurePreview&&structurePreview.documentId===model.id&&structurePreview.expectedRevision===model.revision?{...model,draft:{...model.draft,structure:validTransformPresentation?.displaySource?validTransformPresentation.source:structurePreview.structure}}:undefined,
-      runtimePreview:sharedOptimizationFrame?.id===model.id&&sharedOptimizationFrame.revision===model.revision?{...model,draft:{...model.draft,structure:sharedOptimizationFrame.structure}}:dynamicsFrameCurrent&&shownDynamicsFrame?{...model,draft:{...model.draft,structure:shownDynamicsFrame.structure}}:xtbPreview!==model?xtbPreview:undefined});
-  },[model,bondDocument,bondCanvasDocument,shownXtbFrame,xtbSourceDocument,props.observationOnly,props.analysisCanvas?.document,props.analysisCanvas?.useWorkspaceImageExport,structurePreview,validTransformPresentation,referenceCapture.viewportCapture,dynamicsFrameCurrent,shownDynamicsFrame,workingSelection,sharedOptimizationFrame]);
+      runtimePreview:previewVisible&&sharedOptimizationFrame?.id===model.id&&sharedOptimizationFrame.revision===model.revision?{...model,draft:{...model.draft,structure:sharedOptimizationFrame.structure}}:dynamicsFrameCurrent&&shownDynamicsFrame?{...model,draft:{...model.draft,structure:shownDynamicsFrame.structure}}:xtbPreview!==model?xtbPreview:undefined});
+  },[model,bondDocument,bondCanvasDocument,shownXtbFrame,xtbSourceDocument,props.observationOnly,props.analysisCanvas?.document,props.analysisCanvas?.useWorkspaceImageExport,structurePreview,validTransformPresentation,referenceCapture.viewportCapture,dynamicsFrameCurrent,shownDynamicsFrame,workingSelection,sharedOptimizationFrame,previewVisible]);
+  const bondOrderEntries=useMemo(()=>{
+    if(advancedObservation||!model.bondOrderObservation)return undefined;
+    const original=model.draft.structure,visible=viewportModel.draft.structure;
+    return original===visible||bondOrderStructureKey(original)===bondOrderStructureKey(visible)?model.bondOrderObservation.entries:undefined;
+  },[advancedObservation,model.bondOrderObservation,model.draft.structure,viewportModel.draft.structure]);
   const viewportDisplay=props.advancedModelingRoute?.task==='cell-editor'&&structurePreview?{...display,cell:true}:display;
   const mdObservation=useRef(emptyObservationView());
+  const effectiveFrozenAtomIds=useMemo(()=>getFrozenAtomIds(model),[model.draft.assignments,model.draft.structure.atoms,model.sharedConstraints]);
   const viewportCipStructure=props.analysisCanvas?.viewport.cipStructure;
   const cipDocument=useMemo(()=>viewportCipStructure===undefined?viewportModel:viewportCipStructure?{
     ...viewportModel,draft:{...viewportModel.draft,structure:viewportCipStructure},
   }:undefined,[viewportModel,viewportCipStructure]);
   const onCipLabelsUsed=useCurrentCipUsage(cipDocument,(props.viewportActive??props.active)!==false,props.onCipLabelsUsed);
-  const mdObservationEnabled=dynamicState.mode==='md'&&!props.observationOnly&&!structurePreview&&!shownXtbFrame&&!props.initialViewTransform&&!props.analysisCanvas?.viewport.viewTransform;
+  const mdObservationEnabled=previewVisible&&dynamicState.mode==='md'&&!props.observationOnly&&!structurePreview&&!shownXtbFrame&&!props.initialViewTransform&&!props.analysisCanvas?.viewport.viewTransform;
   const mdAlignmentEnabled=mdObservationEnabled&&!viewportModel.draft.structure.cell;
   const mdDisplayFrame=mdObservationEnabled&&dynamicsDisplayFrameCurrent?shownDynamicsFrame:undefined;
   if(mdAlignmentEnabled)mdObservation.current=updateObservationView(mdObservation.current,{documentId:model.id,structure:viewportModel.draft.structure,
     reference:mdDisplayFrame?dynamicState.referenceStructure:undefined,epoch:mdDisplayFrame?dynamicState.sessionId:undefined,frame:mdDisplayFrame?.seq,
-    mode:viewportDisplay.alignment,frozenAtomIds:getFrozenAtomIds(model),softAnchorAtomIds:mdDisplayFrame?.nativeMD?.protectedAtomIds});
+    mode:viewportDisplay.alignment,frozenAtomIds:effectiveFrozenAtomIds,softAnchorAtomIds:mdDisplayFrame?.nativeMD?.protectedAtomIds});
   const mdObservationTransform=mdAlignmentEnabled?mdObservation.current.transform:undefined;
   const observeDynamics=(dynamicState.mode==='md'?mdObservationEnabled&&dynamicsDisplayFrameCurrent:dynamicsFrameCurrent);
   const slabViewState=useRef({presentation:validTransformPresentation,linked:linkedSlabView,source:model.draft.structure,candidate:viewportModel.draft.structure});
@@ -564,7 +590,7 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     try{syncSlabView(sourceViewportGetter.current(),'source');}catch(cause){setError(message(cause));}
   },[tiledTransform,linkedSlabView,validTransformPresentation?.rotation,sourceCameraView,model.id]);
   useLayoutEffect(()=>{setStructurePreview(null);setTransformPresentation(null);setTransformHighlightIds([]);setCellEditorDraft(null);setBondElectronicPrompt(null);},[model.id,model.revision,props.active,props.advancedModelingRoute?.category,props.advancedModelingRoute?.task]);
-  xtbDisplayObservation.current=nextXtbDisplayObservation(xtbDisplayObservation.current,model,shownXtbFrame,props.documentRuntime?xtbSourceDocument?.draft.structure:xtbContext.current?.referenceStructure,dynamicState.sessionId,xtb.getWorkingOwnerDocument());
+  if(previewVisible)xtbDisplayObservation.current=nextXtbDisplayObservation(xtbDisplayObservation.current,model,shownXtbFrame,props.documentRuntime?xtbSourceDocument?.draft.structure:xtbContext.current?.referenceStructure,dynamicState.sessionId,xtb.getWorkingOwnerDocument());
   const viewportObservation=xtbDisplayObservation.current;
   useEffect(() => { xtb.connect(); return () => {if(!props.documentRuntime)xtb.disconnect();}; }, [xtb,props.documentRuntime]);
   const structureRuntimeLocked = Boolean(ordinaryRun) || xtbState.running || ['starting','running','pausing','paused','stopping'].includes(dynamicState.status);
@@ -584,7 +610,9 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   const [pasteConflict, setPasteConflict] = useState<ClipboardPayload | null>(null);
   const [importChoices, setImportChoices] = useState<FragmentSnapshot[]>([]);
   const [aggression, setAggression] = useState<BondAggression>('standard');
-  const [optimizationPreferences,setOptimizationPreferences]=useState(readWorkspaceOptimizationPreferences);
+  const projectOptimization=useContext(ProjectOptimizationContext);
+  const [standalonePreferences,setOptimizationPreferences]=useState(readWorkspaceOptimizationPreferences);
+  const optimizationPreferences=projectOptimization?.preferences??standalonePreferences;
   const [scienceMdDraft]=useModelMdDraft(model.id);
   const periodicModel=isPeriodic(model.draft.structure),partialPeriodicBox=model.draft.structure.periodicSource?.completeness==='partial';
   const optimizationKind=workspaceOptimizationKind(optimizationPreferences,periodicModel);
@@ -595,11 +623,22 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   const optimizationMethod=optimizationKind==='net'?netSettings.method:xtbSettings.method;
   const savedRuntimeSettings=optimizationKind==='net'?netSettings:xtbSettings;
   const [runtimeEdits,setRuntimeEdits]=useState<{documentId:string;drafts:Partial<Record<'xtb'|'net'|'periodicNet',OrdinaryRunSettings>>}>();
+  const [resourceOverride,setResourceOverride]=useState<{documentId:string;xtbSingleTaskThreads:number}>();
+  const xtbSingleTaskThreads=resourceOverride?.documentId===model.id?resourceOverride.xtbSingleTaskThreads:undefined;
+  const optimizationResourceOverrides=xtbSingleTaskThreads===undefined?undefined:{xtbSingleTaskThreads};
   const drafts=runtimeEdits?.documentId===model.id?runtimeEdits.drafts:undefined;
   const runtimeSettings={...savedRuntimeSettings,...drafts?.[optimizationKey]};
   const runtimeSettingsValid=ordinaryRunSettingsValid(optimizationMethod,runtimeSettings);
   function updateOptimizationPreferences(next:WorkspaceOptimizationPreferences,explicitSolvent=false){
-    try{const accepted=writeWorkspaceOptimizationPreferences(next,explicitSolvent);setOptimizationPreferences(accepted);setError('');}
+    try{
+      if(projectOptimization){
+        const level=next.calculationLevel??projectOptimization.read().calculationLevel;
+        const solvation=next.xtb.solvation;
+        projectOptimization.write({...next,calculationLevel:explicitSolvent
+          ? {...level,solvationModel:solvation?.model??'none',solvent:solvation?.solvent??''}:level});
+      }else setOptimizationPreferences(writeWorkspaceOptimizationPreferences(next,explicitSolvent));
+      setError('');
+    }
     catch(cause){setError(`优化偏好未保存：${message(cause)}`);}
   }
   function updateRunSettings(patch:OrdinaryRunSettings){
@@ -617,11 +656,12 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   }
 
   useEffect(()=>{
+    if(projectOptimization)return;
     const receive=(event:Event)=>setOptimizationPreferences(parseWorkspaceOptimizationPreferences((event as CustomEvent).detail));
     const storage=(event:StorageEvent)=>{if(event.key===OPTIMIZATION_PREFERENCE_KEY)setOptimizationPreferences(readWorkspaceOptimizationPreferences());};
     window.addEventListener(OPTIMIZATION_PREFERENCE_EVENT,receive);window.addEventListener('storage',storage);
     return()=>{window.removeEventListener(OPTIMIZATION_PREFERENCE_EVENT,receive);window.removeEventListener('storage',storage);};
-  },[]);
+  },[Boolean(projectOptimization)]);
   const [optimizationBusy,setOptimizationBusy]=useState(false);
   const [charge, setCharge] = useState(0);
   const [axis, setAxis] = useState<'x' | 'y' | 'z'>('z'), [degrees, setDegrees] = useState('15'), [translation, setTranslation] = useState<Vector3>([.1, 0, 0]);
@@ -646,12 +686,21 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   const markerBase=runPreviewSource??(advancedObservation?workspaceCurrentProtectionDocument(viewportModel,model,props.analysisCanvas?.staticDocument?.draft.structure):model);
   const pesConstraints=props.analysisCanvas?.pesConstraints;
   const displayConstraints=pesConstraints??props.analysisCanvas?.sharedFreezeDisplay;
-  const markerModel=displayConstraints?{...markerBase,sharedConstraints:displayConstraints,internalCoordinates:[],
-    draft:{...markerBase.draft,assignments:{...markerBase.draft.assignments,frozenAtomIds:[],layers:markerBase.draft.assignments.layers.map(layer=>({...layer,frozen:false}))}}}:markerBase;
+  const markerModel=useMemo(()=>displayConstraints?{...markerBase,sharedConstraints:displayConstraints,internalCoordinates:[],
+    draft:{...markerBase.draft,assignments:{...markerBase.draft.assignments,frozenAtomIds:[],layers:markerBase.draft.assignments.layers.map(layer=>({...layer,frozen:false}))}}}:markerBase,[markerBase,displayConstraints]);
   const explicitDisplayFrozenAtomIds=props.analysisCanvas?.viewport.displayFrozenAtomIds;
-  const displayFrozenAtomIds=pesConstraints?getFrozenAtomIds(markerModel):runPreviewSource?getFrozenAtomIds(runPreviewSource):workspaceDisplayFrozenAtomIds(viewportModel,getFrozenAtomIds(markerModel),explicitDisplayFrozenAtomIds,advancedObservation&&!displayConstraints);
+  const previousDisplayFrozenIds=useRef<string[]|undefined>(undefined);
+  const displayFrozenAtomIds=useMemo(()=>{
+    const frozenSource=(!pesConstraints&&runPreviewSource)||markerModel;
+    const frozenIds=frozenSource===model?effectiveFrozenAtomIds:getFrozenAtomIds(frozenSource);
+    const next=pesConstraints||runPreviewSource?frozenIds:workspaceDisplayFrozenAtomIds(viewportModel,frozenIds,explicitDisplayFrozenAtomIds,advancedObservation&&!displayConstraints);
+    if(!sameViewportAtomIds(previousDisplayFrozenIds.current,next))previousDisplayFrozenIds.current=next;
+    return previousDisplayFrozenIds.current;
+  },[markerModel,model,effectiveFrozenAtomIds,pesConstraints,runPreviewSource,viewportModel.draft.structure.atoms,explicitDisplayFrozenAtomIds,advancedObservation,displayConstraints]);
+  const stateMarkers=useMemo(()=>{
   const constraintSources=modelConstraintSources(markerModel,engineScope);
-  const stateMarkers:ViewportStateMarker[]=constraintSources.flatMap<ViewportStateMarker>(source=>source.kind==='atom'?source.atomIds.map(atomId=>({id:JSON.stringify([source.scope,source.kind,source.id])+(source.atomIds.length>1?`:${atomId}`:''),kind:'freeze' as const,atomIds:[atomId],label:source.label,removable:!advancedObservation&&props.freezeEditingAllowed!==false&&source.removable})):[{id:JSON.stringify([source.scope,source.kind,source.id]),kind:source.action==='scan'?'scan':'freeze',atomIds:source.atomIds,images:source.images,label:source.label,removable:!advancedObservation&&props.freezeEditingAllowed!==false&&source.removable,coordinateId:displayedCoordinateObjects(markerModel).find(object=>source.objectId===object.id||modelCoordinateKey(object)===modelCoordinateKey({type:source.atomIds.length===2?'B':source.atomIds.length===3?'A':'D',atomIds:source.atomIds,images:source.images}))?.id}]);
+  const coordinateObjects=constraintSources.some(source=>source.kind==='coordinate')?displayedCoordinateObjects(markerModel):[];
+  const stateMarkers=constraintSources.flatMap<ViewportStateMarker>(source=>source.kind==='atom'?source.atomIds.map(atomId=>({id:JSON.stringify([source.scope,source.kind,source.id])+(source.atomIds.length>1?`:${atomId}`:''),kind:'freeze' as const,atomIds:[atomId],label:source.label,removable:!advancedObservation&&props.freezeEditingAllowed!==false&&source.removable})):[{id:JSON.stringify([source.scope,source.kind,source.id]),kind:source.action==='scan'?'scan':'freeze',atomIds:source.atomIds,images:source.images,label:source.label,removable:!advancedObservation&&props.freezeEditingAllowed!==false&&source.removable,coordinateId:coordinateObjects.find(object=>source.objectId===object.id||modelCoordinateKey(object)===modelCoordinateKey({type:source.atomIds.length===2?'B':source.atomIds.length===3?'A':'D',atomIds:source.atomIds,images:source.images}))?.id}]);
   if(!advancedObservation&&props.inputFreezeDisplay && !model.sharedConstraints?.canonical){
     const inactive=props.inputFreezeDisplay.inactive;
     const tuple=(ids:readonly string[])=>[ids.join('|'),[...ids].reverse().join('|')].sort()[0];
@@ -669,12 +718,16 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     if(advancedObservation&&!displayConstraints)for(let index=stateMarkers.length-1;index>=0;index--){const marker=stateMarkers[index];if(marker.kind==='freeze'&&!marker.coordinateId&&marker.atomIds.length===1)stateMarkers.splice(index,1);}
     for(const atomId of explicitDisplayFrozenAtomIds)if(displayFrozenAtomIds?.includes(atomId)&&!stateMarkers.some(marker=>marker.kind==='freeze'&&!marker.coordinateId&&marker.atomIds.includes(atomId)))stateMarkers.push({id:`display-protection:${atomId}`,kind:'freeze',atomIds:[atomId],removable:false,label:'保护核心'});
   }
+  return stateMarkers;
+  },[markerModel.draft.assignments,markerModel.sharedConstraints,markerModel.internalCoordinates,markerModel.coordinateObjects,engineScope,
+    props.freezeEditingAllowed,props.inputFreezeDisplay,model.sharedConstraints?.canonical,
+    advancedObservation,runPreviewSource,pesConstraints,displayConstraints,explicitDisplayFrozenAtomIds,displayFrozenAtomIds]);
   const incomingScope = useRef<string>('');
   const applied = useRef<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const scope = useRef<HTMLElement>(null);
   useEffect(()=>{if(props.store)return;store.setScientificEditGuard?.(()=>confirmSynchronousOperation(ANALYSIS_INVALIDATION_CONFIRMATION,scope.current?.ownerDocument));return()=>store.setScientificEditGuard?.(null);},[store,props.store]);
-  const structureAnalysis=useStructureInteractionAnalysis({store,document:model,active:structureAnalysisOpen&&!structurePreview&&!structureRuntimeLocked,onError:setError,onExportImage:()=>{const owner=scope.current?.ownerDocument;if(owner)return exportCurrentViewport({format:'png',includeAnnotations:true},owner);}});
+  const structureAnalysis=useStructureInteractionAnalysis({store,document:model,active:structureAnalysisOpen&&!structurePreview&&!structureRuntimeLocked,requestedPage:props.structureAnalysisRequestedPage,onError:setError,onExportImage:()=>{const owner=scope.current?.ownerDocument;if(owner)return exportCurrentViewport({format:'png',includeAnnotations:true},owner);}});
   const projectedViewport=props.observationOnly&&props.analysisCanvas?props.analysisCanvas.viewport:structureAnalysis.viewport;
   // Export observes the committed canvas inputs, never the latest native
   // callback (which may still be queued for display). The copy is sealed only
@@ -889,40 +942,70 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
         const receipt:ScienceRuntimeRun={kind:'opt',runId:request.id,documentId:source.id,revision:source.revision,status:'starting',nativeStarted:false,
           source:mcp?.source.ref,request:pesRequestEvidence(request)};
         scienceRuns.set(request.id,receipt);
-        setSharedOptimizationFrame({id:source.id,revision:source.revision,structure:projectOrdinaryOptimizationStructure(request)});
         let terminal=false,closed=false,runtimeActive=true,stopPending=false;
         let lastFrame:PesFrame|undefined,lastSeq=-1;
+        let statusText='正在启动…';
+        const reportProgress=(text:string)=>{
+          statusText=text;
+          if(!closed&&!terminal&&!stopPending&&asyncAlive.current&&latest.current.store===sourceStore)
+            setSharedOptimizationStatus({...owner,text});
+        };
         const committedPreviewPhases=new Set<string>();
         const finalize=new AbortController();
         const view=scope.current?.ownerDocument.defaultView??window;
+        const canPublishPreview=()=>!closed&&asyncAlive.current&&latest.current.store===sourceStore&&runtimeViewportConsumesPreview(latest.current.props);
         const preview=createLatestMoveScheduler<PesFrame>(
           callback=>view.requestAnimationFrame(callback),id=>view.cancelAnimationFrame(id),frame=>{
-            if(closed||!asyncAlive.current||latest.current.store!==sourceStore)return;
+            if(!canPublishPreview())return;
             const phase=frame.step===0?'initial-preview-committed':'first-step-preview-committed';
             const markCommitted=committedPreviewPhases.has(phase)?undefined:()=>{
               if(committedPreviewPhases.has(phase))return;
               committedPreviewPhases.add(phase);
               timing.mark({phase,step:frame.step});
+              if(frame.step===0&&lastFrame?.step===0)reportProgress('首帧已显示，正在寻找第 1 个接受步…');
             };
             setSharedOptimizationFrame({id:source.id,revision:source.revision,structure:projectOrdinaryOptimizationStructure(request,frame),markCommitted});
-            if(!stopPending)setSharedOptimizationStatus({...owner,text:`优化中 · 第 ${frame.step} 步`});
+            if(frame.step>0)reportProgress(`优化中 · 第 ${frame.step} 步`);
           });
+        const refreshPreview=()=>{
+          if(!canPublishPreview())return;
+          reportProgress(statusText);
+          if(lastFrame)preview.flush(lastFrame);
+          else setSharedOptimizationFrame({id:source.id,revision:source.revision,structure:projectOrdinaryOptimizationStructure(request)});
+        };
+        resumeSharedOptimizationPreview.current=refreshPreview;
+        refreshPreview();
         let unsubscribe=()=>{};
         function releaseRuntime(){if(runtimeActive){runtimeActive=false;sourceStore.finishRuntimeSession();}}
-        function clean(){if(closed)return;closed=true;preview.cancel();sharedOptimization.current=null;unsubscribe();releaseRuntime();release?.();setSharedOptimizationFrame(undefined);}
+        function clean(){
+          if(closed)return;
+          closed=true;
+          preview.cancel();
+          if(resumeSharedOptimizationPreview.current===refreshPreview)resumeSharedOptimizationPreview.current=null;
+          sharedOptimization.current=null;unsubscribe();releaseRuntime();release?.();setSharedOptimizationFrame(undefined);
+        }
         unsubscribe=bridge.onPesEvent!(event=>{
           if(terminal||event.schema!==PES_SCHEMA||event.runIdentity.runId!==request.runIdentity.runId||event.runIdentity.taskId!==request.runIdentity.taskId||
             event.runIdentity.groupId!==request.runIdentity.groupId||!Number.isSafeInteger(event.seq)||event.seq<=lastSeq)return;
           lastSeq=event.seq;
           timing.observe(event);
+          if(!lastFrame||event.event==='optimization-timing'&&event.timing.phase==='initial-frame'&&
+            lastFrame.step===0&&!committedPreviewPhases.has('initial-preview-committed')){
+            const startup=ordinaryOptimizationStartupText(event,isPesNetMethod(request.method));
+            if(startup)reportProgress(startup);
+          }
           if(event.event==='started'||event.event==='evaluation-started'){
             receipt.nativeStarted=true;
             if(!stopPending)receipt.status='running';
           }
+          if(event.event==='started'&&event.resourceGrant)receipt.resourceGrant=event.resourceGrant;
+          if(event.event==='net-batch')receipt.actualGpuBatchWidth=event.size;
           if(event.event==='evaluation-started')receipt.nativeBackend=event.backend;
           if(event.event==='progress')receipt.progress={stage:event.stage,completed:event.completed,total:event.total,elapsedSeconds:event.elapsedSeconds};
           if(event.event==='frame'&&validPesFrame(event.frame,source.draft.structure.atoms.length)){
-            lastFrame=event.frame;preview.schedule(lastFrame);
+            lastFrame=event.frame;
+            if(canPublishPreview())preview.schedule(lastFrame);
+            else if(lastFrame.step>0)reportProgress(`优化中 · 第 ${lastFrame.step} 步`);
             receipt.frame=pesFrameEvidence(lastFrame);
           }
           if(event.event!=='terminal'||event.workerSettled!==true){notifyScienceRuns(sourceStore);return;}
@@ -957,7 +1040,7 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
           receipt.status='stopping';
           notifyScienceRuns(sourceStore);
           try{await startDispatched;if(!terminal)await bridge.stopPes!(request.runIdentity);}
-          catch(error){stopPending=false;if(!terminal){receipt.status=receipt.nativeStarted?'running':'starting';setSharedOptimizationStatus({...owner,text:lastFrame?`优化中 · 第 ${lastFrame.step} 步`:'正在启动…'});notifyScienceRuns(sourceStore);}throw error;}
+          catch(error){stopPending=false;if(!terminal){receipt.status=receipt.nativeStarted?'running':'starting';reportProgress(statusText);notifyScienceRuns(sourceStore);}throw error;}
         }};
         mcp?.accepted({...receipt});
         options?.onStandaloneRunStarted?.({...receipt});
@@ -1014,10 +1097,10 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     if(scientificCanvasKey(latest.current.props.analysisCanvas)!==key)throw Error('来源帧已变化，未采用旧的晶体检查。');
     return result;
   }
-  async function prepareTransform(request:PeriodicModelingRequest|StructureTransformEdit){
+  async function prepareTransform(request:PeriodicModelingRequest|StructureTransformEdit,publishPreview=true){
     assertTransformAllowed();
     const source=captureOperationSource(),key=scientificCanvasKey(latest.current.props.analysisCanvas);
-    if(request.type!=='crystal'){setCrystalPreviewResult(null);const candidate=prepareStructureTransform(source,request);preparedTransformSources.current.set(candidate,{source,key});return candidate;}
+    if(request.type!=='crystal'){if(publishPreview)setCrystalPreviewResult(null);const candidate=prepareStructureTransform(source,request);preparedTransformSources.current.set(candidate,{source,key});return candidate;}
     const bridge=desktopBridge(),current=source,lease=latest.current.props.activationStamp?.();
     if(!bridge?.runCrystalModeling)throw new Error('当前运行环境未提供晶体建模后端。');
     const result=await bridge.runCrystalModeling({operation:request.operation,parameters:request.parameters,documentId:current.id,expectedRevision:current.revision,structure:structuredClone(current.draft.structure)});
@@ -1029,8 +1112,9 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     const mapped=mapStructureTransformDocument(current,result.candidate);
     const candidate={...result.candidate,structure:mapped.draft.structure};
     if(scientificCanvasKey(latest.current.props.analysisCanvas)!==key)throw Error('来源帧已变化，未采用旧变换。');
-    preparedTransformSources.current.set(candidate,{source,key});
-    setCrystalPreviewResult({...result,candidate});
+    const crystal={...result,candidate};
+    preparedTransformSources.current.set(candidate,{source,key,crystal});
+    if(publishPreview)setCrystalPreviewResult(crystal);
     return candidate;
   }
   function prepareCell(request:CellEditorRequest){
@@ -1040,21 +1124,27 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     preparedTransformSources.current.set(candidate,{source,key});
     return candidate;
   }
-  async function applyTransform(candidate:StructureTransformCandidate){
+  async function applyTransform(candidate:StructureTransformCandidate,signal?:AbortSignal){
     assertTransformAllowed();
     const current=latest.current.store.getSnapshot();
     if(current.id!==candidate.documentId||current.revision!==candidate.expectedRevision)throw new Error('模型已变化，请重新预览。');
     if(!props.onDeriveStructure)throw new Error('当前工作区未接入新结构派生，原结构未改变。');
     const prepared=preparedTransformSources.current.get(candidate);if(!prepared||prepared.key!==scientificCanvasKey(latest.current.props.analysisCanvas))throw Error('变换预览来源已变化，请重新预览。');
-    await props.onDeriveStructure(candidate,prepared.source);
+    signal?.throwIfAborted();
+    const modelRef=await props.onDeriveStructure(candidate,prepared.source,signal);
     setStructurePreview(null);setTransformPresentation(null);
+    return modelRef;
   }
   async function commitCellEdit(candidate:StructureTransformCandidate){
     if(latest.current.props.advancedModelingRoute?.category!=='periodic'||latest.current.props.advancedModelingRoute.task!=='cell-editor')throw new Error('请先打开当前模型的晶胞编辑工具。');
-    assertStructureEditAllowed(true,true);
-    const before=store.getSnapshot();
+    return applyCellCandidate(candidate);
+  }
+  function applyCellCandidate(candidate:StructureTransformCandidate,allowInactive=false){
+    assertStructureEditAllowed(true,true,allowInactive);
+    const target=latest.current.store,before=target.getSnapshot();
     if(candidate.documentId!==before.id||candidate.expectedRevision!==before.revision)throw new Error('晶胞编辑已过期，请重试。');
-    const after=store.execute({type:'apply-structure-transform',candidate});
+    // Native cell edits commit all mapped contexts in one Store command.
+    const after=target.execute({type:'apply-structure-transform',candidate});
     if(after.revision!==before.revision){dynamics.beforeExternalEdit('晶胞已编辑');cancelWorkingEditTasks();}
     setError('');
   }
@@ -1479,9 +1569,9 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
       latest.current.store.paste(payload,{...policy,...(offset?{offset}:{})});dynamics.beforeExternalEdit('已粘贴模型');cancelWorkingEditTasks();setPasteConflict(null); setError(''); setStatus('已追加独立副本。'); }
     catch (cause) { if (cause instanceof ModelConflictError && cause.conflicts.some(conflict => conflict.kind === 'cell')) setPasteConflict(payload); else setError(message(cause)); }
   }
-  async function paste() {
+  async function paste(fromClipboard=false) {
     if(!structureEditAllowed())return;
-    if(activePreview.model){pastePayload(structuredClone(activePreview.model.payload));return;}
+    if(!fromClipboard&&activePreview.model){pastePayload(structuredClone(activePreview.model.payload));return;}
     const currentStore = latest.current.store, {id:documentId,revision} = currentStore.getSnapshot(), epoch=generation.current;
     const lease=latest.current.props.activationStamp?.();
     const contextIdentity=JSON.stringify([Boolean(latest.current.props.orcaJobRequest),(latest.current.props.orcaJobRequest??latest.current.props.jobRequest)?.settings.task,currentStore.getSnapshot().draft.assignments,currentStore.getSnapshot().internalCoordinates]);
@@ -1708,7 +1798,7 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     if (command) { if(command.type==='place-element')copiedPlacement(command);else execute(command);return; }
     if (action.type === 'undo' || action.type === 'redo') history(action.type);
     if (action.type === 'copy') void copy();
-    if (action.type === 'paste') void paste();
+    if (action.type === 'paste') void paste(true);
     if (action.type === 'save') void save();
     if (action.type === 'escape') {applyToolIntent({type:'escape',captureActive:Boolean(props.captureRequest)});if(props.captureRequest){props.onCaptureCancel?.();return;} select(EMPTY_SELECTION); if(!structureLocked)cancelWorkingEditTasks(); setPlane(false); setPasteConflict(null); }
   }
@@ -1797,13 +1887,30 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
       else if(command.kind==='view')acceptCandidateCameraView(command.view);
       else requestCamera(command);
     },
+    cameraGesture(expected,command){
+      assertModelCommand(expected);
+      if(!viewportGetter.current||!viewportZoom.current?.gesture)throw toolError('CAMERA_UNAVAILABLE','目标视口的相机操作尚未就绪。');
+      return viewportZoom.current.gesture(command);
+    },
     inspectCrystal(expected,request){assertModelCommand(expected);return inspectCrystal(request);},
-    async transform(expected,request,derive){
+    async prepareTransform(expected,request){
       assertModelCommand(expected,true);
-      const candidate=request.type==='assign-cell'||request.type==='edit-cell'?prepareCell(request):await prepareTransform(request);
-      assertModelCommand(expected,true);
-      if(derive){await applyTransform(candidate);return;}
-      assertStructureEditAllowed(true,true);commitCommands('编辑晶胞',[{type:'apply-structure-transform',candidate}]);
+      const candidate=request.type==='assign-cell'||request.type==='edit-cell'?prepareCell(request):await prepareTransform(request,false);
+      const {source,crystal}=preparedTransformSources.current.get(candidate)!;
+      return {candidate,source,crystal};
+    },
+    async commitTransform(expected,prepared,{derive,signal,dataCell=false,allowInactive=false}){
+      const current=assertModelCommand(expected,true,allowInactive);
+      signal?.throwIfAborted();
+      const {candidate}=prepared,owner=preparedTransformSources.current.get(candidate);
+      const {analysisCanvas,observationOnly}=latest.current.props;
+      if(dataCell){
+        if(derive||current.analysisBindingId||analysisCanvas||observationOnly||
+          !['assign-cell','edit-cell'].includes(candidate.operation))throw Error('后台晶胞提交需要普通工作模型。');
+      }else if(owner?.source!==prepared.source||owner.key!==scientificCanvasKey(analysisCanvas))throw Error('变换预览来源已变化，请重新预览。');
+      if(derive)return (await applyTransform(candidate,signal))??undefined;
+      applyCellCandidate(candidate,allowInactive);
+      return latest.current.store.getSnapshot().id;
     },
     async perceiveBonds(expected,request,signal){
       assertModelCommand(expected,true);assertStructureEditAllowed();
@@ -1985,9 +2092,9 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
   }, [props.advancedModelingRoute, props.derivedSupercellSource, model.draft.structure.cell, model.cellCheckpoint, structurePreview, tiledTransform]);
   const previewGuides = !referenceCapture.viewportCapture ? (tiledTransform ? validTransformPresentation?.candidateGuides : validTransformPresentation?.guides) : undefined;
   const previewCell = !referenceCapture.viewportCapture ? validTransformPresentation?.sourceCell : undefined;
-  const viewportState:WorkspaceViewportState={documentId:model.id,revision:model.revision,display:viewportDisplay,interaction,frameBondEditing,readonlyDrawing:Boolean(frameBondEditing&&!bondLocked),observationSelection:Boolean(frameBondEditing&&!bondLocked),highlights:advancedObservation?undefined:highlights,bondOrderEntries:advancedObservation?undefined:model.bondOrderObservation?.entries,workspaceInputRoles:props.workspaceInputRoles,workspaceDocumentPickMode:props.workspaceDocumentPickMode,workspaceDocumentPickSelected:props.workspaceDocumentPickSelected,
+  const viewportState:WorkspaceViewportState={documentId:model.id,revision:model.revision,display:viewportDisplay,interaction,frameBondEditing,readonlyDrawing:Boolean(frameBondEditing&&!bondLocked),observationSelection:Boolean(frameBondEditing&&!bondLocked),highlights:advancedObservation?undefined:highlights,bondOrderEntries,workspaceInputRoles:props.workspaceInputRoles,workspaceDocumentPickMode:props.workspaceDocumentPickMode,workspaceDocumentPickSelected:props.workspaceDocumentPickSelected,
     cellGuides, previewGuides, previewCell, cellHover:true,
-    temporaryPointerMode:effectivePointerMode,freezeRemovalMode:props.freezeEditingAllowed!==false&&!temporaryPointerMode&&freezeTool==='remove',effectiveFrozenAtomIds:getFrozenAtomIds(model),displayFrozenAtomIds,stateMarkers,
+    temporaryPointerMode:effectivePointerMode,freezeRemovalMode:props.freezeEditingAllowed!==false&&!temporaryPointerMode&&freezeTool==='remove',effectiveFrozenAtomIds,displayFrozenAtomIds,stateMarkers,
     selectionShortcut:shortcuts.bindings.select.toUpperCase(),selectShortcut:shortcuts.bindings.select,freezeShortcut:shortcuts.bindings.freeze,measurement,persistentTool,fragmentTool:{templateId:copiedTool?'复制片段':template,activeAtomIndex:copiedTool?copyActiveIndex:activeFragmentIndex},captureRequest:props.captureRequest,captureAtomIds,numberingPickActive:Boolean(props.onAtomNumberPick),linkedAtomsActive:props.linkedAtomsActive??false,
     interactionOwnerActive:props.active!==false,interactionActivationEpoch:props.activationStamp?.().activationEpoch,cameraRequest,cameraView,showAxes,legendVisible:presentationActive&&!props.onLegendSurfaceChange,structureLocked,readOnly:props.observationOnly||structureAnalysisOpen,allowModelEditing:!structureLocked,freezeEditingAllowed:props.freezeEditingAllowed,editingDocument:props.analysisCanvas?.staticDocument?{...bondDocument,revision:model.revision,selection:workingSelection}:viewportModel===model?undefined:model,observationTool:freezeTool==='box'?'box':observationTool,resetViewRequest,
     viewTransform:props.analysisCanvas?.viewport.viewTransform??props.initialViewTransform,observationTransform:mdObservationTransform,observationAnchorAtomIds:mdDisplayFrame?.nativeMD?.protectedAtomIds,
@@ -2010,7 +2117,7 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     optimizationPreferences.scope==='unselected'&&indices.length===atoms.length;
   const selectedGxtbBlocked=gxtbRunBlocked(gxtbBackend,optimizationMethod);
   const optionsFor=(electronic:{charge:number;multiplicity:number})=>optimizationKind==='xtb'?
-    xtbPanelSubmission({...xtbSettings,...electronic},periodicModel):undefined;
+    xtbPanelSubmission({...xtbSettings,...electronic,resourceOverrides:optimizationResourceOverrides},periodicModel):undefined;
   const derivedOptimization=Boolean(props.analysisCanvas?.onOptimize&&
     (props.analysisCanvas.result||props.observationOnly&&props.allowModelEditing!==true));
   const derivedStructure=derivedOptimization?scientificCanvasStructure(props.analysisCanvas,true):undefined;
@@ -2034,13 +2141,14 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
         if(!sharedElectronicDraft.flush(store.getSnapshot().electronicStateConfirmed===true))throw Error('请先填写完整整数电荷与正整数多重度。');
         actual=store.getSnapshot();
       }
+      await projectOptimization?.prepare();
       const {preferences,sharedMethodPreferences,method,xtbOptions}=prepareOrdinaryOptimization(
-        readWorkspaceOptimizationPreferences(),actual.draft.structure,options);
+        projectOptimization?.read()??readWorkspaceOptimizationPreferences(),actual.draft.structure,options);
       if(gxtbRunBlocked(gxtbBackend,method))throw Error('请先在全局设置中配置可用的 g-xTB 程序。');
       const electronic=options.electronic;
       const requested=electronic?{...actual,draft:{...actual.draft,structure:{...actual.draft.structure,...electronic}}}:actual;
       ordinaryOptimizationInput(requested,preferences,xtbOptions,empiricalParameters);
-      if(sharedMethodPreferences)writeWorkspaceOptimizationPreferences(sharedMethodPreferences);
+      if(sharedMethodPreferences)updateOptimizationPreferences(sharedMethodPreferences);
       if(electronic&&!frame){
         sharedElectronicDraft.replace(electronic,true);
         actual=store.getSnapshot();
@@ -2178,11 +2286,16 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     const confirmed=source?.draft.structure??latest.current.store.getSnapshot().draft.structure;
     const electronic=source||sharedElectronicDraft.present?
       {charge:confirmed.charge??NaN,multiplicity:confirmed.multiplicity??NaN}:xtbElectronic;
-    const options=optionsFor(electronic);
-    if(optimizationKind==='xtb'&&!options||optimizationKind==='net'&&electronicStateParameterError(electronic.charge,electronic.multiplicity)){
+    try{await projectOptimization?.prepare();}
+    catch(cause){setError(message(cause));return;}
+    const runPreferences=projectOptimization?.read()??optimizationPreferences;
+    const runPeriodic=isPeriodic(confirmed);
+    const runKind=workspaceOptimizationKind(runPreferences,runPeriodic);
+    const options=runKind==='xtb'?xtbPanelSubmission({...workspaceXtbSettings(runPreferences,runPeriodic),...electronic,resourceOverrides:optimizationResourceOverrides},runPeriodic):undefined;
+    if(runKind==='xtb'&&!options||runKind==='net'&&electronicStateParameterError(electronic.charge,electronic.multiplicity)){
       setError('请先核对当前模型的电荷、多重度和优化参数。');return;
     }
-    await runSharedOptimization(optimizationPreferences,options??undefined,spaceKeydownAtMs,{source,detachedFrame});
+    await runSharedOptimization(runPreferences,options??undefined,spaceKeydownAtMs,{source,detachedFrame});
   }
   viewportPreoptimization.current=settings=>settings?
     runSharedOptimization(settings.preferences,settings.xtbOptions,settings.spaceKeydownAtMs,{
@@ -2199,7 +2312,9 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
       void bridge.preparePes(request).catch(()=>{});
     }catch{/* An incomplete draft can still be edited before an actual submission. */}
   };
-  const warmEligible=!ordinaryDisabled&&!optimizationRunning&&canOptimize&&!!desktopBridge()?.preparePes;
+  // Merely opening a model or finishing an optimization does not load NET
+  // weights into memory. An actual task or explicit preparation owns that load.
+  const warmEligible=optimizationKind!=='net'&&!ordinaryDisabled&&!optimizationRunning&&canOptimize&&!!desktopBridge()?.preparePes;
   useEffect(()=>{
     if(!warmEligible)return;
     const timer=window.setTimeout(()=>warmSpaceBackend.current(),140);
@@ -2254,7 +2369,7 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     {id:'atom.addH',label:'加一个H',content:<button disabled={structureLocked||indices.length!==1} onClick={()=>execute({type:'add-single-hydrogen',atomId:workingSelection.atomIds[0]})}>加一个H</button>},
     {id:'select.freeze',label:'冻结选择',content:<button disabled={freezeLocked||!indices.length} onClick={()=>execute({type:'set-shared-atom-freeze',atomIds:workingSelection.atomIds,frozen:true})}>冻结选择</button>},
     {id:'select.unfreeze',label:'解冻选择',content:<button disabled={freezeLocked||!indices.length} onClick={()=>execute({type:'set-shared-atom-freeze',atomIds:workingSelection.atomIds,frozen:false})}>解冻选择</button>},
-    {id:'elements',label:'元素与几何',content:<><fieldset disabled={structureLocked}><div className="model-tools model-element-tools">{['H','C','N','O','F','P','S','Cl','Br','I'].map(element=><button key={element} aria-pressed={interaction.element===element} onClick={()=>setElement(element)}>{element}</button>)}<button aria-expanded={periodicTable} onClick={()=>setPeriodicTable(value=>!value)}>周期表</button><output aria-label="当前元素" data-testid="model-current-element">{interaction.element??'—'}</output></div>{periodicTable&&<ElementTable onSelect={element=>{setElement(element);setPeriodicTable(false);}}/>}<ElementPresetPalette selectionId={presetId} element={interaction.element??undefined} onChange={chooseElementPreset}/></fieldset></>},
+    {id:'elements',label:'元素与几何',content:<><fieldset disabled={structureLocked}><div className="model-tools model-element-tools">{['H','C','N','O','F','P','S','Cl','Br','I'].map(element=><button key={element} data-element={element} aria-pressed={interaction.element===element} onClick={()=>setElement(element)}>{element}</button>)}<button aria-expanded={periodicTable} onClick={()=>setPeriodicTable(value=>!value)}>周期表</button><output aria-label="当前元素" data-testid="model-current-element">{interaction.element??'—'}</output></div>{periodicTable&&<ElementTable onSelect={element=>{setElement(element);setPeriodicTable(false);}}/>}<ElementPresetPalette selectionId={presetId} element={interaction.element??undefined} onChange={chooseElementPreset}/></fieldset></>},
     {id:'selection',label:'原子编号',content:<div className="model-tools model-number-tools"><label>编号<input aria-label="已选原子编号" data-testid="builder-selection-input" value={selectionInput} onChange={event=>setSelectionInput(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();selectNumbers();}}} placeholder="1-5,8"/></label><button onClick={selectNumbers}>选择编号</button><span>{indices.length}/{atoms.length}</span></div>},
     {id:'measurement',label:'测量顺序',content:<output data-testid="model-measurement-ids" className="model-blue-measurement-ids">{measurement.atomIds.map(id=>atoms.findIndex(atom=>atom.id===id)+1).join(' → ')||'按顺序点选原子；空白清测量'}</output>},
     {id:'dynamics',label:'动态',essential:true,content:props.realtime?<DynamicsPanel {...electronicFieldProps} controller={dynamics} documentKey={model.id} periodic={periodicModel} electronicState={xtbElectronic} onElectronicStateChange={changeXtbElectronic} beforeStart={prepareDynamicsStart} onStartFailure={()=>store.clearScientificEditApproval?.()} disabled={partialPeriodicBox||!atoms.length||busy||geometryEditing||runtimeElectronicInvalid||xtbState.running}/>:<span>实时工作台可使用动态观察</span>,criticalContent:<button data-testid="model-critical-stop" disabled={!structureLocked} onClick={()=>void stopActiveOptimization()}>Stop / 停止</button>},
@@ -2286,6 +2401,8 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
           updateOptimizationPreferences({...optimizationPreferences,xtb:{...optimizationPreferences.xtb,rebuildBonds}});
         }}
         runtimeSettings={runtimeSettings} onRuntimeSettingsChange={updateRunSettings} canOptimize={canOptimize}
+        xtbSingleTaskThreads={xtbSingleTaskThreads} onXtbSingleTaskThreadsChange={value=>
+          setResourceOverride(value===undefined?undefined:{documentId:model.id,xtbSingleTaskThreads:value})}
         requireMultiplicity={!periodicModel&&bondPerceptionMethod==='gfn2'} selectionCount={indices.length} atomCount={atoms.length}
         disabled={ordinaryDisabled} running={optimizationRunning} status={preoptimizationStatus} error={preoptimizationError}
         outcomeIdentity={local?.identity??linked?.request.id}
@@ -2389,7 +2506,7 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
     const transformDocument=props.analysisCanvas?.staticDocument&&scientificCanvasStructure(props.analysisCanvas)?captureScientificModelDocument(model,props.analysisCanvas,{allowAnimation:true,selection:workingSelection}):model;
     const common={document:transformDocument,open:true,embedded:true,previewActive:active,previewLive:transformSession.live[key]??true,
       onPreviewLiveChange:(enabled:boolean)=>updateTransformSession(value=>({...value,live:{...value.live,[key]:enabled}})),
-      disabled:transformDisabled,onPrepare:prepareTransform,onApply:applyTransform,
+      disabled:transformDisabled,onPrepare:prepareTransform,onApply:async(candidate:StructureTransformCandidate)=>{await applyTransform(candidate);},
       onPreviewChange:(candidate:StructureTransformCandidate|null)=>{if(ownsTransform(category,task)&&candidate===null)setStructurePreview(null);},
       onPreviewPresentationChange:(presentation:TransformPreviewPresentation|null)=>{if(ownsTransform(category,task)){setTransformPresentation(presentation);setStructurePreview(presentation?.candidate??null);}},
       onClose:()=>closeTransformTask(task)};
@@ -2441,18 +2558,18 @@ export default function ModelWorkspace(props: ModelWorkspaceProps) {
 {tiledTransform&&<section className="model-transform-source" aria-label="原晶体与切面预览"><span className="model-transform-view-label">原晶体 · 切割范围</span><button className="model-transform-link" type="button" aria-pressed={linkedSlabView} onClick={()=>setLinkedSlabView(value=>!value)}>联动视角</button><ModelViewport document={model} display={display} interaction={interaction} previewGuides={validTransformPresentation?.guides} cellGuides={{current:model.draft.structure.cell,checkpoint:model.cellCheckpoint?.structure.cell}} cellHover readOnly structureLocked active={props.viewportActive??props.active} observationTool="rotate" cameraView={sourceCameraView??cameraView} broadcastCameraDuringGesture onCameraViewChange={acceptSourceCameraView} onViewReady={getView=>{sourceViewportGetter.current=getView;if(getView)acceptSourceCameraView(sourceCameraView??cameraView??getView());}} onSelection={()=>{}} onCommand={()=>{}} onHover={()=>{}} onGestureStart={()=>{}} onGestureEnd={()=>{}} onError={setError} showAxes={showAxes} legendVisible={false}/></section>}
       <section className="model-transform-candidate" aria-label={tiledTransform?'切面与真空候选':'当前结构'}>
       {tiledTransform&&<span className="model-transform-view-label">切面与真空</span>}
-      <ModelViewport onCipLabelsUsed={onCipLabelsUsed} sceneOwnerEpoch={(()=>{const lease=props.activationStamp?.();return lease?.documentId===model.id?lease.documentEpoch:undefined;})()} linkedAtomsActive={props.linkedAtomsActive} active={props.viewportActive??props.active} legendVisible={props.legendVisible} legendExpanded={props.legendExpanded} onLegendExpandedChange={props.onLegendExpandedChange} onLegendSurfaceChange={props.onLegendSurfaceChange?surface=>{if(presentationActive)props.onLegendSurfaceChange?.(surface);}:undefined} document={viewportModel} display={viewportDisplay} interaction={interaction} highlights={advancedObservation?undefined:highlights} bondOrderEntries={advancedObservation?undefined:model.bondOrderObservation?.entries}
+      <ModelViewport onCipLabelsUsed={onCipLabelsUsed} sceneOwnerEpoch={(()=>{const lease=props.activationStamp?.();return lease?.documentId===model.id?lease.documentEpoch:undefined;})()} linkedAtomsActive={props.linkedAtomsActive} active={props.viewportActive??props.active} legendVisible={props.legendVisible} legendExpanded={props.legendExpanded} onLegendExpandedChange={props.onLegendExpandedChange} onLegendSurfaceChange={props.onLegendSurfaceChange?surface=>{if(presentationActive)props.onLegendSurfaceChange?.(surface);}:undefined} document={viewportModel} display={viewportDisplay} interaction={interaction} highlights={advancedObservation?undefined:highlights} bondOrderEntries={bondOrderEntries}
         previewGuides={previewGuides} previewCell={previewCell} cellGuides={cellGuides}
         cellHover broadcastCameraDuringGesture={tiledTransform}
         onAtomNumberPick={props.onAtomNumberPick}
-        temporaryPointerMode={effectivePointerMode} freezeRemovalMode={props.freezeEditingAllowed!==false&&!temporaryPointerMode&&freezeTool==='remove'} effectiveFrozenAtomIds={getFrozenAtomIds(model)} stateMarkers={stateMarkers} onAtomStateChange={atomStateChange} onObjectStateChange={objectStateChange} onStateMarkerDelete={deleteStateMarker} onStateMarkerHover={marker=>{hoveredMarker.current=marker;}} onObjectDelete={deletePickedObject}
+        temporaryPointerMode={effectivePointerMode} freezeRemovalMode={props.freezeEditingAllowed!==false&&!temporaryPointerMode&&freezeTool==='remove'} effectiveFrozenAtomIds={effectiveFrozenAtomIds} stateMarkers={stateMarkers} onAtomStateChange={atomStateChange} onObjectStateChange={objectStateChange} onStateMarkerDelete={deleteStateMarker} onStateMarkerHover={marker=>{hoveredMarker.current=marker;}} onObjectDelete={deletePickedObject}
         getPointerMode={()=>pointerModeAtPress(heldPointerKey.current,freezeTool)}
         getDocument={()=>latest.current.props.observationOnly&&latest.current.props.analysisCanvas?.document?latest.current.props.analysisCanvas.document:latest.current.store.getSnapshot()}
         selectionShortcut={shortcuts.bindings.select.toUpperCase()}
         measurement={measurement} measurementEditorRecordId={geometryOpen&&geometryEditorLease?.store===store&&geometryEditorLease.documentId===model.id?geometryEditorLease.recordId:undefined} persistentTool={persistentTool} fragmentTool={{templateId:copiedTool?'复制片段':template,activeAtomIndex:copiedTool?copyActiveIndex:activeFragmentIndex}} captureRequest={props.captureRequest} captureAtomIds={captureAtomIds} onCapturePick={capturePick} onCaptureBox={updateCapture}
         viewTransform={props.initialViewTransform} {...props.analysisCanvas?.viewport} cipStructure={viewportCipStructure}
         samplingSphereDraft={viewportState.samplingSphereEditor} onSamplingSphereRadiusChange={props.onSamplingSphereRadiusChange}
-        cameraRequest={cameraRequest} cameraView={cameraView} onCameraViewChange={acceptCandidateCameraView} onCameraZoomReady={controls=>{viewportZoom.current=controls;}} onViewReady={getView=>{viewportGetter.current=getView;props.analysisCanvas?.onViewReady(getView);if(getView)try{const inherited=initialCameraPending.current?props.initialCameraView:cameraView;initialCameraPending.current=false;acceptCameraView(inherited?[...inherited]:getView());}catch(cause){setError(message(cause));}}} showAxes={showAxes} onMeasurementRecordSelect={selectMeasurementRecord} onMeasurementRecordWheel={wheelMeasurementRecord} onMeasurementRecordHover={record=>{hoveredRecord.current=record;}} onMeasurementRecordDelete={deleteMeasurement}
+        cameraRequest={cameraRequest} cameraView={cameraView} onCameraViewChange={acceptCandidateCameraView} onCameraZoomReady={controls=>{viewportZoom.current=controls;analysisCameraControls?.(controls);}} onViewReady={getView=>{viewportGetter.current=getView;props.analysisCanvas?.onViewReady(getView);if(getView)try{const inherited=initialCameraPending.current?props.initialCameraView:cameraView;initialCameraPending.current=false;acceptCameraView(inherited?[...inherited]:getView());}catch(cause){setError(message(cause));}}} showAxes={showAxes} onMeasurementRecordSelect={selectMeasurementRecord} onMeasurementRecordWheel={wheelMeasurementRecord} onMeasurementRecordHover={record=>{hoveredRecord.current=record;}} onMeasurementRecordDelete={deleteMeasurement}
         readOnly={props.observationOnly} readonlyDrawing={Boolean(frameBondEditing&&!bondLocked)} observationSelection={Boolean(frameBondEditing&&!bondLocked)} allowModelEditing={!structureLocked} freezeEditingAllowed={props.freezeEditingAllowed} editingDocument={props.analysisCanvas?.staticDocument?{...bondDocument,selection:workingSelection}:model} onBeginModelInteraction={()=>{if(!structureEditAllowed(true))throw new ScientificEditCancelledError();return props.analysisCanvas?.staticDocument?{...bondDocument,selection:workingSelection}:model;}} structureLocked={structureLocked} cellEditorDraft={validCellEditorDraft} observationTool={freezeTool==='box'?'box':observationTool} resetViewRequest={resetViewRequest} onMeasurementPick={pickCoordinateAtom} onMeasurementBondPick={pickCoordinateBond}
         observationReference={props.analysisCanvas?.viewport.viewTransform?undefined:viewportState.observationReference} observationEpoch={props.analysisCanvas?.viewport.viewTransform?undefined:viewportState.observationEpoch} observationFrame={props.analysisCanvas?.viewport.viewTransform?undefined:viewportState.observationFrame}
         observationTransform={mdObservationTransform} observationAnchorAtomIds={mdDisplayFrame?.nativeMD?.protectedAtomIds}

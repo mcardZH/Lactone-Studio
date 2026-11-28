@@ -10,7 +10,7 @@ import {
 import { collectWorkspaceExportCitations, serializeWorkspaceCitations, type WorkspaceCitationFormat } from '../citations/workspace-export';
 import type { FontSize } from '../FontSizeControl';
 import { readInterfaceFontSize, setInterfaceFontSize } from '../interface-font-preferences';
-import { DEFAULT_INTERFACE_THEME, readInterfaceTheme, setInterfaceTheme, type InterfaceTheme } from '../interface-theme-preferences';
+import { DEFAULT_INTERFACE_THEME, INTERFACE_THEMES, readInterfaceTheme, setInterfaceTheme, type InterfaceTheme } from '../interface-theme-preferences';
 import { validateHoldKeys } from '../modeling/use-model-shortcuts';
 import type { WorkbenchLayoutState } from '../modeling/WorkbenchLayout';
 import { mcpBridge } from './bridge';
@@ -57,7 +57,7 @@ export interface WorkspaceLayoutPort {
   restore():void;
 }
 
-const themes = ['mixed', 'mint', 'clear'] as const;
+const themes = INTERFACE_THEMES;
 const fontSizes = ['standard', 'large', 'larger'] as const;
 const settingsPages = ['display', 'plots', 'labels', 'interface', 'resources', 'tools'] as const;
 export interface WorkspaceSettingsTarget {

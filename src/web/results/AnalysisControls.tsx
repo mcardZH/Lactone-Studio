@@ -49,6 +49,7 @@ export interface AnalysisHighlightProps {
 export interface AnalysisControlsProps extends AnalysisHighlightProps {
   ownerId?:string;
   observationStamp?:string;
+  sessionStatus?:{preparing:boolean;error?:string};
   context?: AnalysisControlsContext; kind: WavefunctionAnalysisRequest['kind']; orbitalKey?: string | null;
   active?:boolean; cancelOnInactive?:boolean; defaultMethod?:OrbitalCompositionMethod; autoCalculate?:boolean;
   decimals?:number;onDecimalsChange?(value:number):void;hidePrecisionControl?:boolean;
@@ -344,10 +345,11 @@ function MultiAnalysisControls(p: AnalysisControlsProps) {
     return {kind:p.kind,selected:snapshot.selected,running:snapshot.running,states:Object.fromEntries(snapshot.states),
       errors:Object.fromEntries(snapshot.errors),results:Object.fromEntries(snapshot.results),
       printed:professionalColumns?.filter(column=>originals.some(original=>original.key===column.key)),
-      reason:contextIssue()||undefined};
+      reason:p.sessionStatus?.error||(p.sessionStatus?.preparing?'正在打开当前波函数分析会话。':contextIssue()||undefined)};
   };
   const mcpPort=<ResultsMcpPortRegistration kind="runs" id={p.ownerId??null} port={{
     sourceRevision:JSON.stringify([p.observationStamp,p.context?.sourceRevision,display,sort,activeMethod,state.selected]),
+    methodStatus:p.sessionStatus?.preparing?'preparing':undefined,
     methods:contextIssue()?[]:options.filter(option=>analysisMethodAvailable(p.kind,option.value,p.context)).map(option=>option.value),
     read:reflectQueue,
     execution:()=>{

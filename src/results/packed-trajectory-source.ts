@@ -3,23 +3,35 @@ import { assertResultNotAborted, type TrajectoryResult } from './contracts';
 import { trajectoryBinaryAssetPort, TrajectoryPageAsset, type TrajectoryByteRange } from './trajectory-page-assets';
 
 export type PackedTrajectoryAtom = Readonly<Omit<Atom, 'x' | 'y' | 'z'>>;
+export interface PackedTrajectoryAtomIds { readonly prefix:string; readonly suffixes?:readonly string[] }
 
 export interface PackedTrajectoryFrame {
   readonly header: Readonly<Omit<Structure, 'atoms'>>;
   readonly topology: readonly PackedTrajectoryAtom[];
   /** A structure collection may assign distinct atom IDs per record while sharing its ordered atom descriptors. */
   readonly atomId?: (index: number) => string;
+  readonly atomIds?:PackedTrajectoryAtomIds;
   /** Borrowed from the source owner. Consumers must not mutate or detach it. */
   readonly coordinates: Float64Array;
 }
 
 type PackedProvider = { get(index:number):PackedTrajectoryFrame|undefined;
   read?(index:number,signal?:AbortSignal):Promise<PackedTrajectoryFrame|undefined>;
-  paged?(index:number):boolean };
+  paged?(index:number):boolean;
+  /** The original reader's getFrame materializes this exact payload. */
+  canonical?:boolean };
 const sources = new WeakMap<TrajectoryResult,PackedProvider>();
 
-export function registerPackedTrajectorySource(result: TrajectoryResult, getFrame: PackedProvider['get'], options?: Pick<PackedProvider,'read'|'paged'>): void {
+export function registerPackedTrajectorySource(result: TrajectoryResult, getFrame: PackedProvider['get'], options?: Pick<PackedProvider,'read'|'paged'|'canonical'>): void {
   sources.set(result, { get:getFrame,...options });
+}
+
+export function hasCanonicalPackedTrajectorySource(result:TrajectoryResult):boolean {
+  return sources.get(result)?.canonical===true;
+}
+
+export function packedTrajectoryAtomId(ids:PackedTrajectoryAtomIds):(index:number)=>string {
+  return index=>ids.prefix+(ids.suffixes?ids.suffixes[index]:index);
 }
 
 export function packedTrajectoryFrame(result: TrajectoryResult, index: number): PackedTrajectoryFrame | undefined {
@@ -93,11 +105,18 @@ export class PackedTrajectoryFrames {
   }
 }
 
-export function materializePackedTrajectoryFrame(frame: PackedTrajectoryFrame): Structure {
-  const { header, topology, coordinates, atomId } = frame;
-  const atoms = topology.map((atom, index): Atom => {
-    const offset = 3 * index;
-    return { ...atom, ...(atomId ? { id: atomId(index) } : {}), x: coordinates[offset], y: coordinates[offset + 1], z: coordinates[offset + 2] };
-  });
-  return { ...structuredClone(header), atoms };
+export function materializePackedTrajectoryAtoms({topology,coordinates,atomId}:PackedTrajectoryFrame,immutable=false):Atom[]{
+  const atoms=new Array<Atom>(topology.length);
+  for(let index=0,offset=0;index<topology.length;index++,offset+=3){
+    const descriptor=topology[index];
+    const x=coordinates[offset],y=coordinates[offset+1],z=coordinates[offset+2];
+    const atom=atomId?{...descriptor,id:atomId(index),x,y,z}:{...descriptor,x,y,z};
+    atoms[index]=immutable?Object.freeze(atom):atom;
+  }
+  if(immutable)Object.freeze(atoms);
+  return atoms;
+}
+
+export function materializePackedTrajectoryFrame(frame: PackedTrajectoryFrame,immutableAtoms=false): Structure {
+  return { ...structuredClone(frame.header), atoms:materializePackedTrajectoryAtoms(frame,immutableAtoms) };
 }

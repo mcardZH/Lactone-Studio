@@ -86,6 +86,7 @@ export interface AnalysisCanvas {
   coordinateAnnotations?:readonly import('../../modeling/contracts').MeasurementRecord[];
   viewport: Pick<ModelViewportProps, 'cipStructure' | 'displayAtoms' | 'displayFrozenAtomIds' | 'cameraView' | 'hiddenAtomIds' | 'viewTransform' | 'fixedCellView' | 'multiframeDisplay' | 'samplingSphere' | 'calculationRanges' | 'vibrationVectors' | 'atomScalarValues' | 'atomScalarColor' | 'atomScalarLabels' | 'orbitalLayer' | 'ntoLayer' | 'dipoleVector' | 'resultBondValues' | 'resultBondLabels' | 'resultBondColor' | 'resultHighlights' | 'resultColorbar' | 'resultColorbarOwnerKey' | 'onResultColorbarLayoutChange' | 'resultAtomLabels' | 'surfaceLayer' | 'surfaceLayers' | 'surfaceExtrema' | 'onSurfaceExtremumHover' | 'onSurfaceExtremumPick' | 'analysisAtomCapture' | 'renderIdentity' | 'onRenderComplete' | 'onSceneSubmitted' | 'onSurfaceMeshState' | 'onSurfaceMeshStates' | 'onNtoMeshState'>;
   onViewReady(getter: (() => number[]) | null): void;
+  onCameraControls?(controls:import('../modeling/render/adapter').ViewportCameraControls|null):void;
   onExport(): void;
   onExportImage?(options: ViewportImageExportOptions, ownerDocument: Document): void | Promise<void>;
   onCaptureImage?(options: ViewportImageExportOptions, ownerDocument: Document, signal: AbortSignal): Promise<Blob>;

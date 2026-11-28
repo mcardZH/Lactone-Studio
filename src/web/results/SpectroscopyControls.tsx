@@ -12,7 +12,7 @@ import { formatResultValue } from '../../results/numeric-format';
 import type {PlotSpectrumSampling,PlotSpectrumViewEdits} from '../../results/scientific-plot-editing';
 import {usePlotFigure} from './scientific-plot-figure';
 import {settingArray,settingBool,settingEnum,settingPositive} from './analysis-mcp-settings';
-import type {NativeMcpSettings} from './results-mcp-context';
+import {ResultsMcpInlinePlotSource,type NativeMcpSettings} from './results-mcp-context';
 import {objectSchema} from '../mcp/types';
 import './SpectroscopyControls.css';
 
@@ -45,6 +45,7 @@ function SpectroscopyControlsInner(p: { kind: SpectrumKind; title: string; ident
   presentation?: 'card' | 'section';
   broadening?: boolean;
   rawSticks?: { points: SpectrumStick[]; intensityUnit: string };
+  exportRawText?: {fileName:string;text:()=>string};
   build(options: SpectrumBuildOptions): SpectrumProjection;
   selectedIndex?: number; onSelectIndex?(index: number): void; sourceIndex?(line: number, sourceIndex: number): number | undefined;
   sourceLabel?(index: number): string }) {
@@ -227,7 +228,7 @@ function SpectroscopyControlsInner(p: { kind: SpectrumKind; title: string; ident
       change(patch);
     },
   };
-  const contents = <>{built.error && <DismissibleNotice role="alert">{built.error}</DismissibleNotice>}{(spectrum || rawPoints.length > 0) ? <ScientificPlot
+  const contents = <>{built.error && <DismissibleNotice role="alert">{built.error}</DismissibleNotice>}{(spectrum || rawPoints.length > 0) ? <ResultsMcpInlinePlotSource kind={p.kind}><ScientificPlot
       title={spectrumFigureTitles[p.kind]} ariaLabel={p.title} xLabel={spectrumXLabel(p.kind, axis)} yLabel={main.yLabel}
       toolbar={toolbar} xSamplingControls={xSamplingControls} hasSpectrumSticks={rawPoints.length>0} plotPresetScope={p.kind}
       plotStyle="spectrum" appearanceKey={appearanceKey} figureRecord={record} mcpConfiguration={mcpConfiguration}
@@ -237,7 +238,8 @@ function SpectroscopyControlsInner(p: { kind: SpectrumKind; title: string; ident
       xDomain={spectrum?.range ?? range} resetKey={`${p.appearanceKey ?? p.identity}:${rangeSetting?.axis ?? ''}:${rangeSetting?.value ?? ''}`}
       metadata={spectrum && { spectrum: { display, peakShape: spectrum.peakShape, fwhm: spectrum.fwhm, fwhmUnit: spectrum.fwhmUnit,
         normalized: spectrum.normalized, samples:spectrum.points.length, step:gridStep(spectrum) } }}
-      decimals={decimals} exportFileName={`Ester-Studio-${p.title}`} exportText={{ fileName: `Ester-Studio-${p.title}.txt`, text: exportText }} testId="spectroscopy-plot"/> : toolbar}</>;
+      decimals={decimals} exportFileName={`Ester-Studio-${p.title}`} exportText={{ fileName: `Ester-Studio-${p.title}.txt`, text: exportText }}
+      exportRawText={p.exportRawText} testId="spectroscopy-plot"/></ResultsMcpInlinePlotSource> : toolbar}</>;
   return p.presentation === 'section' ? <AnalysisTaskSection title={p.title} className="spectroscopy-card">{contents}</AnalysisTaskSection> : <AnalysisTaskLayout variant="card" methodDetails title={p.title} className="spectroscopy-card">{contents}</AnalysisTaskLayout>;
 }
 

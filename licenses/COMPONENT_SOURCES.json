@@ -1,6 +1,6 @@
 {
   "schema": "ester-v201-public-component-sources/v1",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "publicDistributionApproved": false,
   "scope": "Exact component source and notice provision; whole-product native clean rebuild and final release identity are separate",
   "native": {
@@ -17,7 +17,7 @@
     "sourceIndex": "../third-party/corresponding-source-index.json",
     "fortranSharedLibraryBuildControls": "../scripts/release/fortran-relative-source/README.md",
     "fortranBuildControlScope": "Six shared-library source build controls and their historical provenance are retained. The actual engine and data identities are bound separately by this release runtime provenance.",
-    "parentRuntimeBuiltForVersion": "1.0.3-dev.10",
+    "parentRuntimeBuiltForVersion": "2.1.4",
     "currentRuntimeIdentityLocation": "Companion portable runtime/provenance/dependencies.json and source-native-identity.json; final build is separately bound",
     "conformerSolvation": {
       "canonicalSource": "../src/data/conformer-solvation.json",
@@ -34,7 +34,7 @@
         "engine": "xtb",
         "kind": "official-release",
         "runtimeVariant": "official",
-        "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+        "runtimeManifestSha256": "e64dfa34737c397acf2f4205ae7d73f11a68a3eefa5c63737a5247b0e14bae8f",
         "compiler": null,
         "toolchainArchiveSha256": null,
         "scientificPinsSha256": null,
@@ -46,14 +46,14 @@
         "sourceReceiptSha256": "e4101f28ae510f49e5298d121149261a7b765bcd614220434254761b66b7d18c",
         "runtimeMemberDigest": "6adc932cad15ab63d6ce9b89ac8b2a4a0af99b34956a026963ee2586547a6592",
         "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
-        "sha256": "0044b880da3806369eedd912d97c4b307dc471653732bd9303f8ceea0117f7e2"
+        "sha256": "897bb62048e705d7f739021e68c78e719f15078e7fc7708c226cba60a23786bf"
       },
       "gfn0-stack64": {
         "schema": "sciyue-xtb-engine-identity/v1",
         "engine": "xtb",
         "kind": "pe-stack-derivative",
         "runtimeVariant": "gfn0-stack64",
-        "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+        "runtimeManifestSha256": "e64dfa34737c397acf2f4205ae7d73f11a68a3eefa5c63737a5247b0e14bae8f",
         "compiler": null,
         "toolchainArchiveSha256": null,
         "scientificPinsSha256": null,
@@ -67,14 +67,14 @@
         "sourceReceiptSha256": "391cdf82cba8b7035c8685b6cc1cc777dacc537d9b43655152b3c6dbecaa0e4b",
         "runtimeMemberDigest": "43ba5a270f1e3f67c5eefbb729af578c3a8099191d1b45fbc2848310619dd1fc",
         "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
-        "sha256": "4462ab204bc679fffdd33c097b8039a36881eeb715f2f1257872ce6af251dc4d"
+        "sha256": "667ec0b176ef61a5d72be5cc7ed1ade75949cc5e01f041a8ef50e4e62778f159"
       },
       "fire": {
         "schema": "sciyue-xtb-engine-identity/v1",
         "engine": "xtb",
         "kind": "fire-step-limit-rebuild",
         "runtimeVariant": "fire",
-        "runtimeManifestSha256": "478bc78478e4d5cb183673601c507b0553bf702c3eeda808f021211ee91eb38e",
+        "runtimeManifestSha256": "e64dfa34737c397acf2f4205ae7d73f11a68a3eefa5c63737a5247b0e14bae8f",
         "compiler": {
           "name": "gfortran",
           "version": "13.2.0"
@@ -90,7 +90,7 @@
         "sourceReceiptSha256": "78428bd41ee15a452579651896e1f81739a1a586a1c47631047dcb89126996db",
         "runtimeMemberDigest": "6df29e49f7d3cbc469f614f395d0216444f3a1c27f990869cdcfe80809c3b728",
         "parameterDigest": "67bce4fa6a9e66cad1f0154524432b48fb4a4745a841ea60bed9b569dd3bdda4",
-        "sha256": "f786e9dba78ee4987bd65badc4b5607a6d2b41c177155002f13a0398d850a14d"
+        "sha256": "3301589a6586150d375654d5ce2bae13897134f265b112596cfded4a520c9eb8"
       }
     },
     "notices": "xtb-current/",
@@ -257,7 +257,7 @@
     "scope": "PES libraries, static dependencies, exact patches and re-link/build materials",
     "desktopModifiedLibraryAdmission": "pending-actual-candidate-check"
   },
-  "sourceMaterialLocation": "References to ../third-party/ and ../scripts/ resolve in companion Ester-Studio-v2.1.3-source-code.zip.",
+  "sourceMaterialLocation": "References to ../third-party/ and ../scripts/ resolve in companion Ester-Studio-v2.1.4-source-code.zip.",
   "terminal": {
     "npm": [
       {

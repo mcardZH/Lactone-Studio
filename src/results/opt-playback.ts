@@ -5,7 +5,7 @@ import type { PreparedTrajectoryView, PreparationSnapshot } from './prepared-tra
 import { recordTrajectoryOperation } from './trajectory-operations';
 import { confirmedStageTsFrame } from './trajectory-stages';
 
-interface PlaybackSceneRequest { requestId: string; frameIndex: number; publishedAt: number; }
+interface PlaybackSceneRequest { requestId: string; frameIndex: number; turnStartedAt: number; }
 export interface PlaybackNavigation {
   id: string;
   index: number;
@@ -98,6 +98,8 @@ export class OptPlaybackSession {
   private epoch = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private timerSerial = 0;
+  private dueTask?:AbortController;
+  private scheduledScene?:{requestId:string;deadline:number};
   private active = false;
   private ready = false;
   private previewAttempted = false;
@@ -191,21 +193,37 @@ export class OptPlaybackSession {
     }
   }
   getSnapshot = () => this.state;
-  captureViewState=():OptPlaybackViewState=>{const frameIndex=this.preparationLanding??this.state.frame.index;return{frameIndex,frameCount:this.result.frames.length,frameId:this.frameIds[frameIndex],rangeFrameIds:{start:this.frameIds[this.frameOrder[this.state.range.start]],end:this.frameIds[this.frameOrder[this.state.range.end]]},rangeMode:this.state.rangeMode,frameDelayMs:this.state.frameDelayMs,fps:this.state.fps,direction:this.state.direction,mode:this.state.mode,range:{...this.state.range},endpointPauseMs:this.state.endpointPauseMs,silentLoading:this.state.silentLoading,playing:this.liveContinuation&&this.state.loading?this.liveResumePlaying:this.state.playing};};
+  captureViewState=():OptPlaybackViewState=>{const frameIndex=this.batchLookupIndex??this.preparationLanding??this.state.frame.index;return{frameIndex,frameCount:this.result.frames.length,frameId:this.frameIds[frameIndex],rangeFrameIds:{start:this.frameIds[this.frameOrder[this.state.range.start]],end:this.frameIds[this.frameOrder[this.state.range.end]]},rangeMode:this.state.rangeMode,frameDelayMs:this.state.frameDelayMs,fps:this.state.fps,direction:this.state.direction,mode:this.state.mode,range:{...this.state.range},endpointPauseMs:this.state.endpointPauseMs,silentLoading:this.state.silentLoading,playing:this.liveContinuation&&this.state.loading?this.liveResumePlaying:this.state.playing};};
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private publish(patch: Partial<OptPlaybackSnapshot>) { this.state = { ...this.state, ...patch }; this.listeners.forEach(listener => listener()); }
-  private clearTimer() { this.timerSerial++; if (this.timer !== undefined) clearTimeout(this.timer); this.timer = undefined; }
-  private waitUntil(deadline: number, action: () => void, serial = this.timerSerial) {
+  private clearTimer() {
+    this.timerSerial++;
+    if(this.timer!==undefined)clearTimeout(this.timer);
+    this.timer=undefined;this.dueTask?.abort();this.dueTask=undefined;this.scheduledScene=undefined;
+  }
+  private waitUntil(deadline: number, action: () => void, scenePacing=false, serial = this.timerSerial) {
     const remaining = Math.max(0, deadline - performance.now());
-    // Long native waits were late in the measured renderer. Reserve a short final wait,
-    // then check the real deadline; never advance a frame early or poll a long pause.
-    this.timer = setTimeout(() => {
+    const wake=()=>{
       if (serial !== this.timerSerial) return;
-      this.timer = undefined;
+      this.timer=undefined;this.dueTask=undefined;
       if (!this.active || !this.ready || !this.state.playing) return;
-      if (performance.now() < deadline) this.waitUntil(deadline, action, serial);
-      else action();
-    }, Math.min(2147483647,remaining > 20 ? remaining - 20 : remaining));
+      if (performance.now() < deadline) this.waitUntil(deadline,action,scenePacing,serial);
+      else {this.scheduledScene=undefined;action();}
+    };
+    // If a real submission has already consumed the interval, allow the next
+    // turn in a separate browser task without another clamped timer interval.
+    const scheduler=(globalThis as typeof globalThis&{scheduler?:{postTask(callback:()=>void,options:{priority:'user-visible';signal:AbortSignal}):Promise<unknown>}}).scheduler;
+    if(scenePacing&&remaining===0&&typeof scheduler?.postTask==='function'){
+      const own=new AbortController();this.dueTask=own;
+      void scheduler.postTask(wake,{priority:'user-visible',signal:own.signal}).catch(()=>{
+        if(!own.signal.aborted&&serial===this.timerSerial)this.timer=setTimeout(wake,0);
+      });
+      return;
+    }
+    // Keep the legacy preview timer policy. Scene pacing arms a single timer
+    // at the actual deadline and can overlap the wait with the current draw.
+    const delay=!scenePacing&&remaining>20?remaining-20:remaining;
+    this.timer=setTimeout(wake,Math.min(2147483647,scenePacing?Math.ceil(delay):delay));
   }
   private cancelRead(cancelBackground = true) { this.epoch++; this.readController?.abort(); this.readController = null; this.reader.cancel(); if (cancelBackground) this.prepared?.cancelPrefetch(); }
   private validateFrameOrder(order: readonly number[]) {
@@ -244,8 +262,8 @@ export class OptPlaybackSession {
     if (this.state.playing) this.pause();
     this.awaitSceneSubmission=value;
   }
-  private sceneRequest(frameIndex: number, publishedAt: number): PlaybackSceneRequest {
-    return { requestId:`playback:${this.sceneOwner}:${++this.sceneSequence}`, frameIndex, publishedAt };
+  private sceneRequest(frameIndex: number, turnStartedAt: number): PlaybackSceneRequest {
+    return { requestId:`playback:${this.sceneOwner}:${++this.sceneSequence}`, frameIndex, turnStartedAt };
   }
   acknowledgeSceneSubmission = (identity: {requestId?: string; frameIndex: number}) => {
     const request=this.state.sceneRequest;
@@ -253,10 +271,11 @@ export class OptPlaybackSession {
       || request.requestId!==identity.requestId || request.frameIndex!==identity.frameIndex) return;
     this.acknowledgedScene=request.requestId;
     if (this.atPlaybackEnd(request.frameIndex)) {
+      this.clearTimer();
       this.publish({playing:false,sceneRequest:undefined});
       return;
     }
-    this.schedule(request.publishedAt);
+    this.schedule();
   };
   setEnvironment(active: boolean, ready: boolean) {
     this.active = active; this.ready = ready;
@@ -302,7 +321,7 @@ export class OptPlaybackSession {
     if(preview)this.initialFramePrepared=true;
     if(this.notifyPreparation||this.state.loading)this.publish({preparation,...(preview&&index!==undefined&&this.state.frame.structure!==preview.structure?{frame:{index,structure:preview.structure}}:{})});
   }
-  private pausePlayback(notifyUnchanged: boolean, keepSeek = false) {
+  private pausePlayback(notifyUnchanged: boolean, {keepSeek=false,replaceSnapshot=false}: {keepSeek?:boolean;replaceSnapshot?:boolean} = {}) {
     const seek = keepSeek && this.navigation?.status !== 'failed' ? this.navigation : undefined;
     const pending = seek?.status === 'pending';
     this.navigation=seek;
@@ -314,25 +333,29 @@ export class OptPlaybackSession {
     if (!pending) this.cancelRead();
     const { playing, previewing, busy, seekTargetIndex, sceneRequest } = this.state;
     if (notifyUnchanged || playing || previewing || busy || seekTargetIndex !== undefined || sceneRequest !== undefined) {
-      this.publish({ playing: false, previewing: false, busy: pending&&busy, seekTargetIndex:pending?seek.index:undefined, sceneRequest: undefined });
+      const paused={playing:false,previewing:false,busy:pending&&busy,seekTargetIndex:pending?seek.index:undefined,sceneRequest:undefined};
+      if(replaceSnapshot)this.state={...this.state,...paused};else this.publish(paused);
     }
   }
-  pause = () => this.pausePlayback(true,true);
+  pause = () => this.pausePlayback(true,{keepSeek:true});
   seek = (index: number) => {
     if (!Number.isSafeInteger(index)||index<0||index>=this.result.frames.length||!playbackCapabilities(this.state,this.result.frames.length,this.active,this.ready).seek) return;
-    this.pausePlayback(false);
+    // Publish the paused state with the new navigation target or resident
+    // frame. A drag superseding an older seek has no intermediate idle state.
+    this.pausePlayback(false,{replaceSnapshot:true});
     const navigation:PlaybackNavigation={id:`seek:${this.sceneOwner}:${++this.navigationSequence}`,index,status:'pending'};
     this.navigation=navigation;
-    this.preparationLanding=index;
     const batch=this.batchController;
     if (batch && this.prepared) {
+      // The queued lookup owns its intent until it reaches a usable frame.
+      // Canceling the batch may remove this lookup but must keep the prior landing.
       this.manuallySelectedInBatch=true;
       this.batchLookupIndex=index;
       if (!this.prepared.get(index) && !this.prioritizedFrames.has(index)) {
         this.prioritizedFrames.add(index);
         void this.prepared.prioritizePreparation(index,batch.signal).catch(()=>{if(this.batchController===batch)this.prioritizedFrames.delete(index);});
       }
-    }
+    } else this.preparationLanding=index;
     void this.load(index,undefined,false,navigation);
   };
   seekTs = () => { if (this.state.tsFrameIndex !== null) this.seek(this.state.tsFrameIndex); };
@@ -405,9 +428,10 @@ export class OptPlaybackSession {
     const playbackIndex = this.orderPositions[frame.index];
     const position = (playbackIndex - range.start) / (bounds.sign * range.stride);
     const restart = position < 0 || position >= bounds.length || mode === 'once' && playbackIndex === (direction === 1 ? bounds.last : bounds.first);
-    const sceneRequest=!restart&&this.awaitSceneSubmission ? this.sceneRequest(frame.index,performance.now()) : undefined;
+    const startedAt=performance.now();
+    const sceneRequest=!restart&&this.awaitSceneSubmission ? this.sceneRequest(frame.index,startedAt) : undefined;
     this.publish({ playing: true,sceneRequest });
-    if (restart) void this.load(this.frameOrder[direction === 1 ? bounds.first : bounds.last]);
+    if (restart) void this.load(this.frameOrder[direction === 1 ? bounds.first : bounds.last],undefined,false,undefined,startedAt);
     else this.schedule();
   };
   setFrameDelay = (frameDelayMs: number) => {
@@ -439,11 +463,11 @@ export class OptPlaybackSession {
     const previous = advancePlayback(position,range,this.result.frames.length,direction === 1 ? -1 : 1,mode);
     this.prepared.warm([...new Set([next,following,previous].flatMap(step=>step.stopped?[]:[this.frameOrder[step.index]]))]);
   }
-  private async load(index: number, initial?: Structure, prepareAll = false, navigation?:PlaybackNavigation) {
+  private async load(index: number, initial?: Structure, prepareAll = false, navigation?:PlaybackNavigation,turnStartedAt?:number) {
     if (!Number.isSafeInteger(index) || index < 0 || index >= this.result.frames.length || !this.active || !this.ready) return;
     if (index === this.state.frame.index && this.initialFramePrepared && !prepareAll && (!this.prepared || this.prepared.get(index)?.structure===this.state.frame.structure)) {
       if(navigation&&this.navigation===navigation){this.navigation={...navigation,status:'selected'};this.publish({});}
-      this.landingIndex = undefined;if(!this.batchController)this.preparationLanding=undefined; this.schedule(); return;
+      this.landingIndex = undefined;if(!this.batchController)this.preparationLanding=undefined;else if(this.batchLookupIndex===index)this.preparationLanding=index; this.schedule(); return;
     }
     this.cancelRead(false);
     const epoch = this.epoch, controller = new AbortController(); this.readController = controller;
@@ -478,7 +502,7 @@ export class OptPlaybackSession {
       const interval = this.state.preparation?.window;
       const changedWindow = this.state.preparation?.mode === 'window' && (!interval || index < interval.start || index > interval.end);
       const publishedAt = performance.now();
-      const sceneRequest=this.awaitSceneSubmission&&this.state.playing&&!this.state.previewing ? this.sceneRequest(index,publishedAt) : undefined;
+      const sceneRequest=this.awaitSceneSubmission&&this.state.playing&&!this.state.previewing ? this.sceneRequest(index,turnStartedAt??publishedAt) : undefined;
       if(navigation&&this.navigation===navigation)this.navigation={...navigation,status:'selected'};
       this.publish({ frame: { index, structure }, busy: false, seekTargetIndex: undefined,
         sceneRequest,
@@ -498,22 +522,20 @@ export class OptPlaybackSession {
     } finally { if (this.readController === controller) this.readController = null; }
   }
   private schedule(publishedAt?: number) {
-    this.clearTimer();
-    if (this.state.loading || this.state.loadCancelled || this.state.loadFailed) return;
-    if (!this.active || !this.ready) return;
+    if (this.state.loading || this.state.loadCancelled || this.state.loadFailed || !this.active || !this.ready) {this.clearTimer();return;}
     const landing = this.preparationLanding ?? this.landingIndex;
     if (!this.initialFramePrepared) {
+      this.clearTimer();
       if (!this.readController) { const index = landing ?? 0; void this.load(index, index===0?this.result.initialStructure:undefined); }
       return;
     }
-    if (this.state.busy) return;
-    if (landing !== undefined) { void this.load(landing); return; }
-    if (!this.state.playing) return;
+    if (this.state.busy) {this.clearTimer();return;}
+    if (landing !== undefined) { this.clearTimer();void this.load(landing); return; }
+    if (!this.state.playing) {this.clearTimer();return;}
     const sceneRequest=this.state.sceneRequest;
-    if (sceneRequest && this.acknowledgedScene!==sceneRequest.requestId) return;
-    // Anchor only this displayed frame. Never carry a missed deadline into a later frame/read.
-    const deadline = (delay: number) => (sceneRequest?.publishedAt ?? publishedAt ?? performance.now()) + delay;
+    const deadline = (delay: number) => (sceneRequest?.turnStartedAt ?? publishedAt ?? performance.now()) + delay;
     if (this.state.previewing) {
+      this.clearTimer();
       this.waitUntil(deadline(this.previewFrameDelayMs), () => {
         if (this.state.frame.index === this.result.frames.length - 1) {
           if (this.state.tsFrameIndex !== null) { this.previewReturning = true; void this.load(this.state.tsFrameIndex); }
@@ -523,11 +545,27 @@ export class OptPlaybackSession {
       const { frame, range, direction, mode, frameDelayMs, endpointPauseMs } = this.state;
       const playbackIndex = this.orderPositions[frame.index];
       const bounds = playbackRange(range, this.result.frames.length);
-      this.waitUntil(deadline(frameDelayMs + (playbackIndex === bounds.first || playbackIndex === bounds.last ? endpointPauseMs : 0)), () => {
+      const due=deadline(frameDelayMs+(playbackIndex===bounds.first||playbackIndex===bounds.last?endpointPauseMs:0));
+      if(sceneRequest&&this.scheduledScene?.requestId===sceneRequest.requestId&&this.scheduledScene.deadline===due)return;
+      this.clearTimer();
+      if(sceneRequest){
+        // The acknowledgement owns the next wake if an unfinished scene is
+        // already past its deadline. The timer never submits another frame.
+        if(this.acknowledgedScene!==sceneRequest.requestId&&due<=performance.now())return;
+        this.scheduledScene={requestId:sceneRequest.requestId,deadline:due};
+      }
+      this.waitUntil(due, () => {
+        if(sceneRequest&&this.acknowledgedScene!==sceneRequest.requestId)return;
         const next = advancePlayback(playbackIndex, range, this.result.frames.length, direction, mode);
         if (next.stopped) this.publish({ playing: false });
-        else { if (next.direction !== this.state.direction) this.publish({ direction: next.direction }); void this.load(this.frameOrder[next.index]); }
-      });
+        else {
+          if(next.direction!==this.state.direction)this.publish({direction:next.direction});
+          // Keep a start-to-start cadence through modest renderer/timer jitter.
+          // A stalled window can never accrue more than one frame of lateness.
+          const origin=sceneRequest?Math.max(due,performance.now()-frameDelayMs):undefined;
+          void this.load(this.frameOrder[next.index],undefined,false,undefined,origin);
+        }
+      },!!sceneRequest);
     }
   }
 }

@@ -5,7 +5,14 @@ export function checkComputeResourceSnapshot(value:ComputeResourceSnapshot):Comp
   const positive=(number:number)=>Number.isSafeInteger(number)&&number>0;
   if(!value||typeof value.version!=='string'||!(/^[a-f0-9]{64}$/.test(value.version)||value.version==='missing')||!/^[a-f0-9]{64}$/.test(value.revision)||!positive(value.logicalCpuCount)||!positive(value.totalPhysicalMemoryBytes)||typeof value.writable!=='boolean'||typeof value.source!=='string')throw Error('本机计算资源回执无效。');
   if(value.error||!value.writable)throw Error(value.error??'计算资源偏好不可用。');
-  for(const setting of [value.effective,value.defaults,...(value.value?[value.value]:[])])if(!setting||!positive(setting.threads)||!positive(setting.memoryBudgetBytes)||setting.threads>value.logicalCpuCount||setting.memoryBudgetBytes>value.totalPhysicalMemoryBytes||(setting.outputBudgetBytes!==undefined&&(!positive(setting.outputBudgetBytes)||setting.outputBudgetBytes<1024||setting.outputBudgetBytes>1024**4)))throw Error('本机计算资源超过可用范围。');
+  for(const setting of [value.effective,value.defaults,...(value.value?[value.value]:[])]){
+    if(!setting||!positive(setting.threads)||!positive(setting.memoryBudgetBytes)||setting.threads>value.logicalCpuCount||setting.memoryBudgetBytes>value.totalPhysicalMemoryBytes||(setting.outputBudgetBytes!==undefined&&(!positive(setting.outputBudgetBytes)||setting.outputBudgetBytes<1024||setting.outputBudgetBytes>1024**4)))throw Error('本机计算资源超过可用范围。');
+    const {multiwfnThreads,xtbSingleTaskMode,xtbSingleTaskThreads,xtbBatchParallelism,netCpuThreads}=setting;
+    const counts=[multiwfnThreads,xtbSingleTaskThreads,xtbBatchParallelism,netCpuThreads];
+    if((xtbSingleTaskMode!==undefined||counts.some(count=>count!==undefined))&&
+      ((xtbSingleTaskMode!=='auto'&&xtbSingleTaskMode!=='fixed')||
+        !counts.every(count=>count!==undefined&&positive(count)&&count<=value.logicalCpuCount)))throw Error('本机线程或并行设置回执无效。');
+  }
   return structuredClone(value);
 }
 /** Subscribe before reading so a late initial read cannot overwrite a newer

@@ -3,7 +3,7 @@ import { isXtbMethod, supportsXtbOperation, XTB_ALPB_PRESETS, xtbSolvents, type 
 import type { XtbPreoptimizationSolvation } from '../../modeling/xtb/accept-result';
 import type { ActiveStructurePreviewSource } from './active-structure-preview';
 import { emptyMeasurementSession, setMeasurementMode } from './measurement-state';
-import {isPesNetMethod,type PesConvergencePreset,type PesGeometryLimits} from '../../modeling/pes/contracts';
+import {isPesNetMethod,type PesConvergencePreset,type PesGeometryLimits,type PesMethodDraft} from '../../modeling/pes/contracts';
 import {periodicPesOperationAvailable} from '../../modeling/pes/periodic-capabilities';
 
 export type PersistentModelTool = 'hydrogen' | 'delete' | 'fragment';
@@ -12,6 +12,8 @@ export type ObservationModelTool = 'rotate' | 'pan' | 'select' | 'box';
 
 /** Workspace UI preferences contain no model identity or electronic state. */
 export const ordinaryOptimizers = { lbfgs: 'L-BFGS / XYZ', 'precon-exp': 'L-BFGS / Exp', fire2: 'FIRE2 / XYZ', 'sella-xyz': 'Sella-XYZ', 'sella-ric': 'Sella-RIC' } as const;
+export const ORDINARY_OPTIMIZATION_DEFAULT_OPTIMIZER = 'lbfgs';
+export const ORDINARY_OPTIMIZATION_DEFAULT_MAX_STEPS = 500;
 export const molecularNetMethods = { 'aimnet2-auto': 'AIMNet2-auto', 'aimnet2-rxn': 'AIMNet2-rxn', 'orbmol-v2': 'OrbMol-v2' } as const;
 export const periodicNetMethods = {
   'orb-v3-omat':'ORB-v3-OMat','mace-polar-1-m':'MACE-POLAR-1 M','mace-mh1-omat-pbe':'MACE-MH-1 / OMat-PBE','mace-mh1-oc20':'MACE-MH-1 / OC20',
@@ -46,6 +48,8 @@ export interface NetOptimizationPreferences extends OptimizationSettings {
 export const defaultNetOptimizationPreferences: Readonly<NetOptimizationPreferences> = {method:'aimnet2-auto',device:'gpu',rebuildBonds:true};
 export function workspaceNetSettings(preferences:WorkspaceOptimizationPreferences,periodic:boolean):NetOptimizationPreferences {
   const saved=periodic?preferences.periodicNet:preferences.net;
+  const level=preferences.calculationLevel;
+  if(level&&isPesNetMethod(level.method))return {...defaultNetOptimizationPreferences,...saved,method:level.method,device:level.device??'gpu'};
   const method=periodic?'orb-v3-omat':defaultNetOptimizationPreferences.method;
   return {...defaultNetOptimizationPreferences,method,...saved};
 }
@@ -53,7 +57,7 @@ export function availableOrdinaryOptimizer(method:string,periodic:boolean,optimi
   return periodic?periodicPesOperationAvailable(method,'opt',optimizer):optimizer!=='precon-exp';
 }
 export function resolveOrdinaryOptimizer(method:string,periodic:boolean,optimizer?:OrdinaryOptimizer):OrdinaryOptimizer {
-  return optimizer&&availableOrdinaryOptimizer(method,periodic,optimizer)?optimizer:'lbfgs';
+  return optimizer&&availableOrdinaryOptimizer(method,periodic,optimizer)?optimizer:ORDINARY_OPTIMIZATION_DEFAULT_OPTIMIZER;
 }
 export function validCustomOptimizationLimits(limits:GeometryLimits|undefined):limits is GeometryLimits {
   return !!limits&&Number.isFinite(limits.energyDifferenceHartree)&&limits.energyDifferenceHartree>0
@@ -73,6 +77,9 @@ function checkedOptimizationSettings(input: OptimizationSettings): OptimizationS
 }
 export interface WorkspaceOptimizationPreferences {
   version: 3;
+  /** Set only in a project workspace. The optional legacy fields below still
+   * support the standalone editor and contain no authoritative project method. */
+  calculationLevel?: PesMethodDraft;
   defaultKind: 'xtb' | 'net';
   periodicKind?: WorkspaceOptimizationPreferences['defaultKind'];
   periodicXtbMethod?: XtbNativeMethod;
@@ -82,6 +89,7 @@ export interface WorkspaceOptimizationPreferences {
   periodicNet?: NetOptimizationPreferences;
 }
 export function workspaceOptimizationKind(preferences:WorkspaceOptimizationPreferences,periodic:boolean) {
+  if(preferences.calculationLevel)return isPesNetMethod(preferences.calculationLevel.method)?'net':'xtb';
   return periodic?preferences.periodicKind??preferences.defaultKind:preferences.defaultKind;
 }
 export function workspaceOptimizationMethodAvailable(method:string,periodic:boolean):boolean {
@@ -90,6 +98,7 @@ export function workspaceOptimizationMethodAvailable(method:string,periodic:bool
 }
 export function selectWorkspaceOptimizationMethod(preferences:WorkspaceOptimizationPreferences,periodic:boolean,method:string):WorkspaceOptimizationPreferences {
   if(!isXtbMethod(method)||!workspaceOptimizationMethodAvailable(method,periodic))return preferences;
+  if(preferences.calculationLevel)return {...preferences,calculationLevel:{...preferences.calculationLevel,method,device:undefined}};
   if(periodic)return {...preferences,periodicKind:'xtb',periodicXtbMethod:method};
   const previousPeriodic={periodicKind:workspaceOptimizationKind(preferences,true),periodicXtbMethod:workspaceXtbSettings(preferences,true).method};
   return {...preferences,...previousPeriodic,defaultKind:'xtb',xtb:{...preferences.xtb,method}};
@@ -99,6 +108,13 @@ export function workspaceOptimizationSolvation(method:string,periodic:boolean,sa
 }
 export function workspaceXtbSettings(preferences:WorkspaceOptimizationPreferences,periodic:boolean) {
   const {method:saved,optimizer,solvation,...settings}=preferences.xtb;
+  const level=preferences.calculationLevel;
+  if(level&&isXtbMethod(level.method)){
+    const method=level.method;
+    const preferred=level.solvationModel==='alpb'?{model:'alpb' as const,solvent:level.solvent}:undefined;
+    return {...settings,method,optimizer:resolveOrdinaryOptimizer(method,periodic,optimizer),scope:preferences.scope,
+      solvation:workspaceOptimizationSolvation(method,periodic,preferred)};
+  }
   const candidate=periodic?preferences.periodicXtbMethod??saved:saved;
   const method=workspaceOptimizationMethodAvailable(candidate,periodic)?candidate:'gfn2';
   return {...settings,method,optimizer:resolveOrdinaryOptimizer(method,periodic,optimizer),scope:preferences.scope,

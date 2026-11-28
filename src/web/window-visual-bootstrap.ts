@@ -1,4 +1,6 @@
 import { bindInterfaceFontDocument } from './interface-font-preferences';
+import { bindInterfaceParadigmDocument } from './interface-paradigm-preferences';
+import { bindInterfaceSurfaceDocument } from './interface-surface-preferences';
 import { bindInterfaceThemeDocument } from './interface-theme-preferences';
 
 /** Prepare an about:blank presentation document in its own DOM realm.
@@ -13,6 +15,6 @@ export function bootstrapWindowVisuals(source: Document, target: Document): () =
   }
   target.documentElement.className = source.documentElement.className;
   Object.assign(target.documentElement.dataset, source.documentElement.dataset);
-  const disposeFont=bindInterfaceFontDocument(target),disposeTheme=bindInterfaceThemeDocument(target);
-  return()=>{disposeFont();disposeTheme();};
+  const disposeFont=bindInterfaceFontDocument(target),disposeTheme=bindInterfaceThemeDocument(target),disposeSurface=bindInterfaceSurfaceDocument(target),disposeParadigm=bindInterfaceParadigmDocument(target);
+  return()=>{disposeFont();disposeTheme();disposeSurface();disposeParadigm();};
 }

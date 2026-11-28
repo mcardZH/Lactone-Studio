@@ -76,7 +76,7 @@ export type ModelCommand =
   | { type: 'break-bond'; atomIds: [AtomId, AtomId]; image?: Vector3 }
   | { type: 'transform-fragment'; atomIds: AtomId[]; delta?: Vector3; rotation?: { axis: Vector3; degrees: number; pivot: Vector3 }; unwrapPeriodic?: boolean }
   | { type: 'manual-coordinates'; atoms: { id: AtomId; position: Vector3 }[]; documentId: string; expectedRevision: number }
-  | { type: 'apply-optimization-geometry'; structure: Structure; documentId: string; expectedRevision: number }
+  | { type: 'apply-optimization-geometry'; structure: Structure; documentId: string; expectedRevision: number; bondOrderObservation?: BondOrderObservation }
   | { type: 'infer-bonds'; mode: BondPerceptionMode; aggression: BondAggression; perceivedBonds?: Bond[]; perceivedIssues?: Structure['bondPerceptionIssues']; stamp?: DocumentStamp }
   | { type: 'replace-structure'; structure: Structure; assignments?: Partial<BuilderAssignments> }
   | { type: 'replace-document'; fragment: FragmentSnapshot; electronicState?: 'new-source' }
@@ -380,7 +380,7 @@ export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesk
   readModelHoldKeyPreferences?(): Promise<ModelHoldKeyPreferences>;
   writeModelHoldKeyPreferences?(request: { baseVersion: string; bindings: ModelHoldKeyPreferences['bindings'] }): Promise<ModelHoldKeyPreferences>;
   restoreModelHoldKeyPreferences?(baseVersion: string): Promise<ModelHoldKeyPreferences>;
-  onApplicationClosePreparation?(listener: (request: { requestId: string }) => void): () => void;
+  onApplicationClosePreparation?(listener: (request: { requestId: string; scope?: 'window'|'application' }) => void): () => void;
   completeApplicationClosePreparation?(response: { requestId: string; status: 'waiting' | 'ready' | 'cancelled' | 'failed'; error?: string; projectHandled?:boolean }): Promise<{ accepted: boolean }>;
   openFiles(): Promise<OpenedModelFile[]>;
   /** Capabilities are issued only from a real user-selected File; no path API. */
@@ -444,7 +444,7 @@ export interface DesktopBridge extends Partial<PesBridge>, Partial<WorkspaceDesk
   surfaceDistribution?(sessionId: string, request: SurfaceDistributionRequest): Promise<SurfaceAreaDistribution>;
   cancelSurface?(sessionId: string): Promise<{ cancelled: boolean }>;
   closeSurfaceSession?(sessionId: string): Promise<{ closed: boolean }>;
-  importSurfaceCube?(file?: File): Promise<SurfaceImportedCube | null>;
+  importSurfaceCube?(file?: File): Promise<SurfaceCubeReceipt | null>;
   registerSurfaceCube?(request: SurfaceCubeRegisterRequest): Promise<SurfaceImportedCube>;
   readRegisteredSurfaceCube?(token: string): Promise<SurfaceImportedCube>;
   registerSurfaceCubeAsset?(request:SurfaceCubeAssetRegisterRequest):Promise<SurfaceCubeReceipt>;

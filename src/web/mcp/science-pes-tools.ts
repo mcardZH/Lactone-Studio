@@ -3,12 +3,13 @@ import { isPeriodic } from '../../core/periodic';
 import { supportsXtbAlpb, usesXtbSccIterations } from '../../core/xtb-capabilities';
 import type { AdvancedFrameSource } from '../../modeling/advanced/frame-source';
 import type { PesController } from '../../modeling/pes/controller';
-import { type PesAxis, type PesCard, type PesGeometry, type PesGroup, type PesMethodDraft,
-  type PesNode, type PesParameter, type PesParameters, type PesRun } from '../../modeling/pes/contracts';
+import type { PesAxis, PesCard, PesGeometry, PesGroup, PesMethodDraft,
+  PesNode, PesParameter, PesParameters, PesRun } from '../../modeling/pes/contracts';
 import { defaultParameters, defaultPesCard, defaultPesMethod, effectivePesScanAlgorithm, isPesScanOptimizer, isSellaTsAlgorithm, nebPresetParameters,
-  parameterVisible, PES_ALGORITHMS, PES_DEFAULT_HESSIAN_STEP_BOHR, PES_IRC_NUMBER_FIELDS, pesParameterSections, sellaPresetParameters } from '../../modeling/pes/defaults';
+  parameterVisible, PES_ALGORITHMS, PES_CI_NEB_MINIMUM_BEADS, PES_DEFAULT_HESSIAN_STEP_BOHR, PES_DEFAULT_SCAN_ALGORITHM,
+  PES_IRC_NUMBER_FIELDS, pesParameterSections, sellaPresetParameters } from '../../modeling/pes/defaults';
 import { pesCoordinateNameIssue } from '../../modeling/pes/expressions';
-import { PesCompositionChange, pesElectronicConfirmed, PesSubmissionChanged } from '../../modeling/pes/input-state';
+import { PesCompositionChange, pesElectronicConfirmation, pesElectronicDraft, PesSubmissionChanged } from '../../modeling/pes/input-state';
 import { periodicPesOperationAvailable } from '../../modeling/pes/periodic-capabilities';
 import { cardSource, numberDraft, parameterValue, pesPathStructureIssue } from '../../modeling/pes/request';
 import { scanCardDraft } from '../../modeling/pes/scan-source';
@@ -17,6 +18,7 @@ import { electronicOptions, integer, positive, record, textValue, oneOf, targetS
 import { pesRequestEvidence, presentScienceRun, type SciencePresentation } from './science-runtime';
 import { batchCounts } from './batch-receipts';
 import { checkToolArguments } from './tool-arguments';
+import { pesHessianMode } from './pes-evidence';
 
 export interface SciencePesContext extends SciencePresentation {
   pes(): Promise<PesController | undefined>;
@@ -24,21 +26,42 @@ export interface SciencePesContext extends SciencePresentation {
   registerPesNode(groupId: string, node: PesNode): unknown;
   pesTarget?(groupId:string,nodeId:string):string|undefined;
   readPesScanGeometry?(groupId:string):PesGeometry|undefined;
+  /** null means this node owns the visible canvas, but it has no submitted frame. */
+  readPesWorkbenchGeometry?(groupId:string,nodeId:string):PesGeometry|null|undefined;
   presentPesConfiguration?(groupId:string,node:PesNode,cardId:string|undefined,mode:McpPresentationMode,call?:McCall):unknown|Promise<unknown>;
+}
+
+function unavailableFrame(groupId:string,nodeId:string,cardId?:string){
+  return toolError('SCIENCE_FRAME_UNAVAILABLE','请在对应的势能面工作区显示完整科学帧或准备其轨迹后再提交。',{
+    groupId,nodeId,cardId,submitted:false,next:{tool:'es_show',arguments:{target:{kind:'pes-node',ref:nodeId},waitFor:'selected'}},
+  });
+}
+
+function workbenchGeometry(ctx:SciencePesContext,controller:PesController,group:PesGroup,nodeId:string,cardId?:string):PesGeometry {
+  const node=group.nodes.find(row=>row.id===nodeId);
+  if(!node)throw toolError('TARGET_MISSING','势能面输入节点已关闭。',{
+    groupId:group.id,nodeId,cardId,submitted:false,next:{tool:'es_pes_groups',arguments:{groupId:group.id}},
+  });
+  const visible=ctx.readPesWorkbenchGeometry?.(group.id,nodeId);
+  if(visible===null)throw unavailableFrame(group.id,nodeId,cardId);
+  const source=visible??controller.nodeGeometry(group.id,nodeId);
+  if(!source||node.kind==='result'&&!source.source?.frameId)throw unavailableFrame(group.id,nodeId,cardId);
+  return source;
 }
 
 const parameterValueSchema = { type: ['number', 'string', 'boolean'] };
 const countValue = { type: ['integer', 'string'] };
 const convergencePresets = ['loose','medium','tight','custom'] as const;
+const ciNebPathInitializers = ['sidpp','fsm'] as const;
 const ciNebParametersSchema = {
   type: 'object',
   properties: {
-    beads: { ...countValue, minimum: 2, description: 'Total number of beads, including the two endpoints.' },
+    beads: { ...countValue, minimum: PES_CI_NEB_MINIMUM_BEADS, description: 'Total number of beads, including the two endpoints.' },
     nebIterations: { ...countValue, minimum: 1, description: 'Maximum native path iterations, including the climbing stage.' },
     recordInterval: { ...countValue, minimum: 1, description: 'Retain a path record every N iterations.' },
     nebOptimizer: { enum: ['fire2','fire','lbfgs'] },
     nebConvergencePreset: { enum: convergencePresets, description: 'Use custom to supply explicit NEB or CI force thresholds.' },
-    pathInitializer: { enum: ['sidpp','fsm'] },
+    pathInitializer: { enum: ciNebPathInitializers },
     coordinateSystem: { const: 'xyz' },
   },
   additionalProperties: parameterValueSchema,
@@ -50,17 +73,18 @@ const methodSchema = objectSchema({ method: {enum:pesMethods},
   solvationModel:{enum:['none','alpb']}, solvent:{type:'string'} });
 const pathSchema = { start:targetSchema, end:targetSchema, atomMapping:{type:'object',additionalProperties:{type:'string'}},
   useAtomOrder:{type:'boolean'}, method:methodSchema, electronic:electronicSchema, parameters:parametersSchema };
-const ciNebPairSchema = objectSchema({ ...pathSchema, parameters: ciNebParametersSchema }, ['start','end']);
+const pathResourceOverrideSchema=objectSchema({xtbBatchParallelism:{type:'integer',minimum:1}},['xtbBatchParallelism']);
+const ciNebPairSchema = objectSchema({ ...pathSchema, parameters: ciNebParametersSchema,resourceOverrides:pathResourceOverrideSchema }, ['start','end']);
 const expressionFields = { expression:{type:'string'},
   coordinates:{type:'array',items:objectSchema({ id:{type:'string'}, name:{type:'string'}, type:{enum:['B','A','D']},
-    atomIds:{type:'array',items:{type:'string'}}, images:{type:'array',items:{type:'array',items:{type:'integer'},minItems:3,maxItems:3}}},
+    atomIds:{type:'array',items:{type:'string'},description:'Stable atom IDs in geometric order. For A the second atom is the vertex. For D the middle two atoms are the central bond.'}, images:{type:'array',items:{type:'array',items:{type:'integer'},minItems:3,maxItems:3}}},
     ['id','name','type','atomIds'])}};
 const axisSchema = objectSchema({ ...expressionFields,name:{type:'string'},lower:{type:'number'},upper:{type:'number'},points:{type:'integer',minimum:2}},
   ['coordinates','upper','points']);
 
 function sourceGeometry(source: AdvancedFrameSource): PesGeometry {
   return { documentId:source.ref.documentId, revision:source.ref.revision, label:source.label,
-    structure:source.structure, originFrame:source.ref };
+    structure:source.sourceElectronicState?{...source.structure,...source.sourceElectronicState}:source.structure, originFrame:source.ref };
 }
 
 function groupRecord(controller: PesController, value: unknown): PesGroup {
@@ -91,13 +115,18 @@ function methodPatch(value: unknown,current:PesMethodDraft,periodic:boolean): Pa
 function settings(algorithm:string, before:PesParameters, value:unknown, method:PesMethodDraft['method'],periodic:boolean){
   if(value===undefined)return before;
   const values=record(value,'parameters'),patch:PesParameters={};
+  if(algorithm==='ci-neb'&&values.pathInitializer!==undefined&&!ciNebPathInitializers.some(name=>name===values.pathInitializer))
+    throw toolError('INVALID_ARGUMENT','CI-NEB 的路径初猜可用 S-IDPP（sidpp）或 FSM（fsm）。',
+      {algorithm,field:'pathInitializer',path:'parameters.pathInitializer',requested:values.pathInitializer,
+        supportedValues:ciNebPathInitializers,configurationChanged:false,submitted:false,
+        recovery:{tool:'es_pes_parameters',arguments:{algorithm,method}}});
   if(algorithm==='ci-neb'&&values.nebConvergencePreset!==undefined)
     before=nebPresetParameters(before,oneOf(values.nebConvergencePreset,convergencePresets,'nebConvergencePreset')!);
   if((isPesScanOptimizer(algorithm)||Object.hasOwn(PES_ALGORITHMS.ts,algorithm))&&values.convergencePreset!==undefined)
     before=sellaPresetParameters(algorithm,before,oneOf(values.convergencePreset,convergencePresets,'convergencePreset')!);
   const accepted=new Set([...Object.keys(defaultParameters(algorithm)),...Object.keys(before),
     ...pesParameterSections(algorithm,before).flatMap(section=>section.fields.map(field=>field.key))]);
-  const executionFields=['executionProfile','pathSemantics','device'];
+  const executionFields=['executionProfile','pathSemantics','device','netGpuBatchLimit'];
   for(const [key,field] of Object.entries(values)){
     if(!accepted.has(key)||executionFields.includes(key))throw toolError('INVALID_ARGUMENT','该算法没有可设置的参数 '+key+'。',{
       algorithm,field:key,path:'parameters.'+key,supportedParameters:[...accepted].filter(name=>name!=='accuracy'&&!executionFields.includes(name)&&
@@ -133,18 +162,32 @@ function settings(algorithm:string, before:PesParameters, value:unknown, method:
 
 function electronicValues(geometry:PesGeometry,value:unknown){
   const override=value===undefined?{}:record(value,'electronic');
-  const charge=integer(override.charge??geometry.structure.charge,'charge');
-  const multiplicity=integer(override.multiplicity??geometry.structure.multiplicity,'multiplicity',1);
+  const charge=integer(override.charge??geometry.structure.charge??undefined,'charge');
+  const multiplicity=integer(override.multiplicity??geometry.structure.multiplicity??undefined,'multiplicity',1);
   if(charge===undefined||multiplicity===undefined)throw toolError('INVALID_ARGUMENT','请指定输入结构的电荷和自旋多重度。');
   const issue=baseElectronicStateParameterError(geometry.structure,{charge,multiplicity});
   if(issue)throw toolError('INVALID_ARGUMENT',issue);
   return {charge,multiplicity};
 }
 
-function confirm(controller:PesController, groupId:string, geometry:PesGeometry, value:unknown){
-  const {charge,multiplicity}=electronicValues(geometry,value);
-  controller.editElectronicPair(groupId,{charge:String(charge),multiplicity:String(multiplicity)});
-  controller.confirmElectronic(groupId,geometry);
+function electronicConfirmationStep(group:PesGroup,geometry:PesGeometry,operation:'scan'|'path'|'ts'|'hessian'|'irc',nodeId?:string) {
+  const draft=pesElectronicDraft(group,geometry),values={charge:Number(draft.charge),multiplicity:Number(draft.multiplicity)};
+  const valid=/^[+-]?\d+$/.test(draft.charge)&&/^\+?\d+$/.test(draft.multiplicity)
+    &&!baseElectronicStateParameterError(geometry.structure,values);
+  return {tool:'es_pes_configure',arguments:{groupId:group.id,operation,...(operation!=='path'&&nodeId?{nodeId}:{}),
+    ...(valid?{electronic:values}:{})},confirm:['charge','multiplicity']};
+}
+
+function requireRunElectronic(group:PesGroup,geometry:PesGeometry,operation:'scan'|'path'|'ts'|'hessian'|'irc',nodeId?:string,cardId?:string) {
+  if(pesElectronicConfirmation(group,geometry))return;
+  throw toolError('PES_ELECTRONIC_UNCONFIRMED','请先确认本次输入结构的电荷和自旋多重度。',{
+    groupId:group.id,nodeId,cardId,operation,submitted:false,...pesSourceEvidence(geometry),electronicDraft:pesElectronicDraft(group,geometry),
+    next:electronicConfirmationStep(group,geometry,operation,nodeId),
+  });
+}
+
+function confirm(controller:PesController, groupId:string, geometry:PesGeometry, value:unknown, shareWithModel=false){
+  controller.confirmElectronic(groupId,geometry,electronicValues(geometry,value),shareWithModel);
 }
 
 function recordEndpoint(controller:PesController,groupId:string,card:PesCard,slot:string,geometry:PesGeometry){
@@ -152,7 +195,7 @@ function recordEndpoint(controller:PesController,groupId:string,card:PesCard,slo
 }
 
 function pathProduct(start:AdvancedFrameSource,end:AdvancedFrameSource,args:Record<string,unknown>){
-  const target=end.structure;
+  const geometry=sourceGeometry(end),target=geometry.structure;
   const a=start.structure.atoms,b=target.atoms;
   const mapping=args.atomMapping===undefined?undefined:record(args.atomMapping,'atomMapping');
   const stableOwner=start.ref.documentId===end.ref.documentId&&start.ref.documentEpoch===end.ref.documentEpoch
@@ -172,7 +215,7 @@ function pathProduct(start:AdvancedFrameSource,end:AdvancedFrameSource,args:Reco
     mapping:target.mapping?.map(row=>({...row,current:inverse.get(row.current)??row.current}))};
   const issue=pesPathStructureIssue(start.structure,product,'产物');
   if(issue)throw toolError('INVALID_ARGUMENT',issue);
-  return { geometry:{...sourceGeometry(end),structure:product}, atomMapping };
+  return { geometry:{...geometry,structure:product}, atomMapping };
 }
 
 function expressionDraft(value:unknown,path:string):PesAxis['definition'] {
@@ -208,23 +251,47 @@ function scanAxis(template:PesAxis, value:unknown,index:number):PesAxis {
     lowerMode:lower===undefined?'automatic':'manual',lower:lower===undefined?'':String(lower),upper:String(upper),points:String(points),rangeDriver:'points'};
 }
 
+function scanAxisCoordinates(axes: readonly PesAxis[], geometry: PesGeometry) {
+  const needed = new Set(axes.flatMap(axis => axis.definition.coordinates.flatMap(coordinate => coordinate.atomIds)));
+  const atoms = new Map<string, { atomNumber: number; element: string }>();
+  for (const [index, atom] of geometry.structure.atoms.entries()) {
+    if (atom.id && needed.has(atom.id)) atoms.set(atom.id, { atomNumber: index + 1, element: atom.element });
+    if (atoms.size === needed.size) break;
+  }
+  return axes.map(axis => ({
+    axisId: axis.id,
+    axisName: axis.name,
+    coordinates: axis.definition.coordinates.map(coordinate => {
+      const orderedAtoms = coordinate.atomIds.map(atomId => ({ atomId, ...atoms.get(atomId) }));
+      return {
+        id: coordinate.id, name: coordinate.name, type: coordinate.type, orderedAtoms,
+        ...(coordinate.type === 'A' ? { vertex: orderedAtoms[1] } : {}),
+      };
+    }),
+  }));
+}
+
 function publicCard(card:PesCard){
   return {id:card.id,name:card.name,kind:card.kind,algorithm:card.algorithm,axes:card.kind==='scan'?card.axes.slice(0,card.dimension):undefined,
     ...(card.kind==='scan'?{sourceMode:'current-display'}:{}),
-    parameters:card.parametersByAlgorithm[card.algorithm],slots:card.kind==='scan'?{}:Object.fromEntries(Object.entries(card.slots).map(([key,value])=>[key,value&&{
+    parameters:card.parametersByAlgorithm[card.algorithm],
+    netGpuBatchLimit:card.netGpuBatchLimit,resourceOverrides:card.resourceOverrides,
+    slots:card.kind==='scan'?{}:Object.fromEntries(Object.entries(card.slots).map(([key,value])=>[key,value&&{
       documentId:value.documentId,revision:value.revision,source:value.source,originFrame:value.originFrame,inputSnapshotId:value.inputSnapshotId}])),
     mappings:card.mappings,runIds:card.runIds};
 }
 
-function publicGroup(group:PesGroup){
+function publicGroup(group:PesGroup, source?:PesGeometry){
   return {groupId:group.id,name:group.name,initialNodeId:group.initialNodeId,activeNodeId:group.activeNodeId,
     nodes:group.nodes.map(node=>({id:node.id,name:node.name,kind:node.kind,runIds:node.runIds,source:node.geometry.source,originFrame:node.geometry.originFrame})),
-    sharedMethod:group.sharedMethod,electronic:group.electronic.confirmed,constraints:group.constraints,
+    sharedMethod:group.sharedMethod,electronic:source?pesElectronicConfirmation(group,source):undefined,constraints:group.constraints,
+    input:source&&{...pesSourceEvidence(source),documentId:source.documentId,revision:source.revision,
+      electronicDraft:pesElectronicDraft(group,source),electronicConfirmed:!!pesElectronicConfirmation(group,source)},
     ts:group.ts,ircParameters:group.ircParameters,hessianStepBohr:group.hessianStepBohr,cards:group.cards.map(publicCard)};
 }
 
-async function presentConfiguration(ctx:SciencePesContext,group:PesGroup,nodeId:string,cardId:string|undefined,mode:McpPresentationMode,call?:McCall){
-  const receipt={...publicGroup(group),cardId};
+async function presentConfiguration(ctx:SciencePesContext,group:PesGroup,nodeId:string,cardId:string|undefined,mode:McpPresentationMode,call?:McCall,source?:PesGeometry){
+  const receipt={...publicGroup(group,source),cardId};
   const node=group.nodes.find(row=>row.id===nodeId);
   if(!ctx.presentPesConfiguration||!node)return receipt;
   if(call?.signal.aborted)return {...receipt,presentation:{mode,status:'cancelled'}};
@@ -269,7 +336,7 @@ function publicParameters(algorithm:string,method:PesMethodDraft['method']) {
   if(algorithm==='hessian'||algorithm==='numeric')return {algorithm:'numeric',operation:'hessian',method,
     defaults:{hessianStepBohr:hessianStepField.initial},sections:[],topLevel:[hessianStepField]};
   const defaults=defaultParameters(algorithm), display=pesParameterSections(algorithm,defaults);
-  const excluded=['executionProfile','pathSemantics','accuracy',...(!usesXtbSccIterations(method)?['electronicTemperatureK','maxSccIterations']:[])];
+  const excluded=['executionProfile','pathSemantics','device','netGpuBatchLimit','accuracy',...(!usesXtbSccIterations(method)?['electronicTemperatureK','maxSccIterations']:[])];
   return {
     algorithm, method,
     defaults:Object.fromEntries(Object.entries(defaults).filter(([key])=>!excluded.includes(key)&&parameterVisible(key,defaults))),
@@ -288,10 +355,17 @@ function startReceipt(controller:PesController,ctx:SciencePesContext,node:PesNod
   ctx.registerPesNode(run.request.runIdentity.groupId,node);
   const targetRef=ctx.pesTarget?.(run.request.runIdentity.groupId,node.id);
   return {kind:'pes' as const,...run.request.runIdentity,documentId:run.source.documentId,nodeId:node.id,status:run.status,operation:run.request.operation,algorithm:run.request.algorithm,
-    targetRef,...pesSourceEvidence(run.source),request:pesRequestEvidence(run.request),accepted:true,nativeStarted:run.nativeStarted??false,workerSettled:run.workerSettled??false};
+    targetRef,...pesSourceEvidence(run.source),request:pesRequestEvidence(run.request),accepted:true,nativeStarted:run.nativeStarted??false,workerSettled:run.workerSettled??false,
+    next:{tool:'es_run_read',arguments:{runId}}};
 }
 
-type PesRunTarget = {cardId:string} | {nodeId:string;operation:'ts'|'hessian'|'irc'};
+function pathResourceOverrides(value:unknown){
+  if(value===undefined)return;
+  checkToolArguments(pathResourceOverrideSchema,value,'arguments.resourceOverrides');
+  return {xtbBatchParallelism:integer(record(value,'resourceOverrides').xtbBatchParallelism,'resourceOverrides.xtbBatchParallelism',1)!};
+}
+type PesRunTarget = {cardId:string;nodeId?:string;resourceOverrides?:ReturnType<typeof pathResourceOverrides>}
+  | {nodeId:string;operation:'ts'|'hessian'|'irc'};
 type PendingPesRun = {id:string;sessionId:string|undefined;projectEpoch:string|undefined;target:PesRunTarget;admission:PesCompositionChange};
 const pendingPesRuns = new WeakMap<PesController,Map<string,PendingPesRun>>();
 
@@ -308,7 +382,7 @@ function newGroup(controller:PesController,source:AdvancedFrameSource) {
   return controller.createGroup(geometry,undefined,{constraints:source.constraints});
 }
 
-async function configurePath(ctx:SciencePesContext,controller:PesController,args:Record<string,unknown>,algorithm:string,call?:McCall){
+async function configurePath(ctx:SciencePesContext,controller:PesController,args:Record<string,unknown>,algorithm:string,call?:McCall,batchLevel?:PesMethodDraft){
   const electronic=electronicOptions(args.electronic);
   const start=await ctx.resolveSource(args.start,call?.signal,electronic),end=await ctx.resolveSource(args.end,call?.signal,electronic);
   const reactant=sourceGeometry(start),product=pathProduct(start,end,args);
@@ -316,8 +390,12 @@ async function configurePath(ctx:SciencePesContext,controller:PesController,args
     throw toolError('INVALID_ARGUMENT','端点的电荷或多重度不同，请明确指定本次统一电子态。');
   electronicValues(reactant,args.electronic);
   const group=args.groupId===undefined?undefined:groupRecord(controller,args.groupId);
-  const currentMethod=group?.sharedMethod??defaultPesMethod(),periodic=isPeriodic(start.structure);
+  const currentMethod=batchLevel??group?.sharedMethod??controller.defaultCalculationLevel(),periodic=isPeriodic(start.structure);
   const patch=methodPatch(args.method,currentMethod,periodic),method=patch.method??currentMethod.method;
+  const resourceOverrides=pathResourceOverrides(args.resourceOverrides);
+  if(resourceOverrides&&!['ci-neb','fsm'].includes(algorithm))
+    throw toolError('INVALID_ARGUMENT','xTB 批量并行数仅适用于 xTB CI-NEB 或 FSM。');
+  if(method==='gxtb')throw toolError('INVALID_ARGUMENT','本工程选用 g-xTB。此势能面入口尚未支持该方法。');
   if(periodic&&!periodicPesOperationAvailable(method,'path',algorithm))throw toolError('INVALID_ARGUMENT','所选计算级别未开放该周期路径入口。');
   const previous=group?.cards.find(card=>card.kind==='path'&&card.algorithm===algorithm)??group?.cardDrafts?.[algorithm];
   const parameters=settings(algorithm,previous?.parametersByAlgorithm[algorithm]??defaultParameters(algorithm),args.parameters,method,periodic);
@@ -328,18 +406,21 @@ async function configurePath(ctx:SciencePesContext,controller:PesController,args
   recordEndpoint(controller,owned.id,card,'product',product.geometry);
   controller.updateCard(owned.id,card.id,current=>({...current,mappings:{...current.mappings,product:product.atomMapping},
     parametersByAlgorithm:{...current.parametersByAlgorithm,[algorithm]:parameters}}));
-  if(Object.keys(patch).length)controller.updateSharedMethod(owned.id,patch);
+  if(!batchLevel&&Object.keys(patch).length)controller.updateSharedMethod(owned.id,patch);
   const current=groupRecord(controller,owned.id);
   confirm(controller,owned.id,cardSource(current,current.cards[0]),args.electronic);
-  return {groupId:owned.id,cardId:card.id};
+  return {groupId:owned.id,cardId:card.id,runMethod:batchLevel?{...currentMethod,...patch}:undefined,resourceOverrides};
 }
 
 export function pesTools(ctx:SciencePesContext):McTool[]{
   return [{
     name:'es_pes_groups',description:'List live PES workspaces, native calculation cards and result node identities.',
     inputSchema:objectSchema({groupId:{type:'string'}}),
-    async call(args){const controller=await pesController(ctx);return args.groupId===undefined?
-      {groups:controller.getSnapshot().groups.map(publicGroup)}:publicGroup(groupRecord(controller,args.groupId));},
+    async call(args){
+      const controller=await pesController(ctx);
+      const receipt=(group:PesGroup)=>publicGroup(group,controller.nodeGeometry(group.id,group.activeNodeId));
+      return args.groupId===undefined?{groups:controller.getSnapshot().groups.map(receipt)}:receipt(groupRecord(controller,args.groupId));
+    },
   },{
     name:'es_pes_parameters',description:'Read supported native PES parameters, defaults and units without opening a card or starting a calculation. Use ci-neb, sella-irc or numeric for CI-NEB, IRC or numeric Hessian respectively.',
     inputSchema:objectSchema({algorithm:{enum:pesParameterAlgorithms},method:{enum:pesMethods}},['algorithm']),
@@ -350,11 +431,30 @@ export function pesTools(ctx:SciencePesContext):McTool[]{
       return publicParameters(algorithm,method);
     },
   },{
-    name:'es_pes_configure',description:'Configure a native PES card or operation without running it. Use live model or frame refs for path endpoints and stable atom IDs for scan axes. A scan uses the frame actually displayed at submission. Use groupId for an existing workspace or target to create a new workspace from that model or frame. Read parameters and defaults from es_pes_parameters.',
+    name:'es_pes_mode_read',description:'Read one native same-frame Hessian mode from a settled PES run. Use the one-based mode and exact frameId returned under es_run_read.hessian. Returns signed frequency and the Cartesian direction in stable atom order. The direction has arbitrary sign and does not set the amplitude. No calculation is started.',
+    inputSchema:objectSchema({runId:{type:'string'},mode:{type:'integer',minimum:1},frameId:{type:'string'}},['runId','mode']),
+    async call(args,call){
+      const controller=await pesController(ctx),runId=textValue(args.runId,'runId');
+      const mode=integer(args.mode,'mode',1);
+      if(mode===undefined)throw toolError('INVALID_ARGUMENT','需要从 1 开始的原生模态编号。');
+      const frameId=args.frameId===undefined?undefined:textValue(args.frameId,'frameId');
+      call?.signal.throwIfAborted();
+      const run=pesRuns(controller).find(row=>row.request.runIdentity.runId===runId);
+      if(!run)throw toolError('TARGET_MISSING','Hessian 所属运行已关闭或不属于当前项目。',{runId});
+      const read={tool:'es_run_read',arguments:{runId}};
+      if(['starting','running','stopping'].includes(run.status))
+        return {runId,status:'unavailable',reason:'run-not-settled',next:read};
+      const receipt=pesHessianMode(run,mode,frameId);
+      return {runId,groupId:run.request.runIdentity.groupId,nodeId:run.nodeId,...receipt,...(receipt.status==='unavailable'?{next:read}:{})};
+    },
+  },{
+    name:'es_pes_configure',description:'Configure a native PES card or operation without running it. Use live model or frame refs for path endpoints and stable atom IDs for scan axes. The second atom of an angle is its vertex. Check axisCoordinates for the configured atom order and vertex. With groupId, nodeId identifies the PES node whose q/M is being confirmed. Submit a scan with the same explicit nodeId or use the frame actually displayed at submission. Use target to create a new PES workspace. Read parameters and defaults from es_pes_parameters.',
     inputSchema:objectSchema({groupId:{type:'string'},operation:{enum:['path','scan','ts','hessian','irc']},algorithm:{type:'string'},target:targetSchema,nodeId:{type:'string'},
       ...pathSchema,axes:{type:'array',minItems:1,maxItems:2,items:axisSchema},reaction:objectSchema(expressionFields,['coordinates']),
       hessianStepBohr:{type:'number',exclusiveMinimum:0},...presentationFields},['operation']),
     async call(args,call){
+      if(Object.hasOwn(args,'netGpuBatchLimit'))
+        throw toolError('INVALID_ARGUMENT','势能面配置不接受 netGpuBatchLimit 参数。',{field:'netGpuBatchLimit',submitted:false});
       const operation=oneOf(args.operation,['path','scan','ts','hessian','irc'],'operation');
       if(!operation)throw toolError('INVALID_ARGUMENT','请选择势能面操作。');
       const mode=presentationMode(args);
@@ -379,27 +479,30 @@ export function pesTools(ctx:SciencePesContext):McTool[]{
             const current=groupRecord(controller,existing.id);
             confirm(controller,existing.id,cardSource(current,current.cards[0]),args.electronic);
           }
-          return presentConfiguration(ctx,groupRecord(controller,existing.id),existing.activeNodeId,card.id,mode,call);
+          const current=groupRecord(controller,existing.id);
+          const source=current.cards[0]?.slots.reactant??controller.nodeGeometry(current.id,current.initialNodeId);
+          return presentConfiguration(ctx,current,existing.activeNodeId,card.id,mode,call,source);
         }
         if(args.start===undefined||args.end===undefined)throw toolError('INVALID_ARGUMENT','请指定两个端点。');
         const configured=await configurePath(ctx,controller,args,algorithm,call);
         const group=groupRecord(controller,configured.groupId);
-        return presentConfiguration(ctx,group,group.activeNodeId,configured.cardId,mode,call);
+        return presentConfiguration(ctx,group,group.activeNodeId,configured.cardId,mode,call,cardSource(group,group.cards[0]));
       }
       if(operation!=='scan'&&args.target!==undefined&&args.groupId!==undefined)
-        throw toolError('INVALID_ARGUMENT','现有 CALC 请使用其真实节点。若要使用其他来源，请新建势能面组。');
+        throw toolError('INVALID_ARGUMENT','现有势能面工作区请使用其实际节点。若要使用其他来源，请新建势能面组。');
       const group=args.groupId===undefined?undefined:groupRecord(controller,args.groupId);
       const source=group===undefined?await ctx.resolveSource(args.target,call?.signal,electronicOptions(args.electronic)):undefined;
-      const requestedNodeId=operation==='scan'||args.nodeId===undefined?group?.activeNodeId:textValue(args.nodeId,'nodeId');
+      const requestedNodeId=args.nodeId===undefined?group?.activeNodeId:textValue(args.nodeId,'nodeId');
       const scanCard=operation==='scan'?group?.cards.find(card=>card.kind==='scan'):undefined;
       const scanDraft=scanCard??(operation==='scan'&&group?scanCardDraft(group):undefined);
-      const geometry=source?sourceGeometry(source):operation==='scan'
-        ? ctx.readPesScanGeometry?.(group!.id)??controller.currentScanGeometry(group!.id)??group!.nodes.find(node=>node.id===requestedNodeId)?.geometry
-        : controller.nodeGeometry(group!.id,requestedNodeId!);
+      const geometry=source?sourceGeometry(source):operation==='scan'&&args.nodeId===undefined
+        ? ctx.readPesScanGeometry?.(group!.id)??workbenchGeometry(ctx,controller,group!,requestedNodeId!,scanCard?.id)
+        : workbenchGeometry(ctx,controller,group!,requestedNodeId!,scanCard?.id);
       if(!geometry)throw toolError('TARGET_MISSING','当前势能面输入节点已关闭或帧尚未准备。');
-      const periodic=isPeriodic(geometry.structure),currentMethod=group?.sharedMethod??defaultPesMethod();
+      const periodic=isPeriodic(geometry.structure),currentMethod=group?.sharedMethod??controller.defaultCalculationLevel();
       const patch=methodPatch(args.method,currentMethod,periodic),method=patch.method??currentMethod.method;
-      const algorithm=operation==='scan'?oneOf(args.algorithm,Object.keys(PES_ALGORITHMS.scan),'algorithm')??scanDraft?.algorithm??'sella-scan':
+      if(method==='gxtb')throw toolError('INVALID_ARGUMENT','本工程选用 g-xTB。此势能面入口尚未支持该方法。');
+      const algorithm=operation==='scan'?oneOf(args.algorithm,Object.keys(PES_ALGORITHMS.scan),'algorithm')??scanDraft?.algorithm??PES_DEFAULT_SCAN_ALGORITHM:
         operation==='ts'?oneOf(args.algorithm,Object.keys(PES_ALGORITHMS.ts),'algorithm')??group?.ts.algorithm??'prfo':undefined;
       const effectiveAlgorithm=operation==='scan'?effectivePesScanAlgorithm(algorithm!,periodic):operation==='hessian'?'numeric':operation==='irc'?'sella-irc':algorithm!;
       if(args.algorithm!==undefined&&algorithm===undefined&&args.algorithm!==effectiveAlgorithm)
@@ -424,12 +527,13 @@ export function pesTools(ctx:SciencePesContext):McTool[]{
         requestedDimension=args.axes.length as 1|2;
         requestedAxes=[scanAxis(templates[0],args.axes[0],0),requestedDimension===2?scanAxis(templates[1],args.axes[1],1):templates[1]];
       }
-      const electronic=args.electronic??(operation==='scan'&&group&&pesElectronicConfirmed(group,geometry)
-        ? group.electronic.confirmed : undefined);
-      electronicValues(geometry,electronic);
+      const electronic=args.electronic??(group?pesElectronicConfirmation(group,geometry):undefined);
+      const confirmed=electronicValues(geometry,electronic);
       call?.signal.throwIfAborted();
       const owned=group??newGroup(controller,source!);
-      const nodeId=requestedNodeId??owned.initialNodeId;
+      const nodeId=geometry.source?.nodeId??requestedNodeId??owned.initialNodeId;
+      const inputGeometry=group?geometry:controller.nodeGeometry(owned.id,nodeId)??geometry;
+      if(!group||args.electronic!==undefined)controller.confirmElectronic(owned.id,inputGeometry,confirmed,args.electronic!==undefined);
       let configuredCardId:string|undefined;
       if(operation==='scan'){
         const card=scanCard??controller.selectCalculationCard(owned.id,'scan');
@@ -440,7 +544,6 @@ export function pesTools(ctx:SciencePesContext):McTool[]{
         controller.updateCard(owned.id,card.id,current=>({...current,axes,dimension,algorithm:effectiveAlgorithm,
           ...(args.axes!==undefined?{scanCoordinates:undefined,scanCoordinateDrafts:undefined,scanCoordinateOrder:undefined}:{}),
           parametersByAlgorithm:{...current.parametersByAlgorithm,[effectiveAlgorithm]:parameters!}}));
-        confirm(controller,owned.id,geometry,electronic);
       }else{
         if(operation==='ts'){
           controller.initializeTsSource(owned.id,nodeId,geometry);
@@ -451,28 +554,39 @@ export function pesTools(ctx:SciencePesContext):McTool[]{
         }
         if(irc)controller.updateIrc(owned.id,irc);
         if(hessianStep!==undefined)controller.setHessianStep(owned.id,hessianStep);
-        confirm(controller,owned.id,geometry,args.electronic);
       }
       if(Object.keys(patch).length)controller.updateSharedMethod(owned.id,patch);
-      return presentConfiguration(ctx,groupRecord(controller,owned.id),nodeId,configuredCardId,mode,call);
+      const current=groupRecord(controller,owned.id);
+      const receipt=await presentConfiguration(ctx,current,nodeId,configuredCardId,mode,call,inputGeometry);
+      const next=receipt.input?.electronicConfirmed
+        ? {tool:'es_pes_run',arguments:{groupId:owned.id,...(configuredCardId?{cardId:configuredCardId,nodeId}:{operation,nodeId})}}
+        : electronicConfirmationStep(current,inputGeometry,operation,nodeId);
+      const scan = current.cards.find(card => card.id === configuredCardId && card.kind === 'scan');
+      return {...receipt,...(scan?{axisCoordinates:scanAxisCoordinates(scan.axes.slice(0,scan.dimension),inputGeometry)}:{}),next};
     },
   },{
-    name:'es_pes_run',description:'Submit a configured native PES card or a TS, numeric Hessian or IRC operation on an explicitly identified node. A scan starts from the frame actually displayed in its PES workspace. If CONFIRMATION_REQUIRED is returned, ask the user for permission to start in a new PES group. Use the returned retry arguments only after explicit user approval.',
+    name:'es_pes_run',description:'Submit a configured native PES card or a TS, numeric Hessian or IRC operation on an explicitly identified node. A scan uses the submitted frame of an explicit nodeId, or the frame actually displayed in its PES workspace when nodeId is omitted. If CONFIRMATION_REQUIRED is returned, ask the user for permission to start in a new PES group. Use the returned retry arguments only after explicit user approval.',
     inputSchema:objectSchema({groupId:{type:'string'},cardId:{type:'string'},nodeId:{type:'string'},operation:{enum:['ts','hessian','irc']},
       confirmationId:{type:'string',description:'One-use ID returned for this exact submission. Supply only after the user approves starting a new PES group.'},
+      resourceOverrides:pathResourceOverrideSchema,
       ...presentationFields},['groupId']),
     async call(args,call){
       const controller=await pesController(ctx),group=groupRecord(controller,args.groupId);
       call?.signal.throwIfAborted();
       requirePesMethod((group.sharedMethod??defaultPesMethod()).method);
       let target:PesRunTarget;
+      const resourceOverrides=pathResourceOverrides(args.resourceOverrides);
       if(args.cardId!==undefined||args.operation===undefined){
-        if(args.nodeId!==undefined||args.operation!==undefined)
-          throw toolError('INVALID_ARGUMENT','请用卡片 ID 提交计算卡。扫描起点取自提交时工作区显示的结构。');
+        if(args.operation!==undefined)
+          throw toolError('INVALID_ARGUMENT','请使用计算卡标识，或指定工作台操作与节点。');
         const cardId=args.cardId===undefined?group.cards[0]?.id:textValue(args.cardId,'cardId');
         if(!cardId)throw toolError('TARGET_MISSING','没有可运行的计算卡。');
-        target={cardId};
+        const nodeId=args.nodeId===undefined?undefined:textValue(args.nodeId,'nodeId');
+        if(nodeId&&group.cards.find(card=>card.id===cardId)?.kind!=='scan')
+          throw toolError('INVALID_ARGUMENT','只有扫描卡可指定来源 nodeId，路径卡使用记录的端点。',{groupId:group.id,cardId,nodeId,submitted:false});
+        target={cardId,...(nodeId?{nodeId}:{}),...(resourceOverrides?{resourceOverrides}:{})};
       }else{
+        if(resourceOverrides)throw toolError('INVALID_ARGUMENT','xTB 批量并行数仅适用于 xTB CI-NEB 或 FSM。');
         const operation=oneOf(args.operation,['ts','hessian','irc'],'operation')!;
         const nodeId=args.nodeId===undefined?group.activeNodeId:textValue(args.nodeId,'nodeId');
         target={nodeId,operation};
@@ -495,16 +609,23 @@ export function pesTools(ctx:SciencePesContext):McTool[]{
       }else{
         try{
           if('cardId' in target){
-            const readDisplayed=ctx.readPesScanGeometry&&(()=>{
-              const source=ctx.readPesScanGeometry!(group.id);
-              if(!source)throw toolError('SCIENCE_FRAME_UNAVAILABLE','请先显示该势能面工作区的完整科学帧。',{groupId:group.id,submitted:false});
-              return source;
+            const card=group.cards.find(row=>row.id===target.cardId);
+            if(!card)throw toolError('TARGET_MISSING','该计算卡已不存在。',{
+              groupId:group.id,cardId:target.cardId,submitted:false,next:{tool:'es_pes_groups',arguments:{groupId:group.id}},
             });
-            node=controller.startCard(group.id,target.cardId,undefined,readDisplayed);
+            const readScan=card.kind==='scan'?()=>{
+              if(target.nodeId)return workbenchGeometry(ctx,controller,group,target.nodeId,card.id);
+              const source=controller.currentScanGeometry(group.id,ctx.readPesScanGeometry&&(()=>ctx.readPesScanGeometry!(group.id)));
+              if(!source)throw unavailableFrame(group.id,groupRecord(controller,group.id).activeNodeId,card.id);
+              return source;
+            }:undefined;
+            const source=cardSource(group,card,readScan?.());
+            if(card.kind!=='explore')requireRunElectronic(group,source,card.kind,source.source?.nodeId??target.nodeId,card.id);
+            node=controller.startCard(group.id,target.cardId,undefined,readScan,undefined,target.resourceOverrides);
           }
           else{
-            const geometry=controller.nodeGeometry(group.id,target.nodeId);
-            if(!geometry)throw toolError('TARGET_MISSING','所属节点或当前完整来源帧已失效。');
+            const geometry=workbenchGeometry(ctx,controller,group,target.nodeId);
+            requireRunElectronic(group,geometry,target.operation,target.nodeId);
             node=controller.startWorkbench(group.id,target.nodeId,geometry,target.operation);
           }
           if(pending.get(group.id)?.sessionId===sessionId)pending.delete(group.id);
@@ -530,17 +651,18 @@ export function pesTools(ctx:SciencePesContext):McTool[]{
       if(!Array.isArray(args.pairs)||!args.pairs.length)throw toolError('INVALID_ARGUMENT','请提供至少一对双端点。');
       const items=[];
       let first:ReturnType<typeof startReceipt>|undefined;
+      const batchLevel=controller.defaultCalculationLevel();
       for(const [index,item] of args.pairs.entries()){
-        let configured:{groupId:string;cardId:string}|undefined;
+        let configured:Awaited<ReturnType<typeof configurePath>>|undefined;
         try{
           call?.signal.throwIfAborted();
           checkToolArguments(ciNebPairSchema,item,`arguments.pairs[${index}]`);
-          configured=await configurePath(ctx,controller,record(item,'pair'),'ci-neb',call);
-          const receipt=startReceipt(controller,ctx,controller.startCard(configured.groupId,configured.cardId));
+          configured=await configurePath(ctx,controller,record(item,'pair'),'ci-neb',call,batchLevel);
+          const receipt=startReceipt(controller,ctx,controller.startCard(configured.groupId,configured.cardId,undefined,undefined,configured.runMethod,configured.resourceOverrides));
           first??=receipt;items.push({index,...receipt});
         }catch(cause){
           const detail=cause as {code?:string;data?:unknown}|null;
-          items.push({index,...configured,status:call?.signal.aborted?'cancelled':'rejected',error:cause instanceof Error?cause.message:String(cause),
+          items.push({index,...(configured?{groupId:configured.groupId,cardId:configured.cardId}:{}),status:call?.signal.aborted?'cancelled':'rejected',error:cause instanceof Error?cause.message:String(cause),
             code:detail?.code??(call?.signal.aborted?'cancelled':'PES_PAIR_REJECTED'),data:detail?.data});
         }
       }

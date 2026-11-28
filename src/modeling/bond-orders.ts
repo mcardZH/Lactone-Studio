@@ -4,25 +4,14 @@ import { DEFAULT_EMPIRICAL_BOND_PARAMETERS, validateEmpiricalBondParameters, typ
 import { validateXtbPeriodicity } from './xtb/accept-result';
 import { bondEvidenceGeometryKey } from '../core/bond-semantics';
 import type { BondOrderObservation, XtbBondOrders, XtbCoordinateResult } from './xtb/contracts';
+import { validateBondOrderEvidence } from '../core/modeling/bond-order-evidence';
+export { validateBondOrderEvidence, validateOptimizationBondOrderObservation } from '../core/modeling/bond-order-evidence';
 
 /** Intentionally excludes display, selection, freeze and revision metadata. */
 export function bondOrderStructureKey(structure: Structure): string {
   return bondEvidenceGeometryKey(structure);
 }
 function requireValue(value: unknown, message: string): asserts value { if (!value) throw new Error(message); }
-export function validateBondOrderEvidence(value: XtbBondOrders, structure: Structure): void {
-  const aggregate=value?.definition==='mayer-wiberg'&&value.sourceField==='tblite:bond-orders'&&value.threshold===0;
-  requireValue((aggregate||value?.definition === 'mayer-ao' && value.sourceField === 'wbo' && value.threshold === .1) && Array.isArray(value.entries), 'MBO来源定义无效。');
-  const known = new Set(structure.atoms.map(atom => atom.id)), seen = new Set<string>();
-  requireValue(value.entries.length <= structure.atoms.length * (structure.atoms.length - 1) / 2, 'MBO原子对数量无效。');
-  if(aggregate)requireValue(isPeriodic(structure)&&value.entries.length===structure.atoms.length*(structure.atoms.length-1)/2,'周期原子对聚合键级必须保留完整原子对矩阵。');
-  for (const row of value.entries) {
-    requireValue(Array.isArray(row.atomIds) && row.atomIds.length === 2 && row.atomIds[0] !== row.atomIds[1] && row.atomIds.every(id => typeof id === 'string' && known.has(id)), 'MBO原子身份无效。');
-    requireValue(Number.isFinite(row.value) && (aggregate||row.value >= .1), 'MBO值不符合原生输出。');
-    const key = JSON.stringify([...row.atomIds].sort());
-    requireValue(!seen.has(key), 'MBO原子对重复。'); seen.add(key);
-  }
-}
 export function bondOrderObservation(result: XtbCoordinateResult, current: Structure, runId: string): BondOrderObservation {
   const { request, coordinates, metadata } = result;
   requireValue(typeof runId === 'string' && runId.length > 0 && runId.length <= 100, 'MBO运行身份无效。');

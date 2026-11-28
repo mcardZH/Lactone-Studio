@@ -16,7 +16,7 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
   const workers = new Set();
   // finish() is a logical retirement (including kill-request fallback), not
   // proof that the OS child closed. Only the child's actual close removes it.
-  const ownedChildren = new Set(), pendingStarts = new Map(), closedOwners = new Set();
+  const ownedChildren = new Set(), pendingStarts = new Map(), starting = new Set(), closedOwners = new Set();
   let disposed = false;
   const keyFor = (owner, sessionId) => `${owner}:${sessionIdentity(sessionId)}`;
   function emit(session, event) {
@@ -202,7 +202,13 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
     return { sessionId, status: 'starting' };
   }
   function start(owner,rawRequest,sessionId){return resolveResources||admit||rawRequest?.method?startWhenPreviousClosed(owner,rawRequest,sessionId):startNow(owner,rawRequest,sessionId);}
-  async function startWhenPreviousClosed(owner, rawRequest, sessionId, beforeStart = () => {}) {
+  function startWhenPreviousClosed(...args) {
+    const task = startAfterPreviousClosed(...args);
+    starting.add(task);
+    void task.then(() => starting.delete(task), () => starting.delete(task));
+    return task;
+  }
+  async function startAfterPreviousClosed(owner, rawRequest, sessionId, beforeStart = () => {}) {
     assert(!disposed && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner), 'Dynamics owner already closed or disposed');
     keyFor(owner, sessionId);
     assert(typeof beforeStart === 'function', 'Trusted dynamics start guard required');
@@ -296,6 +302,12 @@ function createDynamicsHost({ spawn, sendToWindow, resolveRuntime, resolveXtbRun
   }
   function closeOwner(owner) { closedOwners.add(owner); pendingStarts.get(owner)?.cancel('DYNAMICS_OWNER_CLOSED: native start cancelled'); for (const session of ownedChildren) if (session.owner === owner) { session.ownerClosed = true; discardFrame(session); stop(session); } }
   function dispose() { disposed = true; for (const pending of pendingStarts.values()) pending.cancel('DYNAMICS_DISPOSED: native start cancelled'); for (const session of ownedChildren) { session.ownerClosed = true; discardFrame(session); stop(session); } }
-  return { start, startWhenPreviousClosed, command, waitForClosed, closeOwner, dispose, activeCount: () => sessions.size+pendingStarts.size, workerCount: () => workers.size };
+  async function settle() {
+    await Promise.allSettled([...starting]);
+    const results = await Promise.allSettled([...ownedChildren].map(session => session.closeTask));
+    const failed = results.find(result => result.status === 'rejected');
+    if (failed) throw failed.reason;
+  }
+  return { start, startWhenPreviousClosed, command, waitForClosed, closeOwner, dispose, settle, activeCount: () => sessions.size+pendingStarts.size, workerCount: () => workers.size };
 }
 module.exports = { createDynamicsHost };

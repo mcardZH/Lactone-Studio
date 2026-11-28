@@ -3,7 +3,8 @@ import type { AnalysisCanvas } from '../results/analysis-canvas';
 import type { Structure } from '../../core/types';
 import {captureStructureExportDocument} from '../../modeling/application/structure-export-snapshot';
 import type {TrajectoryResult} from '../../results/contracts';
-import {getPreparedTrajectoryFrame} from '../../results/prepared-trajectory';
+import {getPreparedTrajectoryFrame,type PreparedFrame} from '../../results/prepared-trajectory';
+import {inferBuilderBonds} from '../../core/builder-geometry';
 
 /** A scientific consumer borrows the prepared raw frame, or reads the same
  * source directly. Display preparation is neither a dependency nor a fallback. */
@@ -23,11 +24,25 @@ export function scientificCanvasStructure(canvas?:AnalysisCanvas|null,submittedO
   return canvas.staticDocument?.draft.structure;
 }
 
-/** A derived model with no source graph must not ask the builder to infer one
- * implicitly. Existing source topology, including an explicit empty graph,
- * retains its provenance. */
-export function scientificFrameForModel(structure:Structure):Structure{
-  return structure.bonds===undefined?{...structure,bonds:[]}:structure;
+/** Prepare the editable copy from its own coordinates when the source has no
+ * graph. An explicit empty graph remains authoritative. */
+export function scientificFrameForModel(structure:Structure,prepared?:PreparedFrame):Structure{
+  if(structure.bonds!==undefined||structure.periodicSource?.completeness==='partial')return structure;
+  const raw=prepared?.raw,display=prepared?.structure;
+  if(raw&&display?.bonds&&(raw===structure||(
+    raw.atoms.length===structure.atoms.length&&raw.atoms.every((atom,index)=>{
+      const source=structure.atoms[index];
+      return atom.id===source.id&&atom.element===source.element&&atom.x===source.x&&atom.y===source.y&&atom.z===source.z;
+    })&&JSON.stringify(raw.cell)===JSON.stringify(structure.cell)
+      &&JSON.stringify(raw.periodicSource)===JSON.stringify(structure.periodicSource)))){
+    return {...structure,bonds:display.bonds,bondSource:display.bondSource??'inferred'};
+  }
+  return inferBuilderBonds(structure);
+}
+
+export function scientificFrameForCanvasModel(structure:Structure,canvas?:AnalysisCanvas|null):Structure{
+  const submitted=canvas?.readSubmittedScientificFrame?.();
+  return scientificFrameForModel(structure,submitted&&getPreparedTrajectoryFrame(submitted.result,submitted.index));
 }
 
 /** Seal the geometry already supplied to a visible canvas. This is an export
@@ -78,7 +93,7 @@ export function captureScientificModelDocument(owner:ModelDocument,canvas?:Analy
   const pausedCalculationSource=calculationSource&&canvas.scientificFrameReady===true&&canvas.bondEditingBlocked===false;
   if(!independentCalculation&&((calculationSource&&canvas.bondEditingBlocked===true)||
     ((calculationSource||!options?.allowAnimation)&&canvas.modelEditingBlocked&&!pausedCalculationSource)))throw new Error('请先暂停播放或振动，再使用当前科学帧。');
-  const structure=canvas.result?scientificFrameForModel(raw):raw;
+  const structure=raw;
   if(!structure.atoms.length||structure.atoms.some(atom=>!atom.id||![atom.x,atom.y,atom.z].every(Number.isFinite)))throw new Error('当前科学帧缺少完整原子坐标。');
   if(JSON.stringify(structure.atoms.map(atom=>[atom.id,atom.element]))!==JSON.stringify(owner.draft.structure.atoms.map(atom=>[atom.id,atom.element])))throw new Error('当前科学帧原子身份或顺序与模型不一致。');
   const source=structuredClone(owner);source.draft.structure=structuredClone(structure);

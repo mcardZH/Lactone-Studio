@@ -21,6 +21,7 @@ export interface ScienceOptOptions {
   convergenceLimits?: GeometryLimits;
   maxSteps?: number;
   maxSccIterations?: number;
+  resourceOverrides?: Pick<import('../../modeling/resource-preferences').XtbResourceOverrides,'xtbSingleTaskThreads'>;
   rebuildBonds?: boolean;
   solvation?: XtbSolvation | null;
   /** Explicit MCP request; ordinary interactive optimization keeps its fast default. */
@@ -53,6 +54,8 @@ export interface ScienceRuntimeRun {
   request?: unknown;
   nativeStarted?: boolean;
   nativeBackend?: string;
+  resourceGrant?: import('../../modeling/resource-preferences').ComputeResourceEvidence;
+  actualGpuBatchWidth?: number;
   workerSettled?: boolean;
   scientificStatus?: string;
   resultAdoption?: string;

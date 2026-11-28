@@ -68,6 +68,7 @@
 .pes-result-workspace[hidden] { display:none!important; }
 .pes-path-preparation { flex:none; padding:8px; color:var(--ui-note-ink); }
 .pes-path-history { display:grid; gap:8px; min-width:0; }
+.pes-path-history-toggle { display:inline-flex; align-self:center; align-items:center; gap:4px; }
 
 .pes-series-tools:has(> .analysis-workspace) {
   display: flex;

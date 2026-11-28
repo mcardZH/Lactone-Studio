@@ -32,6 +32,7 @@ export function inputCoordinateFold(layout: WorkbenchLayout, fold: boolean): Wor
 export function sharedWorkspacePresentation(desktopMode: boolean, surface?: DocumentWorkspaceSurface) {
   return desktopMode && surface?.sharedLayout ? {
     observationOnly: surface.module === 'analysis' || surface.analysisCanvas?.observeResultGeometry === true, allowModelEditing: true, analysisCanvas: surface.analysisCanvas, structureAnalysisActive: surface.structureAnalysisActive, presentationActive: surface.presentationActive,
+    structureAnalysisRequestedPage: surface.structureAnalysisRequestedPage,
     onToolSurfaceChange: surface.onToolSurfaceChange, onModelToolsChange: surface.onModelToolsChange,
     onToolbarSurfaceChange: surface.onToolbarSurfaceChange, onLegendSurfaceChange: surface.onLegendSurfaceChange,
     legendExpanded: surface.legendExpanded, onLegendExpandedChange: surface.onLegendExpandedChange, linkedAtomActions: surface.linkedAtomActions, linkedAtomsActive: surface.linkedAtomsActive,

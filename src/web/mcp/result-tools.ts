@@ -4,7 +4,8 @@ import type {ResultDiagnostic,TrajectoryResult} from '../../results/contracts';
 import type {PostprocessDocument,PostprocessScientificFileDocument} from '../../results/postprocess-document';
 import {projectPostprocessFrame} from '../../results/postprocess-document';
 import {postprocessFileJob} from '../../results/postprocess-sources';
-import {plotFonts,type PlotFontStyle,type PlotPointStyle,type PlotSeriesStyle,type PlotStyle} from '../../results/scientific-plot-editing';
+import {attachTrajectoryStages} from '../../results/trajectory-stages';
+import {plotFonts,type PlotFontStyle,type PlotPointStyle,type PlotPosition,type PlotSeriesStyle,type PlotStroke,type PlotStyle} from '../../results/scientific-plot-editing';
 import {ANALYSIS_TITLES} from '../results/analysis-workspace';
 import type {AnalysisPage} from '../results/PostprocessDisplayPanel';
 import {createPostprocessPlotSnapshot,postprocessScfState,type PostprocessPlotSnapshot} from '../results/PostprocessPresentation';
@@ -13,8 +14,10 @@ import type {ViewportImageExportOptions} from '../results/export-image';
 import {createFilePathPlotSnapshot,type FilePathPlotSnapshot} from '../results/file-path-plot';
 import {objectSchema,toolError,type McCall,type McTool} from './types';
 import {mcpBridge} from './bridge';
-import {stageSavedCube,stageScientificText} from '../results/export-saved-cube';
+import {stageOriginalAnalysisFile,stageSavedCube,stageScientificText} from '../results/export-saved-cube';
 import {isMultiwfnBackendFailure} from '../results/multiwfn-errors';
+import {originalMolden,originalMoldenId,printedTransitionAsset,printedTransitionGroups,printedTransitionsId} from './result-source-assets';
+import {completedScan,fileTermination,jobEvidence,pngImageSize,scanReceipt} from './result-receipts';
 
 export interface McpResultTarget {
   ownerId:string;
@@ -48,6 +51,18 @@ function viewReceipt(view:ResultViewPort|undefined) {
   const scene=view?.scene?.();
   return {resultId:view?.result.id,stage:view?.stage,frameIndex:view?.frameIndex,frameReady:view?.frameReady??false,
     scene:scene?{status:'submitted',identity:scene}:{status:view?.scene?'preparing':'unavailable'}};
+}
+
+function analysisFrameIdentity(view:ResultViewPort|undefined) {
+  if(!view)return undefined;
+  const {analysisKey,result,frameIndex,stage}=view;
+  return JSON.stringify([analysisKey,result.id,result.source.id,result.source.sha256,result.jobIndex,stage,
+    frameIndex,result.frames[frameIndex]?.sourceFrameIndex]);
+}
+
+function scanAxisState(port:{configuration?:Record<string,{read():unknown}>}) {
+  return port.configuration?.['scan-axis']?.read() as {requestedAxis:string;effectiveAxis:string;
+    sourceState:'ready'|'preparing'|'unavailable';axisLabel:string;axisUnit?:string;availableAxes:string[]}|undefined;
 }
 
 async function waitForView<T>(registry:ResultToolsContext['resultRegistry'],read:()=>T|undefined,waitMs:number,signal?:AbortSignal):Promise<T|undefined> {
@@ -91,7 +106,7 @@ export async function showNativeResultPlot(ctx:Pick<ResultToolsContext,'resultRe
   if(!ownerId)return showResultPlot(registry,plotId);
   const ownerTarget=ctx.getResult(ownerId);
   const jobId=plot.jobId??(ownerTarget.file?.output.source.jobs.find(job=>job.id===plot.rootResultId)?.id);
-  const target=jobId?ctx.getResult(JSON.stringify(['es-file-job',ownerId,jobId])):ownerTarget;
+  const target=ownerTarget.file&&jobId?ctx.getResult(JSON.stringify(['es-file-job',ownerId,jobId])):ownerTarget;
   await flushSync(()=>ctx.openAnalysis(target.navigationRef??target.ownerId));
   signal?.throwIfAborted();
   if(!registry?.plots.get(plotId)?.display?.eligible&&plot.resultId){
@@ -108,23 +123,50 @@ const index={type:'integer',minimum:0};
 const bool={type:'boolean'};
 const pages=Object.keys(ANALYSIS_TITLES) as AnalysisPage[];
 const formats=['svg','png','txt','raw'] as const;
-const plotEdits=['text','font','axis-range','axis-step','axes-style','series-style','point-style','legend','add-guide','remove-guide','undo','redo'] as const;
+const plotEdits=['text','font','insert-text','edit-text','remove-text','move-figure','axis-range','axis-step','axes-style',
+  'series-style','point-style','legend','add-guide','edit-guide','remove-guide','undo','redo'] as const;
+const plotKinds=['scf','levels','file-path','scan-energy','uv-vis','pes-path-energy','interaction-scatter','hirshfeld-fingerprint','surface-distribution','conformer-energy'] as const;
 const oneOf=(values:readonly string[])=>({type:'string',enum:[...values]});
 const color={type:'string',pattern:'^#[0-9a-fA-F]{6}$'};
 const numberFrom=(minimum:number,maximum?:number)=>({type:'number',minimum,
   ...(maximum!==undefined&&Number.isFinite(maximum)?{maximum}:{})});
 const directions=oneOf(['off','in','out','both']);
 const side=objectSchema({direction:directions,labels:bool},['direction','labels']);
+const finiteNumber={type:'number'};
+const nullable=(value:Record<string,unknown>)=>({anyOf:[value,{type:'null'}]});
+const position=objectSchema({x:finiteNumber,y:finiteNumber},['x','y']);
+const viewportCrop=objectSchema({
+  x:numberFrom(0,1),y:numberFrom(0,1),
+  width:{type:'number',exclusiveMinimum:0,maximum:1},height:{type:'number',exclusiveMinimum:0,maximum:1},
+},['x','y','width','height']);
+const dash=oneOf(['solid','dash','dot','dash-dot']);
+const guideStroke={color,width:numberFrom(.1),dash};
+const plotReadRecovery=(plotId?:string)=>({tool:'plot_read',arguments:plotId?{plotId}:{}});
+function insetLimits(value:unknown):[number,number]|undefined{
+  if(!Array.isArray(value)||value.length!==2||!value.every(Number.isFinite)||value[0]===value[1])return undefined;
+  return [Math.min(value[0],value[1]),Math.max(value[0],value[1])];
+}
+function plotSettingsSchema(scope:string,schema:Record<string,unknown>){
+  if(scope!=='inset')return schema;
+  const properties=schema.properties as {action?:{enum?:string[]};range?:Record<string,unknown>}|undefined;
+  if(!properties?.action?.enum?.includes('create')||!properties.range)return schema;
+  return objectSchema({action:properties.action,range:{...properties.range,
+    description:'Two ascending limits per axis in displayed units, including on reversed axes.'}},['action','range']);
+}
+const plotDeliveries=(plotId:string,formats:readonly PlotExportFormat[])=>formats.map(format=>({
+  format,export:{tool:'plot_export',arguments:{plotId,format,save:true}},
+}));
 const plotPatches={
   font:objectSchema({font:oneOf(plotFonts),size:numberFrom(1),bold:bool,italic:bool}),
   'axes-style':objectSchema({color,width:numberFrom(.1),frame:oneOf(['full','axes']),density:oneOf(['sparse','standard','dense']),
     xMinor:{type:'integer',minimum:0,maximum:12},yMinor:{type:'integer',minimum:0,maximum:12},
     tickNumbers:objectSchema({x:oneOf(['auto','integer']),y:oneOf(['auto','integer'])}),
     tickSides:objectSchema({left:side,bottom:side,right:side,top:side})}),
-  'series-style':objectSchema({color,width:numberFrom(0),dash:oneOf(['solid','dash','dot','dash-dot']),hidden:bool,points:bool,
+  'series-style':objectSchema({color,width:numberFrom(0),dash,hidden:bool,points:bool,
     fill:oneOf(['none','solid','gradient']),opacity:numberFrom(0,1),barFillColor:color,barGradient:objectSchema({base:color},['base'])}),
   'point-style':objectSchema({marker:oneOf(['circle','square','triangle','diamond','cross']),size:numberFrom(.1),
     hollow:bool,edgeColor:color,fillColor:color,edgeWidth:numberFrom(0)}),
+  'edit-guide':objectSchema({...guideStroke,value:finiteNumber,label:nullable({type:'string'})}),
 };
 
 function field(args:Record<string,unknown>,name:string) {
@@ -176,12 +218,28 @@ function validatedPatch<T>(value:unknown,schema:Record<string,unknown>):T {
 
 function plotEdit(args:Record<string,unknown>):PlotEdit {
   const operation=choice(args.operation,plotEdits,'operation');
+  const readPosition=():PlotPosition|null=>{
+    validateValue(args.position,nullable(position),'position');
+    return args.position as PlotPosition|null;
+  };
   switch(operation){
     case 'undo':case 'redo':return {operation};
     case 'text':{
       if(typeof args.text!=='string')throw toolError('invalid_arguments','text must be a string.');
       return {operation,text:args.text,role:choice(args.role,['title','x','y'] as const,'role')};
     }
+    case 'insert-text':{
+      if(typeof args.text!=='string'||!args.text.length)throw toolError('invalid_arguments','Provide the text to insert.');
+      return {operation,text:args.text,position:args.position===undefined?undefined:readPosition()??undefined};
+    }
+    case 'edit-text':{
+      if(args.text!==undefined&&typeof args.text!=='string'||args.text===undefined&&args.position===undefined)
+        throw toolError('invalid_arguments','Provide text or a position change.');
+      return {operation,textId:field(args,'textId'),text:args.text as string|undefined,
+        position:args.position===undefined?undefined:readPosition()};
+    }
+    case 'remove-text':return {operation,textId:field(args,'textId')};
+    case 'move-figure':return {operation,position:readPosition()};
     case 'axis-range':{
       const {bounds}=args,axis=choice(args.axis,['x','y'] as const,'axis');
       if(bounds===null)return {operation,axis,bounds};
@@ -205,9 +263,13 @@ function plotEdit(args:Record<string,unknown>):PlotEdit {
     case 'add-guide':{
       if(typeof args.value!=='number'||!Number.isFinite(args.value)||args.label!==undefined&&typeof args.label!=='string')
         throw toolError('invalid_arguments','The guide needs a finite value in displayed units and an optional string label.');
-      return {operation,axis:choice(args.axis,['x','y'] as const,'axis'),value:args.value,label:args.label as string|undefined};
+      const stroke=Object.fromEntries(Object.keys(guideStroke).flatMap(key=>args[key]===undefined?[]:[[key,args[key]]]));
+      return {operation,axis:choice(args.axis,['x','y'] as const,'axis'),value:args.value,label:args.label as string|undefined,
+        ...(Object.keys(stroke).length?{stroke:validatedPatch<Partial<PlotStroke>>(stroke,objectSchema(guideStroke))}:{})};
     }
     case 'remove-guide':return {operation,guideId:field(args,'guideId')};
+    case 'edit-guide':return {operation,guideId:field(args,'guideId'),
+      patch:validatedPatch<Partial<PlotStroke>&{value?:number;label?:string|null}>(args.patch,plotPatches[operation])};
   }
 }
 
@@ -219,32 +281,93 @@ function resultSummary(result:TrajectoryResult|ResultDiagnostic) {
     :{...common,role:result.role,frameCount:result.frames.length,stages:result.stages,recoveredComputation:result.recoveredComputation};
 }
 
+function retainedJobs(target:McpResultTarget) {
+  const selected=target.result??(target.file?postprocessFileJob(target.file.output.source):undefined);
+  return {selected,jobs:target.file?.output.source.jobs??target.postprocess?.output?.source.results??(selected?[selected]:[])};
+}
+
+function transitionSelector(args:Record<string,unknown>) {
+  return {stageId:args.stageId===undefined?undefined:field(args,'stageId'),
+    frameIndex:args.frameIndex===undefined?undefined:integer(args,'frameIndex')};
+}
+
 function resultRead(ctx:ResultToolsContext,args:Record<string,unknown>,call?:McCall) {
   if(args.frameRef!==undefined){
     const frameRef=field(args,'frameRef');
-    if(args.targetRef!==undefined||args.frameIndex!==undefined||args.start!==undefined||args.count!==undefined||args.part!==undefined&&args.part!=='structure')
+    if(args.targetRef!==undefined||args.jobId!==undefined||args.stageId!==undefined||args.frameIndex!==undefined||args.start!==undefined||args.count!==undefined||
+      args.includeCoordinates!==undefined||args.part!==undefined&&args.part!=='structure')
       throw toolError('invalid_arguments','frameRef selects one exact structure and cannot be combined with other result or frame selectors.');
     if(!ctx.readFrame)throw toolError('frame_unavailable','The current window does not expose exact frame reading.');
     return ctx.readFrame(frameRef,call?.signal);
   }
-  const target=ctx.getResult(args.targetRef===undefined?undefined:field(args,'targetRef'));
-  const result=target.result??(target.file?postprocessFileJob(target.file.output.source):undefined);
+  const requestedRef=args.targetRef===undefined?undefined:field(args,'targetRef');
+  const target=ctx.getResult(requestedRef);
+  const {selected,jobs}=retainedJobs(target);
+  const jobId=args.jobId===undefined?undefined:field(args,'jobId');
+  const result=jobId===undefined?selected:jobs.find(job=>job.id===jobId);
+  if(jobId!==undefined&&!result)throw toolError('result_job_unavailable','The retained output has no job with that id.',
+    {jobId,recovery:{tool:'result_read',arguments:{targetRef:requestedRef??target.ownerId,part:'jobs'}}});
   const view=result&&[...ctx.resultRegistry?.resultViews.values()??[]].find(row=>row.active&&row.ownerId===target.ownerId&&observesResult(row,result));
   const source=target.file?.output.source;
-  const part=choice(args.part??'summary',['summary','jobs','frames','scientific','structure','diagnostics'] as const,'part');
-  if(part==='jobs')return {ownerId:target.ownerId,source:source?.identity,jobs:source?.jobs.map(resultSummary)??(result?[resultSummary(result)]:[]),selectedJobId:source?.selectedJobId??result?.id??null};
+  const part=choice(args.part??'summary',['summary','jobs','frames','scientific','structure','diagnostics','assets','scan','transitions'] as const,'part');
+  if(args.stageId!==undefined&&part!=='transitions')
+    throw toolError('invalid_arguments','Use stageId with part=transitions for a stage-local frame index.');
+  const nativeSelectedJobId=source?.selectedJobId??target.postprocess?.output?.source.result.id??selected?.id??null;
+  if(part==='jobs')return {ownerId:target.ownerId,source:source?.identity??selected?.source,
+    jobs:jobs.map(job=>({...resultSummary(job),evidence:jobEvidence(job)})),selectedJobId:nativeSelectedJobId,fileTermination:fileTermination(jobs)};
+  if(part==='assets'){
+    const molden=originalMolden(target,requestedRef);
+    const frameIndex=args.frameIndex===undefined?undefined:integer(args,'frameIndex');
+    const available=molden&&(frameIndex===undefined||molden.asset.provenance.frameIndex===frameIndex);
+    const readTransitions=result?.scientific?.excitedStates.length
+      ?{tool:'result_read',arguments:{targetRef:requestedRef??target.navigationRef??target.ownerId,part:'transitions',...(jobId?{jobId}:{})}}:undefined;
+    return {ownerId:target.ownerId,resultId:result?.id,frameIndex,assets:available?[{...molden.asset,
+      export:{tool:'analysis_export',arguments:molden.exportArguments}}]:[],
+      ...(!available?{reason:molden?'wavefunction-bound-to-another-frame':'no-attributed-original-molden',
+        boundFrameIndex:molden?.asset.provenance.frameIndex}:{}),...(readTransitions?{readTransitions}:{}),
+    };
+  }
   if(!result){
-    if(source&&part==='summary')return {ownerId:target.ownerId,source:source.identity,selectedJobId:source.selectedJobId??null,jobCount:source.jobs.length};
+    if(source&&part==='summary')return {ownerId:target.ownerId,source:source.identity,selectedJobId:source.selectedJobId??null,
+      jobCount:source.jobs.length,fileTermination:fileTermination(jobs)};
     throw toolError('result_unavailable','No selected result job is available for the requested data.');
   }
-  const summary={ownerId:target.ownerId,...resultSummary(result),
+  const targetRef=target.navigationRef??requestedRef??target.ownerId;
+  if(part==='transitions'){
+    const groups=printedTransitionGroups(result,transitionSelector(args));
+    return {ownerId:target.ownerId,targetRef,resultId:result.id,source:result.source,jobIndex:result.jobIndex,
+      groups:groups.map(group=>{
+        const asset=printedTransitionAsset(result,targetRef,group,jobId);
+        const openPlot=group.frameIndex!==null&&group.states.some(state=>Number.isFinite(state.oscillatorStrength))?
+          {tool:'plot_open',arguments:{kind:'uv-vis',targetRef,...(jobId?{jobId}:{}),...transitionSelector(args),frameIndex:group.frameIndex,sourceId:result.source.id}}:undefined;
+        return {frameIndex:group.frameIndex,jobFrameIndex:group.jobFrameIndex,sourceFrameIndex:group.sourceFrameIndex,stageId:group.stageId,
+          stateCount:group.states.length,states:group.states.map(({transitions,...state})=>({...state,transitionCount:transitions.length})),
+          asset:{...asset.asset,export:{tool:'analysis_export',arguments:asset.exportArguments}},...(openPlot?{openPlot}:{})};
+      })};
+  }
+  const scan=result.kind==='diagnostic'?undefined:completedScan(result);
+  const scanTarget={targetRef,...(jobId?{jobId}:{})};
+  const summary={ownerId:target.ownerId,...resultSummary(result),fileTermination:fileTermination(jobs),termination:jobEvidence(result).termination,
+    ...(result.scientific?.excitedStates.length?{readTransitions:{tool:'result_read',arguments:{targetRef,...(jobId?{jobId}:{}),part:'transitions'}}}:{}),
+    ...(scan?{scan:{stageId:scan.stage.id,completedPointCount:scan.frames.length,
+      next:{read:{tool:'result_read',arguments:{...scanTarget,part:'scan'}},plot:{tool:'plot_open',arguments:{...scanTarget,kind:'scan-energy'}}}}}:{}),
     displayedFrame:view?{index:view.frameIndex,resultId:view.result.id,sourceFrameIndex:view.result.frames[view.frameIndex]?.sourceFrameIndex??view.frameIndex,ready:view.frameReady}:null,
     wavefunction:target.postprocess?.wavefunction?.source.metadata?{
       sourceId:target.postprocess.wavefunction.source.metadata.sourceId,sourceRevision:target.postprocess.wavefunction.source.metadata.sourceRevision,
       format:target.postprocess.wavefunction.source.metadata.format,
     }:undefined};
   if(part==='summary')return summary;
-  if(part==='diagnostics')return {...summary,diagnostics:result.kind==='diagnostic'?[resultSummary(result)]:result.fileDiagnostics??[]};
+  if(part==='diagnostics')return {...summary,evidence:jobEvidence(result),jobs:jobs.map(jobEvidence),
+    diagnostics:result.kind==='diagnostic'?[resultSummary(result)]:result.fileDiagnostics??[]};
+  if(part==='scan'){
+    if(result.kind==='diagnostic'||!scan&&!result.scientific?.tasks.includes('scan'))
+      throw toolError('scan_unavailable','The selected source job has no native scan.',{targetRef,jobId,source:result.source});
+    if(args.includeCoordinates!==undefined&&typeof args.includeCoordinates!=='boolean')
+      throw toolError('invalid_arguments','includeCoordinates must be a boolean.');
+    return scanReceipt(result,{start:integer(args,'start',0),count:integer(args,'count',50,1),coordinates:args.includeCoordinates===true,signal:call?.signal})
+      .then(receipt=>({ownerId:target.ownerId,source:result.source,fileTermination:fileTermination(jobs),...receipt,
+        ...(scan?{next:{tool:'plot_open',arguments:{...scanTarget,kind:'scan-energy'}}}:{})}));
+  }
   if(part==='scientific'){
     if(args.frameIndex===undefined)return {...summary,scientific:result.scientific??null};
     const frameIndex=integer(args,'frameIndex');
@@ -294,10 +417,12 @@ async function deliverAsset(blob:Blob,filename:string,args:Record<string,unknown
   if(args.preview===true&&mimeType!=='image/png')throw toolError('preview_unavailable','The native export did not return a PNG image.',{mimeType});
   const bytes=new Uint8Array(await blob.arrayBuffer());
   call?.signal.throwIfAborted();
+  const imageSize=mimeType==='image/png'?pngImageSize(bytes):undefined;
+  const imageMetadata=imageSize?{imageSize}:{};
   const save=savesAsset(args);
-  if(!save&&args.preview!==true)return encodedAsset(bytes,mimeType,filename);
+  if(!save&&args.preview!==true)return {...encodedAsset(bytes,mimeType,filename),...imageMetadata};
   const imagePreview=args.preview===true?encodedAsset(bytes,mimeType,filename):undefined;
-  const meta={filename,mimeType,byteLength:bytes.length,...(imagePreview?{imagePreview}:{})};
+  const meta={filename,mimeType,byteLength:bytes.length,...imageMetadata,...(imagePreview?{imagePreview}:{})};
   if(!save)return meta;
   if(args.onExists!==undefined)choice(args.onExists,['conflict','overwrite'] as const,'onExists');
   const bridge=typeof window==='undefined'?undefined:mcpBridge();
@@ -310,7 +435,7 @@ export function hessianReadRecovery(target:McpResultTarget) {
   return target.hessianRunId?{tool:'es_run_read',arguments:{runId:target.hessianRunId},resultPath:'hessian.modes'}:undefined;
 }
 
-export function resultTools(ctx:ResultToolsContext):McTool[] {
+export function resultTools(ctx:ResultToolsContext,showCollection?:(ref:string,call?:McCall)=>Promise<unknown>):McTool[] {
   const targetView=(args:Record<string,unknown>)=>{
     const target=ctx.getResult(args.targetRef===undefined?undefined:field(args,'targetRef'));
     return {target,view:viewFor(target)};
@@ -333,9 +458,21 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
       collectionId:entry?.collectionId,runId:entry?.runId,stageId:entry?.stageId,
       ...asset,status:visible?'shown':display&&!display.eligible?'hidden':display&&!display.visible?'minimized':'opening',visible,active:display?.active??false};
   };
+  const retainedPlotRecipe=(id:string)=>{
+    const retired=ctx.resultRegistry?.retiredPlots.get(id)??ctx.resultRegistry?.plots.get(id);
+    if(!retired?.inline||!retired.ownerId||!retired.source)return;
+    const {ownerId,kind,collectionId,stageId,frameIndex,jobId}=retired;
+    if(kind==='pes-path-energy'&&collectionId)
+      return {tool:'plot_open',arguments:{kind,targetRef:JSON.stringify(['es-pes-record-v1',ownerId,collectionId])}};
+    if(kind!=='scan-energy'&&kind!=='uv-vis')return;
+    const targetRef=(retired.analysisId?knownPanels.get(retired.analysisId)?.targetRef:undefined)??ownerId;
+    return {tool:'plot_open',arguments:{kind,targetRef,...(jobId?{jobId}:{}),sourceId:retired.source.id,
+      ...(kind==='uv-vis'?{stageId,frameIndex}:{})}};
+  };
   const plot=(id:string)=>{
     const entry=ctx.resultRegistry?.plots.get(id);
-    if(!entry)throw toolError('plot_unavailable','The figure has no mounted, editable chart in this project window.',{plotId:id});
+    if(!entry)throw toolError('plot_unavailable','The figure has no mounted, editable chart in this project window.',
+      {plotId:id,recovery:retainedPlotRecipe(id)??plotReadRecovery()});
     return entry;
   };
   const plotSources=()=>[...ctx.resultRegistry?.plotSources.values()??[]].map(({open,...entry})=>({
@@ -343,15 +480,18 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
   }));
   const plotSummary=(id:string,metadata=false)=>{
     const {port,display,figureIdentity:_identity,configurationIdentity:_configuration,...entry}=plot(id),{metadata:sourceMetadata,...read}=port.read();
-    const configuration=port.configuration&&Object.fromEntries(Object.entries(port.configuration).map(([scope,settings])=>[scope,{schema:settings.schema,settings:settings.read()}]));
+    const configuration=port.configuration&&Object.fromEntries(Object.entries(port.configuration).map(([scope,settings])=>
+      [scope,{schema:plotSettingsSchema(scope,settings.schema),settings:settings.read()}]));
     const windowActions=display?['show',...(display.minimize?['minimize']:[]),...(display.close?['close']:[]),...(display.setLayout?['layout']:[])]:[];
-    return {plotId:id,...entry,...read,configuration,visible:display?.visible&&(port.isVisible?.()??true),active:display?.active,layout:display?.layout,
+    return {plotId:id,...entry,...read,configuration,exports:plotDeliveries(id,read.formats),reopen:retainedPlotRecipe(id),
+      visible:display?.visible&&(port.isVisible?.()??true),active:display?.active,layout:display?.layout,
       windowActions,capabilities:{editOperations:read.edits??[],parts:read.parts??['main'],byPart:read.partCapabilities,
-        configurationScopes:Object.keys(configuration??{}),formats:read.formats,windowActions},...(metadata?{metadata:sourceMetadata}:{})};
+        configurationScopes:Object.keys(configuration??{}),formats:read.formats,windowActions,
+        pointActions:port.point?['read',...(port.canSelectPoint?['select']:[])]:[]},...(metadata?{metadata:sourceMetadata}:{})};
   };
   const assertPlotRevision=(id:string,args:Record<string,unknown>)=>{
     const entry=plot(id),supplied=integer(args,'revision');
-    if(supplied!==entry.revision)throw toolError('revision_conflict','The plotted figure changed. Read the current figure before editing it.',{plotId:id,revision:entry.revision});
+    if(supplied!==entry.revision)throw toolError('revision_conflict','The plotted figure changed. Read the current figure before editing it.',{plotId:id,revision:entry.revision,recovery:plotReadRecovery(id)});
     return entry.port;
   };
   const analysisVersions=new Map<string,{native:string;token:string}>();
@@ -375,11 +515,88 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
   };
   const missingAnalysis=(analysisId:string)=>toolError('analysis_unavailable','The named analysis is not mounted on the current owner. Read its native panel before continuing.',
     {analysisId,recovery:panelRecovery(analysisId)});
-  return [
-    {name:'result_read',description:'Read admitted results, file jobs, printed data or source-attributed geometry. All frame indexes are zero-based.',
-      inputSchema:objectSchema({targetRef:identifier,frameRef:identifier,part:oneOf(['summary','jobs','frames','scientific','structure','diagnostics']),frameIndex:index,start:index,count:{...index,minimum:1}}),
+  const panelAssets=(analysisId:string,runner:NonNullable<ReturnType<NonNullable<ResultToolsContext['resultRegistry']>['runs']['get']>>)=>{
+    const sourceRevision=analysisRevision(analysisId,runner.sourceRevision);
+    return runner.assets?.().map(({info})=>({...info,export:{tool:'analysis_export',arguments:{analysisId,sourceRevision,assetId:info.id}}}))??[];
+  };
+  const openUvVis=async(args:Record<string,unknown>,call?:McCall)=>{
+    if(args.reference!==undefined||args.analysisId!==undefined||args.sourceRevision!==undefined||args.reuse===false)
+      throw toolError('invalid_arguments','Open the native UV-vis chart using its exact result job and geometry.');
+    const requestedRef=field(args,'targetRef'),{target}=targetView(args);
+    const jobId=args.jobId===undefined?undefined:field(args,'jobId');
+    const selector=transitionSelector(args);
+    const {jobs,selected}=retainedJobs(target);
+    const result=jobId===undefined?selected:jobs.find(job=>job.id===jobId)??(selected?.id===jobId?selected:undefined);
+    const readTransitions={tool:'result_read',arguments:{targetRef:requestedRef,...(jobId?{jobId}:{}),...selector,part:'transitions'}};
+    if(!result||result.kind==='diagnostic'||args.sourceId!==undefined&&field(args,'sourceId')!==result.source.id)
+      throw toolError('plot_source_unavailable','The requested native job has no attributed UV-vis geometry.',{targetRef:requestedRef,jobId,recovery:readTransitions});
+    const groups=printedTransitionGroups(result,selector).filter(group=>group.jobFrameIndex!==null&&group.states.some(state=>Number.isFinite(state.oscillatorStrength)));
+    if(groups.length!==1)throw toolError('plot_data_unavailable',groups.length?'Select one printed transition frame from the result data.':
+      'This job and frame have no printed oscillator strengths for a native UV-vis chart.',{targetRef:requestedRef,jobId,recovery:readTransitions});
+    const group=groups[0],expectedFrame=result.frames[group.jobFrameIndex!];
+    const referenceForFile=target.file&&jobId?JSON.stringify(['es-file-job',target.ownerId,jobId]):undefined;
+    const targetRef=referenceForFile??target.navigationRef??requestedRef;
+    const waitMs=integer(args,'waitMs',4000);
+    if(waitMs>60000)throw toolError('invalid_arguments','waitMs must be at most 60000.');
+    const started=performance.now(),remaining=()=>Math.max(0,waitMs-(performance.now()-started));
+    const sameOwner=(view:ResultViewPort)=>view.ownerId===target.ownerId&&view.active&&view.available&&
+      view.result.source.id===result.source.id&&view.result.source.sha256===result.source.sha256;
+    const activeView=()=>[...ctx.resultRegistry?.resultViews.values()??[]].find(sameOwner);
+    if(!activeView()||referenceForFile&&activeView()?.result.jobIndex!==result.jobIndex)
+      await reveal({...target,navigationRef:targetRef});
+    const resolved=ctx.getResult(targetRef);
+    if(resolved.ownerId!==target.ownerId)throw toolError('plot_source_changed','The retained scientific owner changed.',{targetRef,recovery:readTransitions});
+    const root=resolved.postprocess?.result??resolved.result;
+    const projectedBase=root?.source.id===result.source.id&&root.jobIndex===result.jobIndex?root.id:result.id;
+    const openArguments={kind:'uv-vis',targetRef,...(jobId?{jobId}:{}),...selector,frameIndex:group.frameIndex,sourceId:result.source.id};
+    const pending={kind:'uv-vis',status:'plot_preparing',targetRef,source:result.source,sourceFrameIndex:group.sourceFrameIndex,
+      recovery:{tool:'plot_open',arguments:openArguments}};
+    const opened=await waitForView(ctx.resultRegistry,activeView,remaining(),call?.signal);
+    if(!opened)return pending;
+    const nativeIndex=(view:ResultViewPort)=>view.result.frames.findIndex(frame=>(frame.sourceFrameIndex??frame.index)===group.sourceFrameIndex&&
+      (!expectedFrame||frame.sourceLine===expectedFrame.sourceLine));
+    const stages=attachTrajectoryStages(result).stages?.filter(stage=>stage.frameIndices.includes(group.jobFrameIndex!))??[];
+    const stageId=selector.stageId??(opened.result.jobIndex===result.jobIndex&&nativeIndex(opened)>=0?opened.stage?.stageId:undefined)
+      ??(stages.length===1?stages[0].id:undefined);
+    const exactView=()=>[...ctx.resultRegistry?.resultViews.values()??[]].find(view=>sameOwner(view)&&view.result.jobIndex===result.jobIndex&&
+      (!stageId||view.stage?.stageId===stageId||view.result.id===`${projectedBase}:stage:${stageId}`)&&nativeIndex(view)>=0);
+    if(!exactView()){
+      if(!stageId||!flushSync(()=>opened.revealPlotStage?.({resultId:`${projectedBase}:stage:${stageId}`,source:result.source,jobIndex:result.jobIndex})))
+        throw toolError('plot_source_unavailable','The native workbench has no confirmed route to this printed transition stage.',
+          {targetRef,stageId,stages,recovery:readTransitions});
+    }
+    const view=await waitForView(ctx.resultRegistry,exactView,remaining(),call?.signal);
+    if(!view)return {...pending,stageId};
+    const index=nativeIndex(view);
+    if(index!==view.frameIndex){
+      if(!view.seekFrame)throw toolError('plot_frame_unavailable','Select the exact scientific frame in its native trajectory.',
+        {targetRef,stageId,sourceFrameIndex:group.sourceFrameIndex,recovery:readTransitions});
+      flushSync(()=>view.seekFrame!(index));
+    }
+    const frameView=()=>{const current=exactView();return current&&current.frameIndex===nativeIndex(current)?current:undefined;};
+    const panel=await waitForView(ctx.resultRegistry,()=>{const current=frameView();const owner=current&&ctx.resultRegistry?.analysisViews.get(current.analysisKey);
+      return owner?.read().active?owner:undefined;},remaining(),call?.signal);
+    if(!panel)return {...pending,stageId};
+    if(!panel.read().availablePages.includes('excited'))
+      throw toolError('plot_data_unavailable','The exact retained geometry does not expose a native excited-state panel.',{targetRef,stageId,recovery:readTransitions});
+    const panelId=flushSync(()=>panel.open('excited'));
+    if(panelId)knownPanels.set(panelId,{targetRef,page:'excited'});
+    const entry=await waitForView(ctx.resultRegistry,()=>{
+      const current=frameView();
+      if(!current)return;
+      return [...ctx.resultRegistry?.plots.values()??[]].find(plot=>plot.kind==='uv-vis'&&plot.analysisId===panelId&&plot.display?.active&&
+        plot.resultId===current.result.id&&plot.frameIndex===current.frameIndex&&plot.ownerId===target.ownerId&&plot.source?.id===result.source.id);
+    },remaining(),call?.signal);
+    return entry?plotReceipt(entry.id,{kind:'uv-vis',targetRef,stageId,panelId,frameIndex:entry.frameIndex,sourceFrameIndex:group.sourceFrameIndex,
+      exports:plotDeliveries(entry.id,entry.port.read().formats),readTransitions}):{...pending,stageId,panelId};
+  };
+  const catalog:McTool[]=[
+    {name:'result_read',description:'Read admitted results and native job evidence. part=transitions reads printed excited states grouped by their exact geometry and gives an independent original transition table export. Select a zero-based frameIndex within the job or named stageId. part=scan reads completed scan points; includeCoordinates=true measures a declared single coordinate. part=assets discovers original Molden. jobId from part=jobs selects a retained native segment.',
+      inputSchema:objectSchema({targetRef:identifier,jobId:identifier,stageId:identifier,frameRef:identifier,
+        part:oneOf(['summary','jobs','frames','scientific','structure','diagnostics','assets','scan','transitions']),
+        includeCoordinates:bool,frameIndex:index,start:index,count:{...index,minimum:1}}),
       call:(args,call)=>resultRead(ctx,args,call)},
-    {name:'analysis_view',description:'Read the native analysis workspace and select a page on the exact owner. Read panelStatus and methodStatus before submitting. For PES Hessian frequencies use the original runId with es_run_read, then inspect hessian.modes. For XTB2 charges use page="charges". Copy analysisId and sourceRevision to analysis actions.',
+    {name:'analysis_view',description:'Read the native analysis workspace and select a page on the exact owner. Read panelStatus and methodStatus before submitting. For PES Hessian frequencies use the original runId with es_run_read, then inspect hessian.modes. For XTB2 charges use page="charges". Copy analysisId and sourceRevision to analysis actions. For a Raman Stokes plot, open vibrations and follow the vibration_view recipe to apply laser and temperature.',
       inputSchema:objectSchema({targetRef:identifier,page:oneOf(pages),waitMs:{...index,maximum:60000}}),call:async(args,call)=>{
         const page=args.page===undefined?undefined:choice(args.page,pages,'page');
         const waitMs=integer(args,'waitMs',page?2000:0);
@@ -415,24 +632,46 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
         if(analysisId&&selectedPage)knownPanels.set(analysisId,{targetRef,page:selectedPage});
         const readRunner=()=>analysisId?ctx.resultRegistry?.runs.get(analysisId):undefined;
         const runnerNow=readRunner();
-        const runner=runnerNow?.methodStatus==='preparing'&&updated.active?await waitForView(ctx.resultRegistry,()=>{
-          const current=readRunner();return current?.methodStatus!=='preparing'?current:undefined;
-        },Math.max(0,waitMs-(performance.now()-started)),call?.signal)??readRunner():runnerNow;
+        let runner=runnerNow;
         if(updated.active&&runnerNow?.methodStatus==='preparing'){
-          const current=activeAnalysis(target,true);
-          if(!current||current.owner.read().state.activeId!==panelId||!isStage(current.view,wantedStage))
-            return {...identity,panelId,analysisId,status:'analysis_view_inactive',panelStatus:'inactive',recovery:analysisViewRecovery(targetRef,selectedPage)};
+          const capturedFrame=analysisFrameIdentity(view);
+          const stillCurrent=()=>{
+            const current=activeAnalysis(target,true);
+            return current&&current.owner.read().state.activeId===panelId&&analysisFrameIdentity(current.view)===capturedFrame?current:undefined;
+          };
+          await waitForView(ctx.resultRegistry,()=>!stillCurrent()||readRunner()?.methodStatus!=='preparing'?true:undefined,
+            Math.max(0,waitMs-(performance.now()-started)),call?.signal);
+          const current=stillCurrent();
+          if(!current)return {...identity,panelId,analysisId,status:'analysis_view_inactive',panelStatus:'inactive',
+            ...viewReceipt(viewFor(target)),recovery:analysisViewRecovery(targetRef,selectedPage)};
+          ready=current;
+          runner=readRunner();
         }
         const methodStatus=runner?.methodStatus??(runner?.methods.length?'ready':'unavailable');
         const analysis=runner?.read();
         const nativeError=(analysis as {error?:string} | undefined)?.error;
         const diagnostic=typeof nativeError==='string'&&isMultiwfnBackendFailure(nativeError)?{tool:'multiwfn_configure',arguments:{}}:undefined;
-        const plots=analysisId?[...ctx.resultRegistry?.plots.values()??[]].filter(row=>row.analysisId===analysisId&&row.kind).map(row=>({plotId:row.id,kind:row.kind,revision:row.revision})):[];
-        return {...identity,...viewReceipt(view),
+        const plots=analysisId?[...ctx.resultRegistry?.plots.values()??[]].filter(row=>row.analysisId===analysisId&&row.kind).map(row=>({
+          plotId:row.id,kind:row.kind,revision:row.revision,exports:plotDeliveries(row.id,row.port.read().formats),
+        })):[];
+        const original=originalMolden(target,targetRef);
+        const transitionsTarget=ready.view?.result??target.result;
+        const result=target.result;
+        const sourceFrame=ready.view?.result.frames[ready.view.frameIndex];
+        const transitionsFrame=result&&sourceFrame&&transitionsTarget?.source.id===result.source.id&&
+          transitionsTarget.jobIndex===result.jobIndex
+          ?result.frames.findIndex(frame=>(frame.sourceFrameIndex??frame.index)===(sourceFrame.sourceFrameIndex??sourceFrame.index))
+          :undefined;
+        const readTransitions=selectedPage==='excited'&&result?.scientific?.excitedStates.length?
+          {tool:'result_read',arguments:{targetRef,part:'transitions',...(transitionsFrame!==undefined&&transitionsFrame>=0?{frameIndex:transitionsFrame}:{})}}:undefined;
+        return {...identity,...viewReceipt(ready.view),
           panelId,analysisId,...updated,panelStatus:updated.active?'ready':'inactive',methodStatus,plots,
+          sourceAssets:original?[{...original.asset,export:{tool:'analysis_export',arguments:original.exportArguments}}]:[],
+          ...(readTransitions?{readTransitions}:{}),
+          ...(selectedPage==='vibrations'?{vibration:{tool:'vibration_view',arguments:{targetRef}}}:{}),
           recovery:diagnostic??(methodStatus==='preparing'||!updated.active?analysisViewRecovery(targetRef,selectedPage):undefined),
           ...(runner?{sourceRevision:analysisRevision(analysisId!,runner.sourceRevision),methods:runner.methods,analysis,execution:runner.execution?.(),
-            plotKinds:[...new Set([...Object.keys(runner.plots?.()??{}),...plots.map(row=>row.kind)])],assets:runner.assets?.().map(asset=>asset.info)??[],
+            plotKinds:[...new Set([...Object.keys(runner.plots?.()??{}),...plots.map(row=>row.kind)])],assets:panelAssets(analysisId!,runner),
             configuration:runner.configuration?{settings:runner.configuration.read(),schema:runner.configuration.schema}:undefined,
             presentation:runner.presentation?{settings:runner.presentation.read(),schema:runner.presentation.schema}:undefined}:{})};
       }},
@@ -504,7 +743,7 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
         if(!runner.execution)throw toolError('analysis_execution_unavailable','This analysis has no observable native execution.',{analysisId,recovery:panelRecovery(analysisId)});
         const scope=runner.execution();
         const sourceRevision=analysisRevision(analysisId,runner.sourceRevision);
-        if(action==='status')return {analysisId,sourceRevision,execution:scope};
+        if(action==='status')return {analysisId,sourceRevision,execution:scope,assets:panelAssets(analysisId,runner)};
         const message='The analysis source or run changed. Read its current execution before stopping.';
         assertAnalysisRevision(analysisId,runner.sourceRevision,field(args,'sourceRevision'),message);
         if(args.requestId!==undefined&&field(args,'requestId')!==scope.requestId)throw toolError('revision_conflict',message,{analysisId,sourceRevision});
@@ -513,22 +752,94 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
         const execution=ctx.resultRegistry?.runs.get(analysisId)?.execution?.();
         return {analysisId,sourceRevision,requestId:scope.requestId,status:'stop_requested',execution};
       }},
-    {name:'analysis_export',description:'Save an admitted asset to a destination or directory, or set save=true for harness/exports. Use analysisId and sourceRevision from analysis_view and assetId from assets[].id. Cube grids include a SHA-bound valid-domain companion file.',
-      inputSchema:objectSchema({analysisId:identifier,sourceRevision:identifier,assetId:identifier,...exportDestination,onExists:oneOf(['error','overwrite'])},
-        ['analysisId','sourceRevision','assetId']),call:async(args,call)=>{
-        const analysisId=field(args,'analysisId'),assetId=field(args,'assetId');
+    {name:'analysis_export',description:'Save a native analysis asset, the original Molden on a result, or a printed transition table for a specific job/frame. Copy an asset.export.arguments from analysis_view, analysis_control, or result_read(part=transitions or assets). Add destination, directory or save=true. Panel sourceRevision belongs to the native panel; result assetRevision identifies the exact source asset.',
+      inputSchema:objectSchema({analysisId:identifier,targetRef:identifier,jobId:identifier,stageId:identifier,frameIndex:index,
+        sourceRevision:identifier,assetRevision:identifier,assetId:identifier,...exportDestination,onExists:oneOf(['error','overwrite'])},
+        ['assetId']),call:async(args,call)=>{
+        const assetId=field(args,'assetId');
         if(!savesAsset(args))throw toolError('invalid_arguments','Specify destination, directory, or save=true to save this analysis asset.');
         const destination=args.destination===undefined?undefined:field(args,'destination');
+        if(args.onExists!==undefined)choice(args.onExists,['error','overwrite'] as const,'onExists');
+        const bridge=typeof window==='undefined'?undefined:mcpBridge(),desktop=typeof window==='undefined'?undefined:window.sciyueDesktop;
+        if(assetId===printedTransitionsId){
+          if(args.analysisId!==undefined||args.sourceRevision!==undefined)
+            throw toolError('invalid_arguments','Use the result targetRef and export arguments from result_read(part=transitions).');
+          const targetRef=field(args,'targetRef'),jobId=args.jobId===undefined?undefined:field(args,'jobId'),selector=transitionSelector(args);
+          const requestedRevision=args.assetRevision===undefined?undefined:field(args,'assetRevision');
+          const recovery={tool:'result_read',arguments:{targetRef,...(jobId?{jobId}:{}),...selector,part:'transitions'}};
+          const selectAsset=()=>{
+            const target=ctx.getResult(targetRef),{jobs,selected}=retainedJobs(target);
+            const result=jobId===undefined?selected:jobs.find(row=>row.id===jobId);
+            if(!result)throw toolError('result_job_unavailable','Locate the exact retained job before exporting.',{targetRef,jobId,recovery});
+            const groups=printedTransitionGroups(result,selector);
+            const choices=groups.map(group=>printedTransitionAsset(result,targetRef,group,jobId));
+            const source=requestedRevision?choices.find(choice=>choice.asset.assetRevision===requestedRevision):choices.length===1?choices[0]:undefined;
+            if(!source)throw toolError(requestedRevision?'revision_conflict':'analysis_asset_unavailable',
+              choices.length>1?'Select one exact printed transition group from result_read.':'No matching printed transition asset for this result selector.',
+              {targetRef,jobId,assets:choices.map(choice=>choice.exportArguments),recovery});
+            return source;
+          };
+          const source=selectAsset();
+          if(destination&&!/\.txt$/i.test(destination))throw toolError('invalid_export_extension','Choose a .txt destination.');
+          if(!bridge||!desktop||!call)throw toolError('file_port_unavailable','This session has no native analysis artifact writer.');
+          const staged=await stageScientificText(source.text(),desktop,call.signal);
+          let delivery,cleanupWarnings;
+          try{
+            call.signal.throwIfAborted();
+            if(selectAsset().asset.assetRevision!==source.asset.assetRevision)
+              throw toolError('revision_conflict','The transition source changed during export.',{targetRef,jobId,recovery});
+            delivery=await bridge.file({action:'write-analysis',requestId:call.requestId,batchIndex:call.batchIndex,
+              assetId:staged.file.id,fileName:source.asset.filename});
+          }finally{cleanupWarnings=await staged.dispose();}
+          return {asset:source.asset,representation:'printed-source-transitions',sha256:staged.file.sha256,bytes:staged.file.size,
+            delivery,...(cleanupWarnings.length?{cleanupWarnings}:{})};
+        }
+        if(assetId===originalMoldenId){
+          if(args.analysisId!==undefined||args.jobId!==undefined||args.stageId!==undefined)
+            throw toolError('invalid_arguments','Use the exact result targetRef from the source asset for original Molden export.');
+          const targetRef=field(args,'targetRef'),frameIndex=transitionSelector(args).frameIndex;
+          const sourceRevision=args.sourceRevision===undefined?undefined:field(args,'sourceRevision');
+          const assetRevision=args.assetRevision===undefined?undefined:field(args,'assetRevision');
+          const recovery={tool:'result_read',arguments:{targetRef,part:'assets',frameIndex}};
+          const assertCurrent=()=>{
+            const source=originalMolden(ctx.getResult(targetRef),targetRef);
+            if(!source||frameIndex!==undefined&&source.asset.provenance.frameIndex!==frameIndex)
+              throw toolError('analysis_asset_unavailable','There is no attributed original Molden on the requested frame.',{targetRef,frameIndex,boundFrameIndex:source?.asset.provenance.frameIndex,recovery});
+            if(sourceRevision!==undefined&&sourceRevision!==source.legacySourceRevision||assetRevision!==undefined&&assetRevision!==source.asset.assetRevision)
+              throw toolError('revision_conflict','Use the original Molden assetRevision from the result asset, or omit it to export the currently bound original.',
+                {targetRef,frameIndex,export:{tool:'analysis_export',arguments:source.exportArguments},recovery});
+            return source;
+          };
+          const source=assertCurrent();
+          if(destination&&!/\.molden(?:\.input)?$/i.test(destination))
+            throw toolError('invalid_export_extension','Choose a .molden or .molden.input destination.');
+          if(!bridge||!desktop||!call)throw toolError('file_port_unavailable','The current session has no native analysis artifact writer.');
+          const staged=await stageOriginalAnalysisFile({...source.original,readRange:(offset,length)=>source.original.readRange(offset,length,call.signal)},desktop,call.signal)
+            .catch(cause=>{
+              call.signal.throwIfAborted();
+              throw toolError('original_source_unreadable',cause instanceof Error?cause.message:String(cause),{targetRef,frameIndex,asset:source.asset,recovery});
+            });
+          let published,cleanupWarnings;
+          try{
+            call.signal.throwIfAborted();
+            if(assertCurrent().asset.assetRevision!==source.asset.assetRevision)
+              throw toolError('revision_conflict','The original Molden result binding changed during export.',{targetRef,frameIndex,recovery});
+            published=await bridge.file({action:'write-analysis',requestId:call.requestId,batchIndex:call.batchIndex,assetId:staged.file.id,fileName:source.asset.filename});
+          }finally{cleanupWarnings=await staged.dispose();}
+          return {asset:source.asset,sourceRevision:source.legacySourceRevision,assetRevision:source.asset.assetRevision,representation:'retained-original',sha256:staged.file.sha256,bytes:staged.file.size,
+            delivery:published,...(cleanupWarnings.length?{cleanupWarnings}:{})};
+        }
+        if(args.targetRef!==undefined||args.frameIndex!==undefined||args.jobId!==undefined||args.stageId!==undefined||args.assetRevision!==undefined)
+          throw toolError('invalid_arguments','Use the panel asset’s analysisId and sourceRevision, or a result source asset.');
+        const analysisId=field(args,'analysisId');
         const runner=ctx.resultRegistry?.runs.get(analysisId);
         if(!runner)throw missingAnalysis(analysisId);
         const sourceRevision=assertAnalysisRevision(analysisId,runner.sourceRevision,field(args,'sourceRevision'),'The analysis source or asset changed. Read the current panel.');
         const asset=runner.assets?.().find(row=>row.info.id===assetId);
-        if(!asset)throw toolError('analysis_asset_unavailable','The current analysis has no such admitted asset.');
+        if(!asset)throw toolError('analysis_asset_unavailable','The current analysis has no such admitted asset.',{analysisId,assetId,assets:panelAssets(analysisId,runner),recovery:panelRecovery(analysisId)});
         const suffix=destination?.split('.').at(-1)?.toLowerCase();
         if(destination&&(asset.kind==='cube'?suffix!=='cube'&&suffix!=='cub':suffix!==asset.info.filename.split('.').at(-1)))
           throw toolError('invalid_export_extension','The destination extension must match the selected scientific asset.');
-        if(args.onExists!==undefined)choice(args.onExists,['error','overwrite'] as const,'onExists');
-        const bridge=typeof window==='undefined'?undefined:mcpBridge(),desktop=typeof window==='undefined'?undefined:window.sciyueDesktop;
         if(!bridge||!desktop||!call)throw toolError('file_port_unavailable','The current session has no native analysis artifact writer.');
         const write=(id:string,domainAssetId?:string)=>bridge.file({action:'write-analysis',requestId:call.requestId,batchIndex:call.batchIndex,assetId:id,fileName:asset.info.filename,
           ...(domainAssetId?{domainAssetId}:{})});
@@ -547,16 +858,45 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
         return {...await publish(staged.cube,staged.dispose,staged.domain.id),representation:original?'retained-original':'serialized-admitted-field',
           domainSha256:staged.domain.sha256,domainBytes:staged.domain.size};
       }},
-    {name:'plot_open',description:'Show an existing native plot by plotId, or open a correctly attributed native result figure.',
-      inputSchema:objectSchema({targetRef:{...identifier,description:'Scientific source reference. For conformer-energy, use the stage collection plotTargetRef or targetRef from plot_read.availableSources.'},kind:oneOf(['scf','levels','file-path','interaction-scatter','hirshfeld-fingerprint','surface-distribution','conformer-energy']),
-        plotId:identifier,reuse:bool,frameIndex:index,reference:oneOf(['absolute','relative-to-ts']),analysisId:identifier,sourceRevision:identifier}),call:async(args,call)=>{
+    {name:'plot_open',description:'Show an existing native plot by plotId or use its exact scientific owner. uv-vis takes the exact geometry recipe returned by result_read(part=transitions). scan-energy opens the completed scan points and can select source or ordinal x axis. pes-path-energy uses a retained PES record reference.',
+      inputSchema:objectSchema({targetRef:{...identifier,description:'Scientific source reference. For conformer-energy, use the stage collection plotTargetRef or targetRef from plot_read.availableSources.'},kind:oneOf(plotKinds),
+        plotId:identifier,reuse:bool,jobId:identifier,stageId:identifier,sourceId:identifier,
+        axis:oneOf(['source','ordinal']),waitMs:{...index,maximum:60000},frameIndex:index,
+        reference:oneOf(['absolute','relative-to-ts']),analysisId:identifier,sourceRevision:identifier}),call:async(args,call)=>{
         if(args.plotId!==undefined){
-          const id=field(args,'plotId'),entry=plot(id);
-          if(args.kind!==undefined||args.targetRef!==undefined||args.frameIndex!==undefined||args.analysisId!==undefined||args.reference!==undefined)
+          const id=field(args,'plotId');
+          if(args.kind!==undefined||args.targetRef!==undefined||args.jobId!==undefined||args.stageId!==undefined||args.sourceId!==undefined||args.axis!==undefined||args.frameIndex!==undefined||args.analysisId!==undefined||args.reference!==undefined)
             throw toolError('invalid_arguments','Select an existing plotId or a scientific source for a plot.');
-          return showNativeResultPlot(ctx,id,call?.signal);
+          return reopenPlot(id,call,args.waitMs);
         }
-        const kind=choice(args.kind,['scf','levels','file-path','interaction-scatter','hirshfeld-fingerprint','surface-distribution','conformer-energy'] as const,'kind');
+        const kind=choice(args.kind,plotKinds,'kind');
+        if(args.axis!==undefined&&kind!=='scan-energy')throw toolError('invalid_arguments','axis selects the horizontal axis of a scan-energy figure.');
+        if(kind==='uv-vis')return openUvVis(args,call);
+        if(args.stageId!==undefined)throw toolError('invalid_arguments','stageId selects the exact geometry for a UV-vis figure.');
+        if((args.jobId!==undefined||args.sourceId!==undefined)&&kind!=='scan-energy')
+          throw toolError('invalid_arguments','Use targetRef for this plot kind. Native jobId and sourceId are for scan-energy or uv-vis.');
+        if(kind==='pes-path-energy'){
+          if(args.frameIndex!==undefined||args.analysisId!==undefined||args.sourceRevision!==undefined||args.reference!==undefined||args.reuse===false)
+            throw toolError('invalid_arguments','Use one exact retained PES record targetRef to open its existing native chart.');
+          const targetRef=field(args,'targetRef');
+          let target:unknown;
+          try{target=JSON.parse(targetRef);}catch{/* A native record reference is required below. */}
+          if(!Array.isArray(target)||target.length!==3||target[0]!=='es-pes-record-v1'||
+            typeof target[1]!=='string'||typeof target[2]!=='string'||!target[1]||!target[2])
+            throw toolError('invalid_arguments','Use the PES record frameSelection.targetRef from es_run_frame_read.',{targetRef});
+          const [,ownerId,recordId]=target;
+          const matchingPlot=()=>[...ctx.resultRegistry?.plots.values()??[]].find(row=>row.kind===kind&&row.ownerId===ownerId&&
+            row.collectionId===recordId&&row.display?.active&&(row.port.isVisible?.()??true));
+          const selected=matchingPlot();
+          const waitMs=integer(args,'waitMs',4000);
+          if(waitMs>60000)throw toolError('invalid_arguments','waitMs must be at most 60000.');
+          const recovery={tool:'es_show',arguments:{target:{kind:'collection',ref:targetRef},waitFor:'selected'}};
+          if(!selected&&!showCollection)throw toolError('plot_source_unavailable','This session has no native PES record navigation.',{targetRef,recordId,recovery});
+          const nativeSelection=selected?undefined:await showCollection!(targetRef,call);
+          const entry=selected??await waitForView(ctx.resultRegistry,matchingPlot,waitMs,call?.signal);
+          return entry?plotReceipt(entry.id,{kind,targetRef,recordId,reused:Boolean(selected),exports:plotDeliveries(entry.id,entry.port.read().formats)}):
+            {status:'plot_preparing',kind,targetRef,recordId,nativeSelection,recovery};
+        }
         if(kind==='conformer-energy'){
           if(args.frameIndex!==undefined||args.analysisId!==undefined||args.sourceRevision!==undefined||args.reference!==undefined)
             throw toolError('invalid_arguments','A conformer-energy figure uses one exact stage collection targetRef.');
@@ -591,9 +931,92 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
           return plotReceipt(plotId,{analysisId,reused:Boolean(existing)});
         }
         const {target,view:prior}=targetView(args);
+        if(kind==='scan-energy'){
+          if(args.frameIndex!==undefined||args.analysisId!==undefined||args.reference!==undefined||args.sourceRevision!==undefined)
+            throw toolError('invalid_arguments','A scan-energy figure uses the completed-points stage of a source job, with no individual frame selector.');
+          const jobId=args.jobId===undefined?undefined:field(args,'jobId');
+          const axis=args.axis===undefined?undefined:choice(args.axis,['source','ordinal'] as const,'axis');
+          const jobs=target.file?.output.source.jobs??target.postprocess?.output?.source.results;
+          const result=jobId===undefined?target.result??(target.file?postprocessFileJob(target.file.output.source):undefined):jobs?.find(job=>job.id===jobId);
+          const scan=result&&result.kind!=='diagnostic'?completedScan(result):undefined;
+          const targetRef=target.file&&jobId?JSON.stringify(['es-file-job',target.ownerId,jobId]):
+            target.navigationRef??(args.targetRef===undefined?target.ownerId:field(args,'targetRef'));
+          const selectedSourceId=args.sourceId===undefined?undefined:field(args,'sourceId');
+          const recovery={tool:'plot_open',arguments:{kind,targetRef,...(jobId?{jobId}:{}),...(axis?{axis}:{}),...(selectedSourceId?{sourceId:selectedSourceId}:{})}};
+          if(selectedSourceId&&result?.source.id!==selectedSourceId)
+            throw toolError('plot_source_changed','The retained scan source differs from the requested source id.',{targetRef,sourceId:selectedSourceId});
+          if(!scan||!result||!scan.frames.some(frame=>frame.energy&&Number.isFinite(frame.energy.value)))
+            throw toolError('plot_data_unavailable','The specified source job has no completed scan points with an available energy.',
+              {targetRef,jobId,recovery:{tool:'result_read',arguments:{targetRef,part:'jobs'}}});
+          if(args.reuse===false)throw toolError('plot_copy_unavailable','The native completed-points stage owns one editable energy figure.',{targetRef,jobId,recovery});
+          const waitMs=integer(args,'waitMs',4000);
+          if(waitMs>60000)throw toolError('invalid_arguments','waitMs must be at most 60000.');
+          const started=performance.now(),remaining=()=>Math.max(0,waitMs-(performance.now()-started));
+          const originalOwner=target.ownerId;
+          if(!prior?.active||!prior.available||targetRef!==target.navigationRef&&Boolean(target.file&&jobId))
+            await reveal({...target,navigationRef:targetRef});
+          const selected=ctx.getResult(targetRef);
+          const matchesSource=(candidate:TrajectoryResult|ResultDiagnostic|undefined)=>candidate!==undefined&&candidate.jobIndex===result.jobIndex
+            &&candidate.source.id===result.source.id&&candidate.source.sha256===result.source.sha256;
+          const readonlySource=selected.postprocess?.result??selected.result;
+          if(selected.ownerId!==originalOwner||!matchesSource(readonlySource))
+            throw toolError('plot_source_changed','The native workbench did not select the requested scan job.',{targetRef,jobId,recovery});
+          const stageResultId=`${readonlySource!.id}:stage:${scan.stage.id}`;
+          const pending={status:'plot_preparing',kind,targetRef,jobId:jobId??result.id,stageId:scan.stage.id,stageResultId,
+            completedPointCount:scan.frames.length,source:result.source,recovery};
+          const activeView=()=>[...ctx.resultRegistry?.resultViews.values()??[]]
+            .find(view=>view.ownerId===originalOwner&&view.active&&view.available&&matchesSource(view.result));
+          const opened=await waitForView(ctx.resultRegistry,activeView,remaining(),call?.signal);
+          if(!opened)return pending;
+          if(opened.result.id!==stageResultId&&opened.stage?.stageId!==scan.stage.id&&
+            !flushSync(()=>opened.revealPlotStage?.({resultId:stageResultId,source:result.source,jobIndex:result.jobIndex})))
+            throw toolError('plot_source_unavailable','The owning native workbench exposes no route to the completed scan stage.',{targetRef,stageResultId,recovery});
+          const stageOwner=await waitForView(ctx.resultRegistry,()=>{
+            const view=activeView();
+            return view&&(view.result.id===stageResultId||view.stage?.stageId===scan.stage.id)?ctx.resultRegistry?.analysisViews.get(view.analysisKey):undefined;
+          },remaining(),call?.signal);
+          if(!stageOwner?.read().active)return pending;
+          if(!stageOwner.read().availablePages.includes('trajectory'))
+            throw toolError('plot_data_unavailable','The completed scan stage has no native trajectory chart.',{targetRef,stageResultId,completedPointCount:scan.frames.length});
+          const panelId=flushSync(()=>stageOwner.open('trajectory'));
+          if(panelId)knownPanels.set(panelId,{targetRef,page:'trajectory'});
+          const matchingPlot=()=>{
+            const view=activeView();
+            if(!view||view.result.id!==stageResultId&&view.stage?.stageId!==scan.stage.id)return;
+            return [...ctx.resultRegistry?.plots.values()??[]].find(row=>row.ownerId===originalOwner&&row.resultId===view.result.id&&
+              row.analysisId===panelId&&row.kind===kind&&row.display?.active&&row.source?.id===result.source.id&&
+              row.source.sha256===result.source.sha256&&row.jobIndex===result.jobIndex);
+          };
+          let entry=await waitForView(ctx.resultRegistry,matchingPlot,remaining(),call?.signal);
+          if(!entry)return {...pending,panelId};
+          const unavailableAxis=(scanAxis:ReturnType<typeof scanAxisState>)=>toolError('plot_axis_unavailable',
+            'The native scan cannot provide the requested horizontal axis.',
+            {targetRef,axis,scanAxis,recovery:{tool:'plot_open',arguments:{kind,targetRef,...(jobId?{jobId}:{}),axis:'ordinal'}}});
+          const currentAxis=scanAxisState(entry.port);
+          if(axis){
+            if(!currentAxis?.availableAxes.includes(axis))throw unavailableAxis(currentAxis);
+            if(currentAxis.requestedAxis!==axis){
+              const settings=entry.port.configuration!['scan-axis'];
+              flushSync(()=>settings.apply({axis}));
+            }
+          }
+          entry=await waitForView(ctx.resultRegistry,()=>{
+            const live=matchingPlot();
+            if(!live)return;
+            const info=scanAxisState(live.port);
+            return info&&(axis&&info.requestedAxis!==axis||info.requestedAxis==='source'&&info.sourceState==='preparing')?undefined:live;
+          },remaining(),call?.signal);
+          if(!entry)return {...pending,panelId,reason:'scan-axis-preparing'};
+          const scanAxis=scanAxisState(entry.port);
+          if(axis==='source'&&scanAxis?.effectiveAxis!=='source')throw unavailableAxis(scanAxis);
+          return plotReceipt(entry.id,{kind,targetRef,jobId:jobId??result.id,stageId:scan.stage.id,panelId,completedPointCount:scan.frames.length,
+            scanAxis,next:{tool:'plot_export',arguments:{plotId:entry.id,format:'txt',save:true}}});
+        }
         if(kind==='file-path'){
           const reference=choice(args.reference??'absolute',['absolute','relative-to-ts'] as const,'reference');
-          if(!target.file)throw toolError('plot_data_unavailable','The selected source is not a file job with printed path energy.');
+          if(!target.file)throw toolError('plot_data_unavailable','The selected source is not a file job with printed IRC or NEB path energy.',
+            target.result&&target.result.kind!=='diagnostic'&&completedScan(target.result)?{recovery:{tool:'plot_open',arguments:{
+              kind:'scan-energy',targetRef:target.navigationRef??args.targetRef??target.ownerId}}}:undefined);
           await reveal(target);
           const current=ctx.getResult(target.navigationRef??target.ownerId);
           const snapshot=current.file&&createFilePathPlotSnapshot(current.file,reference);
@@ -626,19 +1049,40 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
       inputSchema:objectSchema({plotId:identifier,includeMetadata:bool}),call:args=>{
         if(args.plotId!==undefined)return plotSummary(field(args,'plotId'),args.includeMetadata===true);
         const sources=plotSources();
-        const plots=[...ctx.resultRegistry?.plots.values()??[]].map(({port,id,kind,source,ownerId,resultId,jobId,jobIndex,frameIndex,revision,display,collectionId,runId,stageId})=>{
-          const {title,family}=port.read();
-          return {id,kind,source,ownerId,resultId,jobId,jobIndex,frameIndex,revision,collectionId,runId,stageId,visible:display?.visible&&(port.isVisible?.()??true),active:display?.active,title,family};
+        const plots=[...ctx.resultRegistry?.plots.values()??[]].map(({port,id,kind,source,ownerId,resultId,jobId,jobIndex,frameIndex,revision,display,collectionId,runId,stageId,analysisId})=>{
+          const {title,family,formats}=port.read();
+          return {id,kind,source,ownerId,resultId,jobId,jobIndex,frameIndex,revision,collectionId,runId,stageId,analysisId,formats,
+            visible:display?.visible&&(port.isVisible?.()??true),active:display?.active,title,family};
         });
-        return {plots,sources,availableSources:sources.filter(source=>source.available)};
+        return {plots,sources,availableSources:sources.filter(source=>source.available),supportedOpenKinds:plotKinds};
+      }},
+    {name:'plot_point',description:'Read an exact native plotted sample or select its linked native object if plot_read advertises select. pointIndex is a zero-based index in the selected series.',
+      inputSchema:objectSchema({plotId:identifier,revision:index,seriesId:identifier,pointIndex:index,action:oneOf(['read','select'])},
+        ['plotId','revision','seriesId','pointIndex']),call:args=>{
+        const plotId=field(args,'plotId'),port=assertPlotRevision(plotId,args);
+        const seriesId=field(args,'seriesId'),pointIndex=integer(args,'pointIndex'),action=choice(args.action??'read',['read','select'] as const,'action');
+        const details={plotId,seriesId,pointIndex,recovery:plotReadRecovery(plotId)};
+        if(!port.point||action==='select'&&!port.canSelectPoint)
+          throw toolError('plot_point_unavailable','This figure does not support that native point action.',details);
+        if(action==='select'&&port.isVisible?.()===false)
+          throw toolError('plot_inactive','Show the source figure before selecting a linked object.',{...details,recovery:{tool:'plot_open',arguments:{plotId}}});
+        const point=flushSync(()=>port.point!(seriesId,pointIndex,action));
+        if(point===undefined)throw toolError('plot_point_unavailable','The series has no eligible sample for this action at that index.',details);
+        const entry=plot(plotId);
+        return {plotId,seriesId,pointIndex,action,point,revision:entry.revision,source:entry.source,ownerId:entry.ownerId,
+          resultId:entry.resultId,jobIndex:entry.jobIndex,frameIndex:entry.frameIndex,runId:entry.runId,collectionId:entry.collectionId,stageId:entry.stageId};
       }},
     {name:'plot_window',description:'Restore, minimize or close an existing native plot window, or change its native deck layout. minimize retains the figure for later show and project saving. close removes that figure from the current layout, so subsequent saves record it as closed. To verify saved editable state, use es_project action=reopen without closing the plot first.',
       inputSchema:objectSchema({plotId:identifier,action:oneOf(['show','minimize','close','layout']),mode:oneOf(['free','tiled']),arrange:bool},['plotId','action']),call:async(args,call)=>{
-        const id=field(args,'plotId'),action=choice(args.action,['show','minimize','close','layout'] as const,'action'),entry=plot(id);
-        if(action==='show')return showNativeResultPlot(ctx,id,call?.signal);
+        const id=field(args,'plotId'),action=choice(args.action,['show','minimize','close','layout'] as const,'action');
+        if(action==='show')return reopenPlot(id,call);
+        const entry=plot(id);
         if(action==='layout'){
           const mode=choice(args.mode,['free','tiled'] as const,'mode');
-          if(!entry.display?.eligible||!entry.display.setLayout)throw toolError('plot_lifecycle_unavailable','Show a plot in its native deck before changing the layout.');
+          if(!entry.display?.setLayout)throw toolError('plot_lifecycle_unavailable','This figure has no independent native deck layout.',
+            {plotId:id,recovery:plotReadRecovery(id)});
+          if(!entry.display.eligible)throw toolError('plot_lifecycle_unavailable','Show a plot in its native deck before changing the layout.',
+            {plotId:id,recovery:{tool:'plot_window',arguments:{plotId:id,action:'show'}}});
           const arrange=args.arrange===true;
           flushSync(()=>entry.display!.setLayout!(mode,arrange));
           return plotReceipt(id,{layout:plot(id).display?.layout});
@@ -649,32 +1093,58 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
         if(action==='close'&&!ctx.resultRegistry?.plots.has(id))return {plotId:id,status:'closed'};
         return plotReceipt(id);
       }},
-    {name:'plot_edit',description:'Edit the native figure using its current revision and capabilities.byPart from plot_read. For plot text, use operation=text and role=title, x, or y. For font edits, pass operation=font, a listed textId and patch such as {size:14}. For scatter markers, use operation=point-style and the listed seriesId. Use plot_configure scope=inset to create an inset from data ranges before positioning its box.',
+    {name:'plot_edit',description:'Edit the native figure using the current revision and capabilities.byPart from plot_read. Insert, move or edit free text, adjust existing guides, and move the plotted figure in paper coordinates where supported. Use plot_configure scope=inset to create an inset before positioning its box.',
       inputSchema:objectSchema({plotId:identifier,revision:index,operation:oneOf(plotEdits),part:oneOf(['main','inset']),role:{...oneOf(['title','x','y']),description:'Text role: title, x-axis label or y-axis label.'},text:{type:'string',description:'Literal displayed text. For operation=text, include the user’s exact capitalization and symbols.'},
         axis:oneOf(['x','y']),bounds:{anyOf:[{type:'array',items:{type:'number'},minItems:2,maxItems:2},{type:'null'}]},
-        visible:bool,value:{type:'number'},label:{type:'string'},guideId:identifier,textId:{...identifier,description:'A font target in plot_read textIds for the selected part, such as title, x, y or ticks.'},seriesId:{...identifier,description:'An existing series ID from the selected part.'},pointIndex:index,
+        visible:bool,value:{type:'number'},label:{type:'string'},...guideStroke,guideId:identifier,
+        textId:{...identifier,description:'An existing textId from plot_read for the selected part.'},seriesId:{...identifier,description:'An existing series ID from the selected part.'},pointIndex:index,
+        position:{...nullable(position),description:'Fractional X and Y offsets relative to the plot paper, or null to restore the default position.'},
         step:{anyOf:[{type:'number',exclusiveMinimum:0},{type:'null'}]},patch:{anyOf:Object.values(plotPatches)}},['plotId','revision','operation']),call:args=>{
         const id=field(args,'plotId'),port=assertPlotRevision(id,args),change=plotEdit(args);
         const state=port.read();
         const part=args.part===undefined?undefined:choice(args.part,['main','inset'] as const,'part');
-        if(part==='inset'&&!state.parts?.includes('inset'))throw toolError('plot_part_unavailable','Create an inset using plot_configure before editing that part.',{plotId:id,parts:state.parts??['main'],configurationScopes:Object.keys(port.configuration??{})});
+        const recovery=plotReadRecovery(id),configurationScopes=Object.keys(port.configuration??{});
+        if(part==='inset'&&!state.parts?.includes('inset'))throw toolError('plot_part_unavailable',
+          configurationScopes.includes('inset')?'Create an inset using plot_configure before editing that part.':'The current figure has no inset capability.',
+          {plotId:id,parts:state.parts??['main'],configurationScopes,recovery});
         const capabilities=state.partCapabilities?.[part??'main'],edits=capabilities?.editOperations??state.edits??[];
         if(!edits.includes(change.operation))throw toolError('plot_edit_unavailable','The current chart does not support that edit.',{plotId:id,operation:change.operation,editOperations:edits,recovery:{tool:'plot_read',arguments:{plotId:id}}});
-        if(change.operation==='font'&&capabilities&&!capabilities.textIds.includes(change.textId))
-          throw toolError('plot_text_unavailable','Choose a textId from the selected part.',{plotId:id,part:part??'main',textIds:capabilities.textIds});
+        if('textId' in change&&capabilities&&!capabilities.textIds.includes(change.textId))
+          throw toolError('plot_text_unavailable','Choose a textId from the selected part.',{plotId:id,part:part??'main',textIds:capabilities.textIds,recovery});
+        if(change.operation==='remove-text'&&capabilities?.removableTextIds&&!capabilities.removableTextIds.includes(change.textId))
+          throw toolError('plot_text_unavailable','Choose a removableTextId from the selected part.',
+            {plotId:id,part:part??'main',removableTextIds:capabilities.removableTextIds,recovery});
+        if('guideId' in change&&capabilities?.guideIds&&!capabilities.guideIds.includes(change.guideId))
+          throw toolError('plot_guide_unavailable','Choose a guideId from the selected part.',{plotId:id,part:part??'main',guideIds:capabilities.guideIds,recovery});
         if((change.operation==='series-style'||change.operation==='point-style')&&capabilities){
           const supported=capabilities.series.filter(series=>change.operation==='series-style'?series.lineStyle:series.pointStyle);
-          if(!supported.some(series=>series.id===change.seriesId))throw toolError('plot_series_unavailable','The selected series does not support that style edit.',{plotId:id,part:part??'main',series:supported});
+          if(!supported.some(series=>series.id===change.seriesId))throw toolError('plot_series_unavailable','The selected series does not support that style edit.',{plotId:id,part:part??'main',series:supported,recovery});
         }
         flushSync(()=>part?port.edit(change,part):port.edit(change));
         return plotSummary(id);
       }},
-    {name:'plot_configure',description:'Change the same figure’s canvas, inset or specialized presentation controls. Use the live schema from plot_read.',
+    {name:'plot_configure',description:'Change the same figure’s canvas, inset or specialized presentation controls using the live plot_read schema. For inset creation, first send only {action:"create",range:{x:[low,high],y:[low,high]}}; limits are ascending even on reversed axes. Use the returned revision to update the box or independent broadening after creation.',
       inputSchema:objectSchema({plotId:identifier,revision:index,scope:identifier,patch:{type:'object'}},['plotId','revision','scope','patch']),call:args=>{
         const id=field(args,'plotId'),port=assertPlotRevision(id,args),scope=field(args,'scope');
         const settings=port.configuration&&Object.hasOwn(port.configuration,scope)?port.configuration[scope]:undefined;
-        if(!settings)throw toolError('plot_configuration_unavailable','This chart does not provide the requested settings.',{plotId:id,scope,configurationScopes:Object.keys(port.configuration??{})});
-        const patch=validatedPatch<Record<string,unknown>>(args.patch,settings.schema);
+        if(!settings)throw toolError('plot_configuration_unavailable','This chart does not provide the requested settings.',{plotId:id,scope,configurationScopes:Object.keys(port.configuration??{}),recovery:plotReadRecovery(id)});
+        const schema=plotSettingsSchema(scope,settings.schema);
+        const requested=args.patch as {action?:unknown;range?:{x?:unknown;y?:unknown}}|undefined;
+        if(requested?.action==='create'&&schema!==settings.schema){
+          const x=insetLimits(requested.range?.x),y=insetLimits(requested.range?.y);
+          const revision=integer(args,'revision');
+          const axis=(settings.read() as {mainSettings?:{axis?:string}}|undefined)?.mainSettings?.axis;
+          if(!x||!y||axis==='nm'&&x[0]<=0)
+            throw toolError('invalid_arguments','Provide two distinct finite limits for each inset axis in the displayed units.',
+              {plotId:id,scope,recovery:plotReadRecovery(id)});
+          const recovery={tool:'plot_configure',arguments:{plotId:id,revision,scope,patch:{action:'create',range:{x,y}}}};
+          if(Object.keys(requested).some(key=>key!=='action'&&key!=='range')||
+            (requested.range?.x as number[])[0]!==x[0]||(requested.range?.y as number[])[0]!==y[0]){
+            throw toolError('invalid_arguments','Create the inset with its ascending range alone. Update the box or broadening after it exists.',
+              {plotId:id,scope,recovery});
+          }
+        }
+        const patch=validatedPatch<Record<string,unknown>>(args.patch,schema);
         flushSync(()=>settings.apply(patch));
         return plotSummary(id);
       }},
@@ -694,24 +1164,88 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
         flushSync(()=>action==='make-default'?port.defaultPreset!(presetId):port.preset(presetId));
         return plotSummary(id);
       }},
-    {name:'plot_export',description:'Export the named native figure as image or scientific text. Set destination, directory or save=true to write it. Use format=png and preview=true to inspect the rendered image.',
-      inputSchema:objectSchema({plotId:identifier,format:oneOf(formats),...delivery},['plotId','format']),call:async(args,call)=>{
-        const plotId=field(args,'plotId'),format:PlotExportFormat=choice(args.format,formats,'format'),entry=plot(plotId);
+    {name:'plot_export',description:'Export a named native figure as an image or scientific text. If a scan requests its native coordinate, wait for that coordinate before capture. Set destination, directory or save=true to write. For independent UV-vis transition tables, use result_read(part=transitions) then the returned analysis_export recipe.',
+      inputSchema:objectSchema({plotId:identifier,format:oneOf(formats),waitMs:{...index,maximum:60000},...delivery},['plotId','format']),call:async(args,call)=>{
+        const plotId=field(args,'plotId'),format:PlotExportFormat=choice(args.format,formats,'format');
+        let entry=plot(plotId);
         checkImagePreview(args,format);
         if(!entry.port.read().formats.includes(format))throw toolError('format_unavailable','The figure does not export this format.');
+        const waitMs=integer(args,'waitMs',4000);
+        if(waitMs>60000)throw toolError('invalid_arguments','waitMs must be at most 60000.');
+        const axis=scanAxisState(entry.port);
+        if(entry.kind==='scan-energy'&&axis?.requestedAxis==='source'&&axis.sourceState==='preparing'){
+          const prepared=await waitForView(ctx.resultRegistry,()=>{
+            const current=ctx.resultRegistry?.plots.get(plotId);
+            const state=current&&scanAxisState(current.port);
+            return current&&state&&state.requestedAxis==='source'&&state.sourceState!=='preparing'?current:undefined;
+          },waitMs,call?.signal);
+          if(!prepared)throw toolError('plot_axis_preparing','The requested scan coordinate is not ready to export.',
+            {plotId,scanAxis:axis,recovery:retainedPlotRecipe(plotId)??plotReadRecovery(plotId)});
+          if(scanAxisState(prepared.port)?.effectiveAxis!=='source')
+            throw toolError('plot_axis_unavailable','The native result could not provide the requested scan coordinate.',
+              {plotId,scanAxis:scanAxisState(prepared.port),recovery:plotReadRecovery(plotId)});
+          entry=prepared;
+        }
         const {blob,filename}=await entry.port.export(format,call?.signal??new AbortController().signal);
         const current=ctx.resultRegistry?.plots.get(plotId);
         if(!current||current.revision!==entry.revision)throw toolError('revision_conflict','The figure changed during capture. Read its current revision before exporting again.',{plotId,revision:current?.revision,capturedRevision:entry.revision});
         return {plotId,revision:entry.revision,source:entry.source,ownerId:entry.ownerId,resultId:entry.resultId,
-          collectionId:entry.collectionId,runId:entry.runId,stageId:entry.stageId,...await deliverAsset(blob,filename,args,call)};
+          collectionId:entry.collectionId,runId:entry.runId,stageId:entry.stageId,scanAxis:scanAxisState(entry.port),
+          ...await deliverAsset(blob,filename,args,call)};
       }},
-    {name:'view_export',description:'Capture the actual ready scientific viewport as PNG or SVG. Set destination, directory or save=true to write it. Use format=png and preview=true to inspect the rendering. Follow the returned recovery if the requested viewport is inactive or still preparing.',
-      inputSchema:objectSchema({targetRef:identifier,format:oneOf(['png','svg']),includeAnnotations:bool,transparent:bool,width:{...index,minimum:1},height:{...index,minimum:1},...delivery}),call:async(args,call)=>{
-        const {target,view}=targetView(args),format=choice(args.format??'png',['png','svg'] as const,'format');
+    {name:'view_export',description:'Capture the ready scientific viewport (default, PNG or SVG), the currently visible connected workbench (scope=workbench, PNG), or a visible docked native analysis panel (scope=analysis-panel, PNG, targetRef and panelId from analysis_view). Set destination, directory or save=true to write it. PNG preview returns the rendered image.',
+      inputSchema:objectSchema({scope:oneOf(['viewport','workbench','analysis-panel']),targetRef:identifier,panelId:identifier,
+        resultId:{...identifier,description:'Optional exact displayed result/stage from result_read.displayedFrame.'},
+        frameIndex:{...index,description:'Optional zero-based frame from the named displayed result/stage.'},
+        format:oneOf(['png','svg']),includeAnnotations:bool,transparent:bool,width:{...index,minimum:1},height:{...index,minimum:1},
+        crop:{...viewportCrop,description:'Scientific viewport only. Fractional x/y/width/height from the top-left. Must remain within the viewport. width/height outside crop specify output dimensions.'},...delivery}),call:async(args,call)=>{
+        const scope=choice(args.scope??'viewport',['viewport','workbench','analysis-panel'] as const,'scope');
+        const format=choice(args.format??'png',['png','svg'] as const,'format');
         checkImagePreview(args,format);
+        if(scope!=='viewport'){
+          if(format!=='png'||['includeAnnotations','transparent','width','height','crop','resultId','frameIndex'].some(key=>args[key]!==undefined))
+            throw toolError('invalid_arguments','Workbench and docked-panel captures use native PNG size and presentation.');
+          if(scope==='workbench'&&(args.targetRef!==undefined||args.panelId!==undefined))
+            throw toolError('invalid_arguments','Workbench capture selects the already bound window. Use analysis-panel to select a panel.');
+          const targetRef=scope==='analysis-panel'?field(args,'targetRef'):undefined;
+          const panelId=scope==='analysis-panel'?field(args,'panelId'):undefined;
+          const capturePanel=()=>{
+            const {target}=targetView({targetRef});
+            const current=activeAnalysis(target,true),state=current?.owner.read().state;
+            const panel=state?.instances.find(item=>item.id===panelId);
+            const recovery=panel&&panel.detached?undefined:panel
+              ?{tool:'analysis_panel',arguments:{targetRef,panelId,action:'activate'}}
+              :analysisViewRecovery(targetRef!);
+            const rect=panelId&&panel&&!panel.detached?current?.owner.captureBounds?.(panelId):undefined;
+            if(!rect)throw toolError('analysis_panel_capture_unavailable',panel?.detached
+              ?'The requested analysis is in a detached window. The connected workbench has no visible docked panel to capture.'
+              :'The requested docked analysis panel is not visible in the connected workbench.',
+            {targetRef,panelId,ownerId:target.ownerId,recovery});
+            return {rect,ownerId:target.ownerId,resultId:current?.view?.result.id,stage:current?.view?.stage,frameIndex:current?.view?.frameIndex,
+              source:current?.view?.result.source??target.result?.source,page:panel?.kind};
+          };
+          const panel=scope==='analysis-panel'?capturePanel():undefined;
+          const bridge=typeof window==='undefined'?undefined:mcpBridge();
+          if(!bridge||!call)throw toolError('workbench_capture_unavailable','This session has no native workbench capture.');
+          const receipt=await bridge.file({action:'capture-workbench',requestId:call.requestId,batchIndex:call.batchIndex,
+            ...(panel?{rect:panel.rect}:{})}) as {bytes?:Uint8Array;width:number;height:number};
+          if(panel&&JSON.stringify(capturePanel())!==JSON.stringify(panel))
+            throw toolError('revision_conflict','The analysis panel changed during native capture.',{targetRef,panelId,recovery:analysisViewRecovery(targetRef!,panel.page)});
+          if(!(receipt.bytes instanceof Uint8Array)||!receipt.bytes.length)throw toolError('workbench_capture_unavailable','The native workbench returned no PNG.');
+          const blob=new Blob([new Uint8Array(receipt.bytes)],{type:'image/png'});
+          return {scope,targetRef,panelId,...panel,imageSize:{width:receipt.width,height:receipt.height},
+            ...await deliverAsset(blob,`Ester-Studio-${scope}.png`,args,call)};
+        }
+        if(args.panelId!==undefined)throw toolError('invalid_arguments','Use scope=analysis-panel to select a panel.');
+        const {target,view}=targetView(args);
+        const requestedResult=args.resultId===undefined?undefined:field(args,'resultId');
+        const requestedFrame=args.frameIndex===undefined?undefined:integer(args,'frameIndex');
         for(const key of ['transparent','includeAnnotations'])if(args[key]!==undefined&&typeof args[key]!=='boolean')throw toolError('invalid_arguments',`${key} must be a boolean.`);
+        const crop=args.crop===undefined?undefined:validatedPatch<{x:number;y:number;width:number;height:number}>(args.crop,viewportCrop);
+        if(crop&&(crop.x+crop.width>1||crop.y+crop.height>1))
+          throw toolError('invalid_capture_region','The crop must fit the current scientific viewport.');
         const signal=call?.signal??new AbortController().signal,options:ViewportImageExportOptions={format,includeAnnotations:args.includeAnnotations!==false,transparent:args.transparent===true,
-          width:args.width===undefined?undefined:integer(args,'width',undefined,1),height:args.height===undefined?undefined:integer(args,'height',undefined,1)};
+          width:args.width===undefined?undefined:integer(args,'width',undefined,1),height:args.height===undefined?undefined:integer(args,'height',undefined,1),...(crop?{crop}:{})};
         const targetRef=target.navigationRef??target.ownerId;
         const receipt=viewReceipt(view);
         const locate=view&&target.result&&!target.navigationRef&&!target.file?{kind:'result',ref:target.result.id}:targetRef;
@@ -722,15 +1256,33 @@ export function resultTools(ctx:ResultToolsContext):McTool[] {
         if(view&&(!view.frameReady||receipt.scene.status==='preparing'))
           throw toolError('viewport_preparing','The requested scientific frame has not reached the native viewport.',{...context,
             reason:view.frameReady?'scene-not-submitted':'scientific-frame-preparing',
-            recovery:analysisViewRecovery(targetRef)});
+            recovery});
+        if(requestedResult!==undefined&&view?.result.id!==requestedResult||requestedFrame!==undefined&&view?.frameIndex!==requestedFrame)
+          throw toolError('viewport_source_mismatch','The requested result stage or frame is not the one submitted to the visible viewport.',
+            {...context,requestedResult,requestedFrame,recovery:{tool:'result_read',arguments:{targetRef}}});
+        const assertStillDisplayed=()=>{
+          if(!view)return;
+          const current=viewFor(target);
+          if(!current?.active||!current.available||JSON.stringify(viewReceipt(current))!==JSON.stringify(receipt))
+            throw toolError('revision_conflict','The submitted viewport changed during capture.',{...context,recovery});
+        };
         if(view?.active&&view.available&&view.frameReady&&view.capture&&!view.workspaceCapture){
           const blob=await view.capture(options,signal);
+          assertStillDisplayed();
           return {ownerId:target.ownerId,resultId:view.result.id,source:view.result.source,jobIndex:view.result.jobIndex,frameIndex:view.frameIndex,scene:receipt.scene,options,
             ...await deliverAsset(blob,`Ester-Studio-viewport.${format}`,args,call)};
         }
         if(!ctx.captureViewport||view&&!view.capture&&!view.workspaceCapture)throw toolError('viewport_unavailable','This source exposes no native viewport capture.',{...context,reason:'no-capture-port'});
         const {blob,provenance}=await ctx.captureViewport(args.targetRef===undefined?undefined:field(args,'targetRef'),options,signal);
+        assertStillDisplayed();
         return {ownerId:target.ownerId,...provenance,options,...await deliverAsset(blob,`Ester-Studio-viewport.${format}`,args,call)};
       }},
   ];
+  function reopenPlot(id:string,call?:McCall,waitMs?:unknown){
+    if(ctx.resultRegistry?.plots.has(id))return showNativeResultPlot(ctx,id,call?.signal);
+    const recovery=retainedPlotRecipe(id);
+    if(!recovery)return plot(id);
+    return catalog.find(tool=>tool.name==='plot_open')!.call({...recovery.arguments,...(waitMs===undefined?{}:{waitMs})},call);
+  }
+  return catalog;
 }

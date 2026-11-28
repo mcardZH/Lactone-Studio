@@ -2,7 +2,7 @@ import { VibronicSha256 } from '../core/gaussian-vibronic/sha256-stream';
 
 export type ProjectAssetCategory = 'models' | 'sources' | 'trajectories' | 'results';
 export type ProjectOpaqueState = unknown;
-const PROJECT_FORMAT_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] as const;
+const PROJECT_FORMAT_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] as const;
 export type ProjectFormatVersion = typeof PROJECT_FORMAT_VERSIONS[number];
 export interface ProjectAsset { assetId: string; sha256: string; bytes: number; relativePath: string; category: ProjectAssetCategory; originalName?: string }
 export interface ProjectManifest {
@@ -14,6 +14,7 @@ export interface ProjectSessionDescription {
   recovery: { previous: ProjectManifest | null; auto: ProjectManifest | null };
   issues: Array<{ kind?: string; assetId?: string; code: string }>; recovered?: boolean; unchanged?: boolean;
   writeProtection?: { code: 'SY_SCHEMA_UNSUPPORTED'; points: ('auto' | 'previous')[] };
+  readOnly?: true;
   openRequestId?: string;
 }
 type WithSession = { sessionId: string };
@@ -81,8 +82,14 @@ export async function invokeProject<A extends SyProjectRequest['action']>(invoke
   if (!response.ok) throw Object.assign(new Error(response.error.message), { code: response.error.code });
   return response.value as SyProjectActionValues[A];
 }
+export interface ProjectAssetRange {
+  bytes: number;
+  sha256: string;
+  readRange(offset: number, length: number): Promise<Uint8Array>;
+}
 export interface ProjectAssetWriter {
   write(category: ProjectAssetCategory, name: string, bytes: Uint8Array | string): Promise<{ assetId: string }>;
+  writeRange?(category: ProjectAssetCategory, name: string, source: ProjectAssetRange): Promise<{ assetId: string }>;
   writeMany?(values:readonly ProjectAssetWrite[]):Promise<{assetId:string}[]>;
   assetIds(): string[];
   forEachAsset(callback: (assetId: string) => void): void;
@@ -109,22 +116,34 @@ export function createProjectAssetIO(sessionId: string, transactionId: string, i
   const assetIds = () => [...assets];
   const forEachAsset = (callback: (assetId: string) => void) => assets.forEach(callback);
   const retainAsset = (assetId: string) => { assets.add(assetId); };
+  async function writeRange(category: ProjectAssetCategory, name: string, source: ProjectAssetRange) {
+    const { bytes, sha256 } = source;
+    if (!Number.isSafeInteger(bytes) || bytes < 0 || !/^[a-f0-9]{64}$/.test(sha256)) throw Error('Project asset range identity is invalid.');
+    if (reusable.has(sha256)) { assets.add(sha256); return { assetId: sha256 }; }
+    const uploadId = `asset-${Date.now()}-${nextUpload++}`;
+    for (let offset = 0; offset < bytes || offset === 0; offset += PROJECT_CHUNK_BYTES) {
+      const length = Math.min(bytes - offset, PROJECT_CHUNK_BYTES), final = offset + length === bytes;
+      const range = length ? await source.readRange(offset, length) : new Uint8Array();
+      if (range.byteLength !== length) throw Error('Project asset range was incomplete.');
+      const page = range.byteOffset === 0 && range.byteLength === range.buffer.byteLength && range.buffer instanceof ArrayBuffer ? range : range.slice();
+      const { asset } = await invokeProject(invoke, { action: 'chunk', sessionId, transactionId, uploadId, category, originalName: name, expectedSha256: sha256, expectedBytes: bytes, bytes: page, final });
+      if (final) {
+        if (asset?.assetId !== sha256 || asset.sha256 !== sha256 || asset.bytes !== bytes) throw Error('Project asset receipt did not match the uploaded identity.');
+        reusable.add(sha256); assets.add(sha256); return { assetId: sha256 };
+      }
+    }
+    throw new Error('Project asset upload did not complete.');
+  }
   const writer: ProjectAssetWriter = {
     async write(category, name, supplied) {
       const bytes = typeof supplied === 'string' ? new TextEncoder().encode(supplied) : supplied;
       const sha256 = await projectAssetSha256(bytes);
-      if (reusable.has(sha256)) { assets.add(sha256); return { assetId: sha256 }; }
-      const uploadId = `asset-${Date.now()}-${nextUpload++}`; let asset: ProjectAsset | undefined;
-      for (let offset = 0; offset < bytes.byteLength || offset === 0; offset += PROJECT_CHUNK_BYTES) {
-        const end = Math.min(bytes.byteLength, offset + PROJECT_CHUNK_BYTES);
-        const page = bytes.byteOffset===0&&offset===0&&end===bytes.buffer.byteLength&&bytes.buffer instanceof ArrayBuffer ? bytes : bytes.slice(offset,end);
-        const result = await invokeProject(invoke, { action: 'chunk', sessionId, transactionId, uploadId, category, originalName: name, expectedBytes: bytes.byteLength, bytes: page, final: end === bytes.byteLength });
-        asset = result.asset;
-        if (end === bytes.byteLength) break;
-      }
-      if (!asset) throw new Error('Project asset upload did not complete.');
-      reusable.add(asset.assetId); assets.add(asset.assetId); return { assetId: asset.assetId };
+      return writeRange(category, name, { bytes: bytes.byteLength, sha256, async readRange(offset, length) {
+        return bytes.byteOffset === 0 && offset === 0 && length === bytes.buffer.byteLength && bytes.buffer instanceof ArrayBuffer
+          ? bytes : bytes.slice(offset, offset + length);
+      } });
     },
+    writeRange,
     async writeMany(values){
       const output:{assetId:string}[]=[];
       let batch:{category:ProjectAssetCategory;name:string;bytes:Uint8Array}[]=[],batchBytes=0;

@@ -34,7 +34,11 @@ function assertSdfMetadataTags(text: string) {
 /** Returns fragments only: the registry creates a fresh document for every
  * result. It never constructs a temporary ModelStore or rewrites stable IDs.
  * Dependency components are imported together by the existing scientific core. */
-export async function importWorkspaceSources(sources: ScientificSourceFile[] | OpenedModelFile[], bridge?: DesktopBridge, signal?: AbortSignal, restoredModels?: WeakMap<FragmentSnapshot, RestoredWorkspaceModel>, options?: { onSourceError(file: ScientificSourceFile | OpenedModelFile, error: unknown): void }): Promise<FragmentSnapshot[]> {
+export async function importWorkspaceSources(sources: ScientificSourceFile[] | OpenedModelFile[], bridge?: DesktopBridge, signal?: AbortSignal, restoredModels?: WeakMap<FragmentSnapshot, RestoredWorkspaceModel>, options?: {
+  onSourceError(file: ScientificSourceFile | OpenedModelFile, error: unknown): void;
+  /** Dependency resolution runs first. A caller may own an independent file's scientific reader. */
+  readIndependent?(file:ScientificSourceFile|OpenedModelFile):Promise<boolean>;
+}): Promise<FragmentSnapshot[]> {
   const opened = Array.isArray(sources) ? (sources as OpenedModelFile[]).filter(file => typeof file?.streamToken === 'string') : [];
   try {
     aborted(signal);
@@ -171,6 +175,7 @@ export async function importWorkspaceSources(sources: ScientificSourceFile[] | O
     }
     for (let index = 0; index < files.length; index++) if (!claimed.has(index) && !failedIndices.has(index)) {
       try {
+      if (await options?.readIndependent?.(sources[index])) { claim([index], files[index].name); continue; }
       const text = await read(index);
       // One independent source at a time retains all records and the native
       // SCIYUE SDF restore path; bad metadata is never caught/fallback-parsed.

@@ -94,7 +94,7 @@
 .input-settings-layout.input-settings-surface .shared-coordinate-row-title { display:block; min-width:0; margin:0; color:var(--input-color,#294454); font:600 var(--input-font,var(--ui-primary-size,16px))/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
 .input-settings-layout.input-settings-surface .shared-coordinate-row-delete { box-sizing:border-box; flex:0 0 36px; display:inline-flex; align-items:center; justify-content:center; gap:0; width:36px; min-width:36px; height:36px; min-height:36px; padding:5px; border:1px solid var(--input-border,#cadfd1); border-radius:var(--input-control-radius,7px); background:var(--input-control-bg,#fff); color:var(--input-color,#294454); font:inherit; cursor:pointer; }
 .input-settings-layout.input-settings-surface .shared-coordinate-row-delete>svg { width:14px; height:14px; flex:0 0 14px; }
-.input-settings-layout.input-settings-surface .shared-coordinate-row-delete:hover:not(:disabled) { background:#e8f4ec; border-color:#8ab49b; }
+.input-settings-layout.input-settings-surface .shared-coordinate-row-delete:hover:not(:disabled) { background:var(--ui-control-hover-bg); border-color:var(--ui-control-accent); }
 .input-settings-layout.input-settings-surface .coordinate-add-buttons { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
 .shared-numeric-row { align-items:flex-start; }
 .input-settings-layout.input-settings-surface .shared-numeric-row>.shared-input-field { flex:1 1 200px; }
@@ -107,12 +107,13 @@
 .input-settings-layout.input-settings-surface .input-level-card>.method-chooser.shared-input-card { padding:0; margin:0; border:0; border-radius:0; background:transparent; }
 .shared-method-fields { display:flex; align-items:stretch; flex-wrap:wrap; gap:8px 16px; }
 .shared-method-fields>.card-dropdown { display:flex; flex:1 1 210px; align-items:center; flex-wrap:wrap; gap:8px; margin:0; min-width:0; }
-.shared-method-fields .card-dropdown-label { margin:0; flex:0 0 auto; color:#294454; font-size:var(--input-font,var(--ui-primary-size,16px)); line-height:1.6; }
-.shared-method-fields .card-dropdown-trigger,.input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-trigger { flex:1 1 150px; width:auto; min-width:0; min-height:var(--input-control-height,36px); padding:5px 9px; gap:8px; border-radius:var(--input-control-radius,7px); background:var(--input-control-bg,#fff); border-color:var(--input-border,#cadfd1); justify-content:space-between; text-align:left; }
+.shared-method-fields .card-dropdown-label { margin:0; flex:0 0 auto; color:var(--ui-label-ink); font-size:var(--input-font,var(--ui-primary-size,16px)); line-height:1.6; }
+.shared-method-fields .card-dropdown-trigger,.input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-trigger { flex:1 1 150px; width:auto; min-width:0; min-height:var(--input-control-height,36px); padding:5px 9px; gap:8px; border-radius:var(--input-control-radius,7px); background:var(--input-control-bg,#fff); border-color:var(--input-border); justify-content:space-between; text-align:left; color:var(--ui-control-ink); transition:var(--ui-transition); }
+.shared-method-fields .card-dropdown-trigger:hover:not(:disabled) { background:var(--ui-control-hover-bg); border-color:var(--ui-control-accent); }
 .shared-method-fields .card-dropdown-trigger>span { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 5px; }
 .shared-method-fields .card-dropdown-trigger strong { display:inline; line-height:1.6; font-size:var(--input-font,var(--ui-primary-size,16px)); white-space:nowrap; }
 .shared-method-fields .card-dropdown-trigger>svg { flex:0 0 auto; }
-.shared-method-fields .card-dropdown-summary { display:inline; margin:0; line-height:1.6; color:#526879; }
+.shared-method-fields .card-dropdown-summary { display:inline; margin:0; line-height:1.6; color:var(--ui-note-ink); }
 .shared-method-fields .card-dropdown-summary::before { content:'·'; margin-right:5px; }
 .shared-method-fields .card-dropdown-summary .basis-stat,.input-settings-layout.input-settings-surface .shared-method-fields .card-dropdown-summary .basis-stat { display:inline; margin:0; white-space:nowrap; font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); }
 .shared-method-fields>.orca-note { flex:1 1 210px; margin:0; align-self:center; }
@@ -135,15 +136,15 @@
 .input-task-picker .task-category { margin:0; }
 .input-task-picker .task-category+.task-category { margin-top:16px; }
 .input-task-picker .task-category>h3 { color:var(--workflow-choice-group-ink,#293f4c);font:600 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family); }
-.task-card.shared-task-choice,.input-settings-layout.input-settings-surface .task-card.shared-task-choice { box-sizing:border-box; display:block; width:100%; min-width:0; height:auto; min-height:0; padding:8px 10px; border:1px solid #d4e5db; border-radius:11px; background:#f7fbf8; text-align:left; color:#294454; cursor:pointer; font:var(--input-font,var(--ui-primary-size,16px))/1.6 "Segoe UI","Microsoft YaHei",sans-serif; }
+.task-card.shared-task-choice,.input-settings-layout.input-settings-surface .task-card.shared-task-choice { box-sizing:border-box; display:block; width:100%; min-width:0; height:auto; min-height:0; padding:9px 11px; border:1px solid var(--ui-surface-border); border-radius:var(--ui-subcard-radius); background:var(--ui-surface-bg); text-align:left; color:var(--ui-control-ink); cursor:pointer; font:var(--input-font,var(--ui-primary-size,16px))/1.6 var(--ui-font-family); transition:var(--ui-transition); }
 .task-card.shared-task-choice .task-top { display:grid; grid-template-columns:32px minmax(0,1fr) auto 17px; align-items:center; width:100%; min-width:0; gap:8px; margin:0; }
 .shared-task-choice .task-top .task-title,.input-settings-layout.input-settings-surface .shared-task-choice .task-top .task-title { display:block; min-width:0; margin:0; text-align:left; overflow-wrap:anywhere; color:inherit; font:inherit; font-weight:600; line-height:1.4; }
-.task-card.shared-task-choice .task-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:7px; background:#eaf4ed; color:#4d8067; }
-.task-card.shared-task-choice.selected .task-icon { background:#dceee2; color:#386f52; }
-.task-card.shared-task-choice .task-code { margin:0; padding:0; justify-self:end; white-space:nowrap; color:#526879; font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); }
-.task-card.shared-task-choice .task-check { display:grid; place-items:center; width:17px; height:17px; margin:0; border-radius:50%; background:#548f74; color:#fff; visibility:hidden; }
+.task-card.shared-task-choice .task-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:var(--ui-control-radius); background:var(--ui-control-hover-bg); color:var(--ui-section-ink); }
+.task-card.shared-task-choice.selected .task-icon { background:var(--ui-action-tonal-bg); color:var(--ui-action-primary-bg); }
+.task-card.shared-task-choice .task-code { margin:0; padding:0; justify-self:end; white-space:nowrap; color:var(--ui-note-ink); font-size:var(--input-caption-font,var(--ui-secondary-size,14px)); }
+.task-card.shared-task-choice .task-check { display:grid; place-items:center; width:17px; height:17px; margin:0; border-radius:50%; background:var(--ui-action-primary-bg); color:#fff; visibility:hidden; }
 .shared-task-choice.selected .task-check { visibility:visible; }
-.shared-task-choice.selected,.input-settings-layout.input-settings-surface .shared-task-choice.selected { border-color:#548f74; background:#e8f4ec; box-shadow:0 0 0 1px #548f74; }
+.shared-task-choice.selected,.input-settings-layout.input-settings-surface .shared-task-choice.selected { border-color:var(--ui-control-accent); background:var(--ui-control-selected-bg); box-shadow:0 0 0 1px var(--ui-control-accent); }
 .shared-task-choice:disabled { cursor:default; }
 .input-settings-layout.input-settings-surface .task-card.shared-task-choice:disabled {
   opacity:1; color:var(--ui-action-disabled-ink); background:var(--ui-action-disabled-bg);
@@ -171,12 +172,13 @@
   .input-task-picker .shared-task-choice .task-code { justify-self:start; }
 }
 .input-task-picker .task-card.shared-task-choice { border-radius:var(--ui-subcard-radius); }
-.input-task-picker .task-card.shared-task-choice:enabled { background:#fff;color:var(--workflow-choice-item-ink,#284250);border-color:var(--workflow-choice-border,#c5d8cd); }
-.input-task-picker .task-card.shared-task-choice.selected:enabled { background:var(--workflow-choice-selected-bg,#e8f9ee);border-color:var(--workflow-choice-mark,#226d4c);box-shadow:inset 0 0 0 1px var(--workflow-choice-mark,#226d4c);color:var(--workflow-choice-active-ink,#147d75); }
-.input-task-picker .task-card.shared-task-choice.selected:enabled :is(.task-icon,.task-code) { background:transparent;color:var(--workflow-choice-active-ink,#147d75); }
-.input-task-picker .task-card.shared-task-choice .task-check { background:transparent;color:var(--workflow-choice-active-ink,#147d75); }
-.input-task-picker .task-card.shared-task-choice:disabled,.input-settings-layout.input-settings-surface .input-task-picker .task-card.shared-task-choice:disabled { opacity:1;color:var(--workflow-choice-disabled-ink,#467672);background:var(--workflow-choice-disabled-bg,#f0f3f2);border-color:var(--workflow-choice-border,#c5d8cd);box-shadow:none; }
-.input-task-picker .task-card.shared-task-choice:disabled :is(.task-title,.task-icon,.task-code),.input-settings-layout.input-settings-surface .input-task-picker .task-card.shared-task-choice:disabled :is(.task-title,.task-icon,.task-code) { color:var(--workflow-choice-disabled-ink,#467672); }
+.input-task-picker .task-card.shared-task-choice:enabled { background:var(--ui-surface-bg);color:var(--workflow-choice-item-ink,var(--ui-section-ink));border-color:var(--workflow-choice-border,var(--ui-surface-border)); }
+.input-task-picker .task-card.shared-task-choice:enabled:hover:not(.selected) { background:var(--ui-control-hover-bg);border-color:var(--ui-control-accent);box-shadow:var(--ui-card-hover-shadow); }
+.input-task-picker .task-card.shared-task-choice.selected:enabled { background:var(--workflow-choice-selected-bg,var(--ui-control-selected-bg));border-color:var(--workflow-choice-mark,var(--ui-control-accent));box-shadow:inset 0 0 0 1px var(--workflow-choice-mark,var(--ui-control-accent));color:var(--workflow-choice-active-ink,var(--ui-control-selected-ink)); }
+.input-task-picker .task-card.shared-task-choice.selected:enabled :is(.task-icon,.task-code) { background:transparent;color:var(--workflow-choice-active-ink,var(--ui-control-selected-ink)); }
+.input-task-picker .task-card.shared-task-choice .task-check { background:transparent;color:var(--workflow-choice-active-ink,var(--ui-control-selected-ink)); }
+.input-task-picker .task-card.shared-task-choice:disabled,.input-settings-layout.input-settings-surface .input-task-picker .task-card.shared-task-choice:disabled { opacity:1;color:var(--workflow-choice-disabled-ink,var(--ui-action-disabled-ink));background:var(--workflow-choice-disabled-bg,var(--ui-action-disabled-bg));border-color:var(--ui-action-disabled-border);box-shadow:none; }
+.input-task-picker .task-card.shared-task-choice:disabled :is(.task-title,.task-icon,.task-code),.input-settings-layout.input-settings-surface .input-task-picker .task-card.shared-task-choice:disabled :is(.task-title,.task-icon,.task-code) { color:var(--workflow-choice-disabled-ink,var(--ui-action-disabled-ink)); }
 .input-task-picker .task-card.shared-task-choice.selected:disabled,.input-settings-layout.input-settings-surface .input-task-picker .task-card.shared-task-choice.selected:disabled { border-color:var(--workflow-choice-mark,#226d4c);box-shadow:inset 0 0 0 1px var(--workflow-choice-mark,#226d4c); }
 .shared-input-card :focus-visible,.input-settings-layout :focus-visible { outline:2px solid var(--ui-control-focus); outline-offset:2px; }
 .input-settings-layout .shared-freeze-records { min-width:0; margin:0; padding:0; border:0; }
@@ -188,12 +190,12 @@
 .shared-input-card .shared-input-enable-toggle,.input-settings-layout.input-settings-surface .shared-input-enable-toggle{display:inline-flex;align-items:center;justify-content:flex-start;gap:7px;min-height:30px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .shared-input-enable-card .shared-input-enable-toggle:disabled { opacity:.5; cursor:default; }
 .shared-input-enable-toggle .shared-input-card-title { min-width:0; overflow-wrap:anywhere; }
-.shared-input-switch-track{display:inline-flex;align-items:center;flex:0 0 30px;width:30px;height:18px;padding:2px;border-radius:10px;background:#aebdb5;box-sizing:border-box}
-.shared-input-switch-track>span{width:14px;height:14px;background:white;border-radius:50%;box-shadow:0 1px 2px #0002}
-[aria-checked=true]>.shared-input-switch-track{background:var(--ui-control-accent,#548f74)}
+.shared-input-switch-track{display:inline-flex;align-items:center;flex:0 0 30px;width:30px;height:18px;padding:2px;border-radius:10px;background:color-mix(in srgb,var(--ui-control-muted) 45%,var(--ui-control-border));box-sizing:border-box;transition:background-color 140ms ease}
+.shared-input-switch-track>span{width:14px;height:14px;background:#fff;border-radius:50%;box-shadow:0 1px 2px #0002;transition:transform 140ms ease}
+[aria-checked=true]>.shared-input-switch-track{background:var(--ui-control-accent)}
 [aria-checked=true]>.shared-input-switch-track>span{transform:translateX(12px)}
 .shared-input-option-grid{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;margin:6px 0}
-.shared-input-option-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border:1px solid #d5e3da;border-radius:6px;background:#fff;max-width:100%;box-sizing:border-box}
+.shared-input-option-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border:1px solid var(--ui-surface-border);border-radius:var(--ui-control-radius);background:var(--ui-control-bg);max-width:100%;box-sizing:border-box}
 .shared-input-option-card .shared-input-checkbox{margin:0}
 .input-settings-layout.input-settings-surface .shared-input-option-card .shared-input-field{margin:0}
 .input-settings-layout.input-settings-surface .shared-reference-row{margin:6px 0 0}
@@ -539,8 +541,8 @@
 .input-settings-layout.input-settings-surface[data-input-layout=standard] .numeric-adaptive > input { padding-inline-end:calc(22px * var(--ui-font-scale,1)); }
 .input-settings-layout.input-settings-surface[data-input-layout=standard] .base-electronic-state-card[data-state=pending] .shared-input-field { --input-border:#9c7829; }
 .input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-section=naming-resources][data-state=pending] :is(input,select):not(:disabled):not([aria-invalid=true]) { border-color:#9c7829; background:#fffaf0; }
-.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-section=naming-resources][data-state=confirmed] :is(input,select):not(:disabled):not([aria-invalid=true]) { border-color:var(--ui-control-border); background:#f5fbf7; }
-.input-settings-layout.input-settings-surface[data-input-layout=standard] .base-electronic-state-card[data-state=confirmed] .shared-input-field { --input-control-bg:#f5fbf7; }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] [data-input-section=naming-resources][data-state=confirmed] :is(input,select):not(:disabled):not([aria-invalid=true]) { border-color:var(--ui-control-border); background:var(--ui-control-hover-bg); }
+.input-settings-layout.input-settings-surface[data-input-layout=standard] .base-electronic-state-card[data-state=confirmed] .shared-input-field { --input-control-bg:var(--ui-control-hover-bg); }
 .input-settings-layout.input-settings-surface[data-input-layout=standard] .model-inline-help > summary { min-inline-size:24px; min-block-size:24px; }
 .input-settings-layout.input-settings-surface[data-input-layout=standard] .conformer-solvent-heading { gap:6px; align-items:center; }
 .input-settings-layout.input-settings-surface[data-input-layout=standard] .conformer-solvent-field > .dismissible-notice { margin:0; }
@@ -548,16 +550,17 @@
   margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font:400 var(--input-font)/var(--input-line-height) Consolas,"Cascadia Mono",monospace;
 }
 
-/* Main and nested cards differ by fill, with an identical fractional stroke. */
+/* Main and nested cards differ by fill, with consistent stroke + surface-tier shadow. */
 :root .input-settings-layout.input-settings-surface :is(.shared-input-card,.orca-group,.advanced-details,.source-options):not(.shared-input-inline) {
   border:1px solid var(--ui-surface-border);
-  box-shadow:var(--ui-card-stroke-inset);
+  box-shadow:var(--ui-card-shadow);
 }
 :root .input-settings-layout.input-settings-surface .shared-input-card:not(.shared-input-subcard):not(.shared-input-inline) {
   background:var(--input-card-bg);
 }
 :root .input-settings-layout.input-settings-surface :is(.shared-input-subcard,.shared-input-card .shared-input-card):not(.shared-input-inline) {
   background:var(--ui-subcard-bg);
+  box-shadow:var(--ui-card-stroke-inset);
 }
 :root .input-settings-layout.input-settings-surface :is(.shared-input-card-title,.shared-input-subcard>summary,.shared-input-inline>summary) {
   color:var(--ui-section-ink);

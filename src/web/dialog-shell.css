@@ -1,8 +1,8 @@
 @import './ui-controls.css';
-:where(.dialog-backdrop){position:fixed;inset:0;z-index:2147483000;isolation:isolate;display:flex;align-items:center;justify-content:center;padding:16px;background:#17333050}
-:where(.dialog-shell){box-sizing:border-box;min-width:0;width:min(480px,100%);max-height:calc(100dvh - 32px);overflow:auto;scrollbar-gutter:stable;padding:16px;border:1px solid var(--ui-surface-border);box-shadow:0 12px 40px #153a4233}
-:where(.dialog-shell) :where(h2){font:600 var(--ui-window-title-size)/var(--ui-window-title-line) var(--ui-font-family)}
-.dialog-shell > header > h2 { font:600 var(--ui-window-title-size)/var(--ui-window-title-line) var(--ui-font-family); }
+:where(.dialog-backdrop){position:fixed;inset:0;z-index:2147483000;isolation:isolate;display:flex;align-items:center;justify-content:center;padding:16px;background:rgb(var(--ui-shadow-tint,20 62 54) / 0.28);backdrop-filter:blur(2px)}
+:where(.dialog-shell){box-sizing:border-box;min-width:0;width:min(480px,100%);max-height:calc(100dvh - 32px);overflow:auto;scrollbar-gutter:stable;padding:18px;border:1px solid var(--ui-surface-border);border-radius:var(--ui-window-radius);background:var(--ui-popover-bg,var(--ui-surface-bg));backdrop-filter:var(--ui-popover-blur,none);box-shadow:var(--ui-popover-shadow)}
+:where(.dialog-shell) :where(h2){font:600 var(--ui-window-title-size)/var(--ui-window-title-line) var(--ui-font-family);color:var(--ui-section-ink)}
+.dialog-shell > header > h2 { font:600 var(--ui-window-title-size)/var(--ui-window-title-line) var(--ui-font-family); color:var(--ui-section-ink); }
 .dialog-shell :where(h3) { color:var(--ui-section-ink); }
 .dialog-shell :where(label,dt) { color:var(--ui-label-ink); }
 .dialog-shell :where(input,select,textarea,dd) { color:var(--ui-field-ink); }

@@ -20,12 +20,12 @@ export function PostprocessSourceCard({title,status,statusLabel,availability,chi
 }
 export interface PostprocessSourceInformationProps{
  result:TrajectoryResult|null;currentIndex:number;metadata?:PostprocessMetadata;sourceDifferences?:PostprocessNumericBookProps['sourceDifferences'];
- fileDocument?:PostprocessScientificFileDocument|null;onFileJob?(id:string):void;
+ fileDocument?:PostprocessScientificFileDocument|null;onFileJob?(id:string):void;pendingFileJobId?:string;
  busy?:boolean;onExtract?():void;onPrepareInput?():void;
 }
 /** One complete information/details/actions surface for every analysis source. */
 export function PostprocessSourceInformation(p:PostprocessSourceInformationProps){
- return <>{p.fileDocument?<PostprocessFileInformation document={p.fileDocument} mode="summary" onJob={p.onFileJob}/>:<><PostprocessBasicInfo result={p.result} currentIndex={p.currentIndex} metadata={p.metadata}/>{p.result?.scientific&&<PostprocessScientificStatus data={p.result.scientific} currentIndex={p.currentIndex}/>}</>}
+ return <>{p.fileDocument?<PostprocessFileInformation document={p.fileDocument} mode="summary" onJob={p.onFileJob} pendingJobId={p.pendingFileJobId}/>:<><PostprocessBasicInfo result={p.result} currentIndex={p.currentIndex} metadata={p.metadata}/>{p.result?.scientific&&<PostprocessScientificStatus data={p.result.scientific} currentIndex={p.currentIndex}/>}</>}
   {p.sourceDifferences?.map(difference=><PostprocessSourceFeedback key={`${difference.label}:${difference.message}`} label={difference.label} message={difference.message}/>)}
   <section className="postprocess-next" aria-label="后续操作"><h3>后续操作</h3><button type="button" disabled={!p.result||p.busy||!p.onExtract} onClick={p.onExtract}>提取当前结构为新模型</button><button type="button" disabled={!p.result||p.busy||!p.onPrepareInput} onClick={p.onPrepareInput}>准备后续输入</button></section>
  </>;

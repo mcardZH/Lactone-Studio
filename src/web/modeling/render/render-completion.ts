@@ -49,6 +49,40 @@ export interface ViewportRenderCompletion {
 }
 export type ViewportRenderObserver = (event: ViewportRenderCompletion) => void;
 
+type RenderContext = WebGLRenderingContext | WebGL2RenderingContext;
+
+/** The element shown on screen can own only a bitmap presentation context. */
+export function observeRendererContext(getContext: () => RenderContext | null | undefined, onLost: () => void) {
+  const lossEvents = ['webglcontextlost', 'contextlost'];
+  let target: EventTarget | undefined;
+  let lost = false;
+  const markLost = () => {
+    if (lost) return;
+    lost = true;
+    onLost();
+  };
+  const handleLoss = (event: Event) => {
+    event.preventDefault();
+    markLost();
+  };
+  const bind = (next: EventTarget | undefined) => {
+    if (target === next) return;
+    for (const event of lossEvents) target?.removeEventListener?.(event, handleLoss);
+    target = next;
+    for (const event of lossEvents) target?.addEventListener?.(event, handleLoss);
+  };
+  return {
+    available() {
+      if (lost) return false;
+      const gl = getContext();
+      bind(gl?.canvas);
+      if (gl === null || gl?.isContextLost?.()) markLost();
+      return !lost;
+    },
+    dispose() { bind(undefined); },
+  };
+}
+
 export function createRenderCompletionObserver(getCanvas: () => HTMLCanvasElement | null | undefined, realm: Pick<Window, 'setTimeout' | 'clearTimeout' | 'performance'>,
   getActualContext?: () => WebGLRenderingContext | WebGL2RenderingContext | null | undefined) {
   type Result = Pick<ViewportRenderCompletion, 'status' | 'method' | 'reason'>;
@@ -97,7 +131,7 @@ export function createRenderCompletionObserver(getCanvas: () => HTMLCanvasElemen
         // owns only a bitmaprenderer context. Observe the renderer's public GL
         // context; never interpret the bitmap canvas as the rendering context.
         gl = getActualContext?.() ?? null;
-        if (!gl) {
+        if (!getActualContext) {
           const canvas = getCanvas();
           gl = canvas?.getContext('webgl2') as WebGL2RenderingContext | null
             ?? canvas?.getContext('webgl') as WebGLRenderingContext | null
@@ -110,7 +144,7 @@ export function createRenderCompletionObserver(getCanvas: () => HTMLCanvasElemen
           // WebGL1 fallback is intentionally synchronous and only occurs when
           // the caller explicitly enables observation. Its cost is measurable.
           gl.finish();
-          ready(gl.isContextLost?.() ? { status: 'unavailable', method: 'webgl-finish', reason: 'WebGL context lost' }
+          ready(gl.isContextLost?.() || getActualContext && getActualContext() !== gl ? { status: 'unavailable', method: 'webgl-finish', reason: 'WebGL context lost or replaced' }
             : { status: 'completed', method: 'webgl-finish' });
           return;
         }
@@ -123,9 +157,12 @@ export function createRenderCompletionObserver(getCanvas: () => HTMLCanvasElemen
         }, publish, poll() {
           try {
             if (submissionFailed) return { status: 'unavailable', method: 'webgl2-fence', reason: String(submissionError) };
-            if (webgl2.isContextLost?.()) return { status: 'unavailable', method: 'webgl2-fence', reason: 'WebGL context lost' };
+            if (webgl2.isContextLost?.() || getActualContext && getActualContext() !== webgl2) {
+              return { status: 'unavailable', method: 'webgl2-fence', reason: 'WebGL context lost or replaced' };
+            }
             const result = webgl2.clientWaitSync(sync, 0, 0);
             if (result === webgl2.ALREADY_SIGNALED || result === webgl2.CONDITION_SATISFIED) {
+              if (webgl2.isContextLost?.()) return { status: 'unavailable', method: 'webgl2-fence', reason: 'WebGL context lost' };
               return { status: 'completed', method: 'webgl2-fence' };
             } else if (result === webgl2.WAIT_FAILED || now() - base.submittedAt > 2000) {
               return { status: 'unavailable', method: 'webgl2-fence', reason: result === webgl2.WAIT_FAILED ? 'GPU fence wait failed' : 'GPU completion observation timed out' };

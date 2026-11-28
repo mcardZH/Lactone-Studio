@@ -12,7 +12,7 @@ import { packSurfaceSlabs } from './packed-surface-slabs';
 type ScalarGrid = Pick<SurfaceScalarField, 'grid' | 'values'> & Partial<Pick<SurfaceScalarField, 'validDomain'>>;
 export type MeshPreparation = { pose: RigidTransform; factor: number; isovalue: number } & (
   { kind: 'amplitude'; shape: ScalarGrid; phase?: 'positive' | 'negative' | 'both' }
-  | { kind: 'surface'; shape: SurfaceScalarField; mapping: SurfaceScalarField | null; inside: 'above' | 'below'; restricted: boolean; sameGrid: boolean; positions: boolean });
+  | { kind: 'surface'; shape: SurfaceScalarField; mapping: SurfaceScalarField | null; inside: 'above' | 'below'; restricted: boolean; sameGrid: boolean; positions: boolean; keepUnmappedShape?:boolean });
 
 export type PreparedDisplayMesh = { sign: number; geometry: MeshGeometryChunk; samples?: number[]; sourcePositions?: Vector3[] }[];
 
@@ -28,17 +28,17 @@ function validCell(field: SurfaceScalarField, cell: Vector3) {
 }
 
 function surfaceSampling(request:Extract<MeshPreparation,{kind:'surface'}>) {
-  const { mapping, restricted, sameGrid } = request;
+  const { mapping, restricted, sameGrid,keepUnmappedShape } = request;
   const sampler = mapping ? createSurfaceFieldSampler(mapping) : undefined;
   const sample = sampler ? (position: Vector3, cell: Vector3) => {
     const value = sampler(position, sameGrid ? cell : undefined);
-    if(value===null&&!restricted)throw new Error('表面着色采样或插值邻点超出有效域，不能将域外填充值当作物理值。');
+    if(value===null&&!restricted&&!keepUnmappedShape)throw new Error('表面着色采样或插值邻点超出有效域，不能将域外填充值当作物理值。');
     return value;
   } : undefined;
   const admission=restricted?{
     cell:(cell:Vector3)=>validCell(request.shape,cell)&&(!mapping||!sameGrid||validCell(mapping,cell)),
     invalidSample:'skip-cell' as const,
-  }:undefined;
+  }:keepUnmappedShape?{invalidSample:'keep-shape' as const}:undefined;
   return {sample,admission};
 }
 

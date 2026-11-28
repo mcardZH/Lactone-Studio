@@ -38,9 +38,8 @@ function createWindowClosePolicy({ windows, readDocuments, hasOwnedDocuments, is
   const otherAccessible = id => [...windows.entries()].filter(([other, window]) => other !== id && workingView(window));
   const ownedDocuments = ids => ids.flatMap(id => readDocuments(id).filter(row => row.isOwner));
   const exitWorkspaceIdentity = () => JSON.stringify([...windows.keys()].filter(owner=>alive(windows.get(owner))&&hasOwnedDocuments(owner)).map(owner=>[owner,ownedDocuments([owner]).map(row=>[row.documentId,row.snapshot?.documentEpoch,row.snapshot?.publicationSerial,row.snapshot?.document?.revision,row.snapshot?.metadata?.sourceEpoch])]));
-  const protectedDocuments = (ids, exitingApp) => {
+  const protectedDocuments = ids => {
     const rows = ownedDocuments(ids), dirty = dirtyDocuments(rows);
-    if (!exitingApp) return dirty;
     for (const row of rows) if (['starting', 'running', 'pausing', 'paused', 'stopping'].includes(row.snapshot?.runtime?.phase)) {
       const prior = dirty.find(value => value.documentId === row.documentId && value.documentEpoch === row.snapshot.documentEpoch);
       if (prior) prior.running = true;
@@ -49,15 +48,19 @@ function createWindowClosePolicy({ windows, readDocuments, hasOwnedDocuments, is
     return dirty;
   };
   const report = (window, error) => { if (alive(window)) { try { reportError(window, error); } catch { /* A diagnostic dialog cannot turn a cancelled close into a quit. */ } } };
-  function prepare(owner) {
+  function prepare(owner, scope) {
     const window = windows.get(owner); assert(alive(window), 'Workspace owner is unavailable for close preparation');
     if(isRetainedOwner(owner))window.show?.();
     const requestId = randomUUID();
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { pendingPreparations.delete(requestId); const error = new Error('关闭准备未完成；可取消退出或通过原生窗口强制退出本实例。'); error.closeReason = 'preparation-timeout'; reject(error); }, preparationTimeoutMs);
+      const timer = setTimeout(() => {
+        pendingPreparations.delete(requestId);
+        const error = new Error(scope === 'window' ? '当前工作窗未确认关闭，请重试。' : '关闭准备未完成；可取消退出或通过原生窗口强制退出本实例。');
+        error.closeReason = 'preparation-timeout'; reject(error);
+      }, preparationTimeoutMs);
       pendingPreparations.set(requestId, { owner, resolve, reject, timer });
       phase('preparation-requested', { owner, requestId });
-      try { window.webContents.send(PREPARATION_CHANNEL, { requestId }); }
+      try { window.webContents.send(PREPARATION_CHANNEL, { requestId, scope }); }
       catch (error) { clearTimeout(timer); pendingPreparations.delete(requestId); reject(error); }
     });
   }
@@ -72,23 +75,32 @@ function createWindowClosePolicy({ windows, readDocuments, hasOwnedDocuments, is
     phase('preparation-' + response.status, { owner, requestId: response.requestId, error: response.error });
     if (response.status === 'waiting') { clearTimeout(pending.timer); pending.timer = null; return { accepted: true }; }
     clearTimeout(pending.timer); pendingPreparations.delete(response.requestId);
-    if (response.status === 'ready') pending.resolve({ projectHandled: response.projectHandled === true });
-    else pending.reject(new Error(response.status === 'cancelled' ? '窗口取消了关闭。' : response.error || '关闭准备失败；未退出。'));
+    if (response.status === 'cancelled') pending.resolve({ cancelled: true });
+    else if (response.status === 'ready') pending.resolve({ projectHandled: response.projectHandled === true });
+    else pending.reject(new Error(response.error || '关闭准备失败；未退出。'));
     return { accepted: true };
   }
   async function close(window, forceQuit = false) {
     const id = window.webContents.id;
     if (!alive(window) || stopped()) return;
-    if (failedRenderers.has(id)) { await requestEmergencyExit(window, failedRenderers.get(id)); return; }
     const others = otherAccessible(id);
+    if (failedRenderers.has(id)) {
+      if(forceQuit||others.length===0)await requestEmergencyExit(window, failedRenderers.get(id));
+      else report(window, new Error('当前工作窗无响应，关闭已暂停。'));
+      return;
+    }
     // Retain a canonical owner only when an open shared view still uses it.
     const shared = others.some(([other]) => readDocuments(other).some(row => Number(row.ownerWindowId) === id && !row.isOwner));
     if (!forceQuit && shared && hasOwnedDocuments(id)) { retainOwner(window); return; }
     let exitingApp = forceQuit || others.length === 0;
     let owners = exitingApp ? [...windows.keys()].filter(owner => alive(windows.get(owner)) && hasOwnedDocuments(owner)) : hasOwnedDocuments(id) ? [id] : [];
     const projectHandledOwners = new Set();
-    const prepareOwners = ids => Promise.all(ids.map(async owner => { const response = await prepare(owner); if (response.projectHandled) projectHandledOwners.add(owner); }));
-    await prepareOwners(owners);
+    const prepareOwners = async ids => {
+      const responses = await Promise.all(ids.map(owner => prepare(owner, exitingApp ? 'application' : 'window')));
+      responses.forEach((response, index) => { if (response.projectHandled) projectHandledOwners.add(ids[index]); });
+      return !responses.some(response => response.cancelled);
+    };
+    if (!await prepareOwners(owners)) return;
     if (emergencyPending) await emergencyPending;
     if (!alive(window) || stopped()) return;
     // An unrelated window can disappear during preparation. Then this close
@@ -96,10 +108,12 @@ function createWindowClosePolicy({ windows, readDocuments, hasOwnedDocuments, is
     if (!exitingApp && otherAccessible(id).length === 0) {
       exitingApp = true;
       const allOwners = [...windows.keys()].filter(owner => alive(windows.get(owner)) && hasOwnedDocuments(owner));
-      await prepareOwners(allOwners.filter(owner => !owners.includes(owner))); owners = allOwners;
+      if (!await prepareOwners(allOwners.filter(owner => !owners.includes(owner)))) return;
+      owners = allOwners;
     }
-    const dirty = protectedDocuments(owners, exitingApp), runningTasks = exitingApp && (hasRunningTasks() || dirty.some(row => row.running));
+    const dirty = protectedDocuments(owners), runningTasks = dirty.some(row => row.running) || exitingApp && hasRunningTasks();
     const projectHandled = owners.length > 0 && owners.every(owner => projectHandledOwners.has(owner));
+    if (!exitingApp && runningTasks && projectHandled) throw new Error('本工作窗任务的停止尚未确认，已保留窗口。');
     if ((dirty.length || runningTasks) && !projectHandled && !await confirmDiscard(window, dirty, exitingApp, { runningTasks })) return;
     if (emergencyPending) await emergencyPending;
     if (!alive(window) || stopped()) return;
@@ -112,7 +126,7 @@ function createWindowClosePolicy({ windows, readDocuments, hasOwnedDocuments, is
     }
     // New dirty documents created in another window while the dialog is open
     // need their own confirmation. Never discard unseen documents.
-    const currentDirty = protectedDocuments(owners, exitingApp);
+    const currentDirty = protectedDocuments(owners);
     assert(currentDirty.every(row => dirty.some(prior => prior.documentId === row.documentId && prior.documentEpoch === row.documentEpoch)), '确认期间出现新的未保存文档；关闭已取消。');
     assert(!exitingApp || !hasRunningTasks() || runningTasks, '确认期间启动了新的运行任务；退出已取消，请重新确认。');
     if (exitingApp) {
@@ -126,9 +140,9 @@ function createWindowClosePolicy({ windows, readDocuments, hasOwnedDocuments, is
       }catch(error){if(!stopped())await cancelApplicationExit();throw error;}
     }
     else {
-      const timer = setTimeout(() => { void requestEmergencyExit(window, 'window-storage-timeout'); }, shutdownWarningMs);
-      try { await settleWindowWrites(id); } finally { clearTimeout(timer); }
+      await settleWindowWrites(id);
       if (!alive(window) || stopped()) return;
+      assert(!protectedDocuments(owners).some(row => row.running), '本工作窗仍有运行任务，已保留窗口。');
       const sharedNow = otherAccessible(id).some(([other]) => readDocuments(other).some(row => Number(row.ownerWindowId) === id && !row.isOwner));
       if (sharedNow && hasOwnedDocuments(id)) { retainOwner(window); return; }
       approvedCloses.add(id); window.close();
@@ -139,9 +153,25 @@ function createWindowClosePolicy({ windows, readDocuments, hasOwnedDocuments, is
     if (isQuitting()) { if (!canDestroyWindows()) { event.preventDefault(); void requestEmergencyExit(window, 'cleanup-waiting'); } return; }
     if (approvedCloses.has(id)) return;
     event.preventDefault();
-    if (pendingCloses.size || quitPending || failedRenderers.has(id)) { void requestEmergencyExit(window, failedRenderers.get(id) || 'close-waiting'); return; }
-    const operation = queue.then(() => close(window, isApplicationWindow(id))).catch(async error => { if (forceApproved) return; if (error.closeReason || failedRenderers.has(id)) await requestEmergencyExit(window, error.closeReason || failedRenderers.get(id)); else report(window, error); });
-    pendingCloses.set(id, operation); queue = operation;
+    const application = isApplicationWindow(id) || otherAccessible(id).length === 0;
+    if (pendingCloses.has(id) || quitPending || failedRenderers.has(id)) {
+      if (application || quitPending) void requestEmergencyExit(window, failedRenderers.get(id) || 'close-waiting');
+      else if (failedRenderers.has(id)) report(window, new Error('当前工作窗无响应，关闭已暂停。'));
+      return;
+    }
+    // Separate local closes share the preparation queue. A pending application
+    // exit still uses the explicit emergency route.
+    if ([...pendingCloses.values()].some(close => close.application)) {
+      void requestEmergencyExit(window, 'close-waiting'); return;
+    }
+    const forceQuit = isApplicationWindow(id);
+    const operation = queue.then(() => close(window, forceQuit)).catch(async error => {
+      if (forceApproved) return;
+      if ((forceQuit || otherAccessible(id).length === 0) && (error.closeReason || failedRenderers.has(id)))
+        await requestEmergencyExit(window, error.closeReason || failedRenderers.get(id));
+      else report(window, error);
+    });
+    pendingCloses.set(id, { application }); queue = operation;
     void operation.finally(() => pendingCloses.delete(id));
   }
   function disposeWindow(owner) {
@@ -164,7 +194,12 @@ function createWindowClosePolicy({ windows, readDocuments, hasOwnedDocuments, is
   }
   function rendererUnavailable(owner, reason = 'renderer-unavailable') {
     failedRenderers.set(owner, reason); phase(reason, { owner });
-    if (pendingCloses.has(owner) || quitPending) void requestEmergencyExit(windows.get(owner), reason);
+    if (pendingCloses.get(owner)?.application || quitPending) void requestEmergencyExit(windows.get(owner), reason);
+    else if(pendingCloses.has(owner))for(const [requestId,pending] of pendingPreparations){
+      if(pending.owner!==owner)continue;
+      clearTimeout(pending.timer);pendingPreparations.delete(requestId);
+      pending.reject(new Error('当前工作窗无响应，关闭已暂停。'));
+    }
   }
   return { onClose, completePreparation, disposeWindow, requestQuit, requestEmergencyExit, rendererUnavailable,
     rendererResponsive(owner) { failedRenderers.delete(owner); phase('renderer-responsive', { owner }); },

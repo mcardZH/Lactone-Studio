@@ -33,7 +33,8 @@ def activate():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] != ["--pes-worker"]:
+    entries = {"--pes-worker": "pes_worker.py", "--pes-path-lane": "pes_path_pool.py"}
+    if len(sys.argv) != 2 or sys.argv[1] not in entries:
         raise SystemExit("Expected the PES worker entrypoint")
     runtime = activate()
-    runpy.run_path(str(runtime / "chemistry" / "pes_worker.py"), run_name="__main__")
+    runpy.run_path(str(runtime / "chemistry" / entries[sys.argv[1]]), run_name="__main__")

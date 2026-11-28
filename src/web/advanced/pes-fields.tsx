@@ -59,9 +59,9 @@ export function PesSelectionField({scope,rowId,label,kind='atoms',ids,images,aut
     }:undefined}/>;
 }
 
-export function PesSelect({ label, value, options, onChange }: { label: string; value: string; options: Readonly<Record<string, string>>; onChange(value: string): void }) {
+export function PesSelect({ label, value, options, onChange, disabledOption }: { label: string; value: string; options: Readonly<Record<string, string>>; onChange(value: string): void; disabledOption?:string }) {
   return <InputSettingsField label={label} controlWidth="select"><select aria-label={label} title={options[value]} value={value} onChange={event => onChange(event.target.value)}>
-    {Object.entries(options).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+    {Object.entries(options).map(([key, name]) => <option key={key} value={key} disabled={key===disabledOption}>{name}</option>)}
   </select></InputSettingsField>;
 }
 
@@ -74,18 +74,20 @@ export function PesText({ label, value, unit, invalid, placeholder, onChange, on
 export const isPesNetMethod = isNetMethod;
 export const pesMethodHasScc = (method: string) => method === 'gfn1' || method === 'gfn2';
 
-export function PesMethodFields({ value, onChange, periodic=false }: { value: PesMethodDraft; onChange(value: PesMethodDraft): void; periodic?:boolean }) {
+export function PesMethodFields({ value, onChange, periodic=false }: { value: PesMethodDraft; onChange(value: Partial<PesMethodDraft>): void; periodic?:boolean }) {
   const xtb=Object.fromEntries((['gfn0', 'gfn1', 'gfn2', 'gfnff'] as const).map(method => [method, XTB_METHOD_LABELS[method]]));
   const available=periodic?Object.fromEntries(periodicPesMethods().filter(method=>Object.hasOwn(xtb,method)).map(method=>[method,xtb[method]])):xtb;
   const method = value.method, net = isPesNetMethod(method);
   const selected=Object.hasOwn(available,method);
-  const options=selected?available:{'':'请选择可用计算级别',...available};
+  const options=selected?available:{[method]:method==='gxtb'?'g-xTB · 当前入口不可用':method+' · 当前入口不可用',...available};
+  const gasOnly=periodic||method==='gfn0'||method==='gxtb';
   return <InputSettingsRow>
-    <PesSelect label="计算级别" value={selected?method:''} options={options} onChange={method => {if(method)onChange({ ...value, method: method as PesMethod, device:undefined });}}/>
+    <PesSelect label="计算级别" value={method} options={options} disabledOption={selected?undefined:method} onChange={method => {
+      if(Object.hasOwn(available,method))onChange({ method: method as PesMethod, device:undefined });
+    }}/>
     {periodic&&<span className="pes-method-fact">晶胞 固定</span>}
-    {!periodic&&selected&&!net&&<ConformerSolventField ariaLabel="溶剂" method={value.method} value={value} onChange={solvation => onChange({ ...value, ...solvation })}/>}
-    {!selected&&net&&<small className="pes-method-fact">此版本提供 xTB 计算，请选择本次计算级别。</small>}
-    {periodic&&!selected&&<small className="pes-method-fact">当前计算级别暂不可用于固定晶胞势能面计算。</small>}
+    {selected&&(gasOnly?<span className="pes-method-fact">气相</span>:<ConformerSolventField ariaLabel="溶剂" method={method} value={value} onChange={onChange}/>)}
+    {!selected&&<small className="pes-method-fact">{net?'此版本提供 xTB 计算，请选择本次计算级别。':'本工程计算级别暂不可用于当前势能面入口。'}</small>}
   </InputSettingsRow>;
 }
 
@@ -94,7 +96,7 @@ export function PesDetails({ title, children, level = 'subcard',actions,defaultO
     sectionKey={sectionKey} defaultOpen={defaultOpen} level={level} collapsible stack>{children}</InputSettingsSection>;
 }
 
-export function PesParameterSections({ sections, values, onChange, method }: { sections: readonly PesParameterSection[]; values: PesParameters; method?: PesMethod;
+export function PesParameterSections({ sections, values, onChange, method }: { sections: readonly PesParameterSection[]; values: PesParameters; method?: PesMethodDraft['method'];
   onChange(key: string, value: string | boolean): void }) {
   return <>{sections.map(({ title, fields }, index) => {
     const visibleFields = fields.filter(field => parameterVisible(field.key, values) &&
@@ -194,6 +196,7 @@ const scientificStatus: Record<string, string> = { partial: '部分结果', unco
 const stageNames: Record<string, string> = { scan: '扫描点优化', 's-idpp': 'S-IDPP初始路径', ts: '过渡态优化', hessian: '数值 Hessian',
   'initial-hessian': '初始 Hessian', 'recalculate-hessian': '重新计算 Hessian', 'final-hessian': '最终频率分析', 'final-frequency': '最终频率分析',
   neb: '路径优化', 'climbing-neb': '爬坡路径优化', 'ci-neb-ordinary': 'NEB路径优化', 'ci-neb-climb': 'CI-NEB爬坡',
+  'ci-fsm-initialization': 'FSM 初始路径',
   'de-gsm': '整弦优化', 'de-gsm-growth': '双端弦生长', 'de-gsm-optimization': '整弦优化', 'de-gsm-optimize': '整弦优化', 'de-gsm-climb': '双端弦攀爬',
   fsm: '冻结弦生长', 'fsm-growth': '冻结弦生长', 'fsm-growth-interrupted': '冻结弦生长中断', 'se-gsm': '单端弦生长', afir: '人工力路径' };
 export const isPesRunLive = (run?: PesRun): boolean => !!run && ['starting', 'running', 'stopping'].includes(run.status);
@@ -213,6 +216,7 @@ export function PesRunControls({ run, stop }: { run: PesRun; stop(): void }) {
   }
   if (stage === 'ts' && completed !== undefined) stageLabel += ` · 已接受 ${completed} 步`;
   if (stage === 'scan' && determined) stageLabel += ` · ${completed}/${total} 点`;
+  if ((stage === 'ci-neb-ordinary' || stage === 'ci-neb-climb') && completed !== undefined) stageLabel += ` · 已完成 ${completed} 轮`;
   return <InputSettingsStack className="pes-run">
     {live && <><InputSettingsRow><span role="status">{status}{stageLabel ? ` · ${stageLabel}` : ''}</span>
       <button type="button" className="button" disabled={run.status === 'stopping'} onClick={stop}>停止</button></InputSettingsRow>

@@ -6,13 +6,15 @@ import type { OrcaHessianPathEvidence } from '../../core/orca/types';
 import type { ExternalInputDraft } from '../../task-system/integration/input-draft';
 import type { FileSettings, GaussianSettings, TaskId } from '../../core/types';
 import type { WorkspaceRegistry } from '../../modeling/workspace-registry';
+import type { SolventSelection } from '../../core/solvents';
 
 export type InputEngine = 'gaussian' | 'orca';
+export type InputSettingsPatch<T> = Omit<Partial<T>, 'solvation'> & { solvation?: SolventSelection | null };
 
 export interface InputDraftConfiguration {
   engine: InputEngine;
   task?: TaskId | OrcaTask;
-  settings?: Partial<GaussianSettings> | Partial<OrcaSettings>;
+  settings?: InputSettingsPatch<GaussianSettings> | InputSettingsPatch<OrcaSettings>;
   files?: Partial<FileSettings>;
   name?: string;
   cores?: number;

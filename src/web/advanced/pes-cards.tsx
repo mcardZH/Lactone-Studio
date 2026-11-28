@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { PES_EXECUTION_PROFILE, type PesCard, type PesGeometry, type PesMethod, type PesParameter, type PesRun, type PesConvergencePreset } from '../../modeling/pes/contracts';
+import { isPesNetMethod, PES_EXECUTION_PROFILE, type PesCard, type PesGeometry, type PesMethodDraft, type PesParameter, type PesRun, type PesConvergencePreset } from '../../modeling/pes/contracts';
+import {validXtbResourceOverride} from '../../modeling/resource-preferences';
+import {XtbResourceOverrideField} from '../TaskResourceFields';
 import { PES_ALGORITHMS, PES_CARD_LABELS, PES_CONVERGENCE_OPTIONS, GSM_CONVERGENCE_PRESETS, defaultParameters, effectivePesPathParameters, nebPresetParameters, pesParameterSections, usesPesExecutionProfile, pesId } from '../../modeling/pes/defaults';
 import { pesStructureCompatibilityIssues } from '../../modeling/pes/request';
 import {periodicPesOperationAvailable} from '../../modeling/pes/periodic-capabilities';
@@ -18,31 +20,33 @@ function sourceKey(source: PesGeometry): string {
 
 interface SourceRowProps {
   label: string; fieldLabel?: string; value?: PesGeometry; fallback?: string; sources: readonly PesTabSnapshotSource[];
-  tabSources: readonly PesTabSnapshotSource[]; loading?: boolean; canCapture: boolean;
+  tabSources: readonly PesTabSnapshotSource[]; loading?: boolean; canCapture: boolean; outsideGroup?:boolean;
   onSelect(value?: PesGeometry): void; onSelectTab(key: string): void; onCapture(): void; issues: string[];
 }
-function SourceRow({ label, fieldLabel = label, value, fallback = '选择结构', sources, tabSources, loading, canCapture, onSelect, onSelectTab, onCapture, issues }: SourceRowProps) {
+function SourceRow({ label, fieldLabel = label, value, fallback = '选择结构', sources, tabSources, loading, canCapture, outsideGroup, onSelect, onSelectTab, onCapture, issues }: SourceRowProps) {
+  const selectedLabel=value?`${value.label??value.structure.name??'已选结构'}${value.source?.frameId?' · 所选帧':''}${outsideGroup?' · 组外已引用':''}`:fallback;
   return <InputSettingsRow className="pes-source-row">
-    <InputSettingsField label={fieldLabel} controlWidth="select"><select aria-label={label} title={value?.label ?? value?.structure.name ?? fallback} value={value ? sourceKey(value) : ''} disabled={loading}
+    <InputSettingsField label={fieldLabel} controlWidth="select"><select aria-label={label} title={selectedLabel} value={value ? sourceKey(value) : ''} disabled={loading}
       onChange={event => {
         const key = event.target.value;
         if (key) onSelectTab(key);
         else onSelect();
       }}>
       <option value="">{fallback}</option>
-      {value && <option value={sourceKey(value)}>{value.label ?? value.structure.name}{value.source?.frameId ? ' · 所选帧' : ''}</option>}
+      {value && <option value={sourceKey(value)}>{selectedLabel}</option>}
       {sources.map(source => <option key={source.key} value={source.key}>{source.label}</option>)}
       {!!tabSources.length && <optgroup label="ES 标签">{tabSources.map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}</optgroup>}
     </select></InputSettingsField>
-    <span className="pes-source-actions"><button type="button" className="button button-primary" disabled={!canCapture || loading} aria-label={`${label}记录快照`} onClick={onCapture}>记录快照</button>
+    <span className="pes-source-actions"><button type="button" className="button pes-button-tonal" disabled={!canCapture || loading} aria-label={`${label}记录快照`} onClick={onCapture}>记录快照</button>
       <PesSnapshotWarning label={`查看${label}结构问题`} issues={issues}/>
     </span>
   </InputSettingsRow>;
 }
 
-export function PesCalculationCard({ card, method = card.method.method, source, sources, tabSources = [], scope, update, setSlot, selectTab, capture, run, start, stop, move, remove, available, unavailableReason, canCapture, constraintIssue,sourceIssue,sourceLoading,selectAlgorithm }: {
-  card: PesCard; method?: PesMethod; source: PesGeometry; sources: readonly PesTabSnapshotSource[]; scope:PesSelectionScope; update(edit: (card: PesCard) => PesCard): void;
+export function PesCalculationCard({ card, method = card.method.method, source, sources, tabSources = [], scope, update, setSlot, selectTab, capture, run, start, stop, move, remove, available, unavailableReason, canCapture, constraintIssue,sourceIssue,sourceLoading,selectAlgorithm,outsideGroup }: {
+  card: PesCard; method?: PesMethodDraft['method']; source: PesGeometry; sources: readonly PesTabSnapshotSource[]; scope:PesSelectionScope; update(edit: (card: PesCard) => PesCard): void;
   tabSources?: readonly PesTabSnapshotSource[];
+  outsideGroup?(geometry:PesGeometry):boolean;
   setSlot(slot: string, geometry?: PesGeometry): void; selectTab?(slot:string,key:string):void; capture(slot: string): void; run?: PesRun; start(): void; stop(): void;
   move(direction: -1 | 1): void; remove(): void; available: boolean; unavailableReason?:string; canCapture: boolean;
   constraintIssue?: string;sourceIssue?:string;sourceLoading?:boolean;
@@ -69,6 +73,9 @@ export function PesCalculationCard({ card, method = card.method.method, source, 
     {run && <PesRunControls run={run} stop={stop}/>}
   </InputSettingsCard>;
   const algorithm = card.algorithm;
+  const net=isPesNetMethod(method),pathBatch=algorithm==='ci-neb'||algorithm==='fsm';
+  const overrideKey=pathBatch?'xtbBatchParallelism':'xtbSingleTaskThreads';
+  const resourceOverride=card.resourceOverrides?.[overrideKey];
   const values = effectivePesPathParameters(algorithm, card.parametersByAlgorithm[algorithm] ?? {});
   const periodic=!sourceIssue&&Boolean(structure.cell?.pbc.some(Boolean));
   const parameter = (key: string, value: PesParameter) => update(current => ({ ...current,
@@ -79,6 +86,7 @@ export function PesCalculationCard({ card, method = card.method.method, source, 
     const selected=card.slots[key];
     return <SourceRow label={label} fieldLabel={fieldLabel} fallback={card.requiredSlots?.includes(key)&&!selected?'请重新记录或选择结构':fallback}
       value={selected} sources={sources} tabSources={tabSources} loading={sourceLoading} canCapture={canCapture}
+      outsideGroup={selected&&outsideGroup?.(selected)}
       issues={issues[key] ?? []}
       onSelect={geometry => setSlot(key, geometry)} onSelectTab={tabKey => selectTab?.(key,tabKey)} onCapture={() => capture(key)}/>;
   };
@@ -128,8 +136,8 @@ export function PesCalculationCard({ card, method = card.method.method, source, 
           {sourceLoading && <output>正在读取所选来源…</output>}
         </InputSettingsCard>
       </>}
-      {algorithm==='ci-neb'&&<PesSelect label="路径优化器" value={String(values.nebOptimizer??(usesPesExecutionProfile(values)?'fire2':'fire'))}
-        options={{fire2:'FIRE2',lbfgs:'L-BFGS',...(!usesPesExecutionProfile(values)||values.nebOptimizer==='fire'?{fire:'FIRE（已有设置）'}:{})}}
+      {algorithm==='ci-neb'&&<PesSelect label="路径优化器" value={String(values.nebOptimizer)}
+        options={{lbfgs:'L-BFGS',fire2:'FIRE2',...(!usesPesExecutionProfile(values)||values.nebOptimizer==='fire'?{fire:'FIRE（已有设置）'}:{})}}
         onChange={value=>update(current=>{
           const previous=current.parametersByAlgorithm[algorithm]??{};
           const preset=String(previous.nebConvergencePreset??(usesPesExecutionProfile(previous)?'loose':'custom')) as PesConvergencePreset;
@@ -147,7 +155,11 @@ export function PesCalculationCard({ card, method = card.method.method, source, 
         })}/>}
       {card.kind==='scan'?<PesScanOptimization card={card} update={update} periodic={periodic}/>:<PesParameterSections sections={pesParameterSections(algorithm,values).map(section=>({...section,fields:section.fields.filter(field=>
         !['gsmMaxGradient','gsmRmsGradient'].includes(field.key)||values.gsmConvergencePreset==='custom')}))} values={values} method={method} onChange={parameter}/>}
-      {!live && <InputSettingsRow variant="actions"><button type="button" className="button button-primary" disabled={!available || sourceLoading} title={unavailableReason} onClick={start}>{card.kind === 'scan' ? '开始扫描' : '开始计算'}</button></InputSettingsRow>}
+      {!net&&<details className="xtb-constraint-results"><summary>任务资源</summary><InputSettingsRow>
+        <XtbResourceOverrideField label={pathBatch?'本任务 xTB 并行珠数':'本任务 xTB 线程'} value={resourceOverride} disabled={live}
+          onChange={value=>update(current=>({...current,resourceOverrides:{...current.resourceOverrides,[overrideKey]:value}}))}/>
+      </InputSettingsRow></details>}
+      {!live && <InputSettingsRow variant="actions"><button type="button" className="button button-primary" disabled={!available || sourceLoading||!net&&!validXtbResourceOverride(resourceOverride)} title={unavailableReason} onClick={start}>{card.kind === 'scan' ? '开始扫描' : '开始计算'}</button></InputSettingsRow>}
     </>}
     {run && <PesRunControls run={run} stop={stop}/>}
   </InputSettingsCard>;

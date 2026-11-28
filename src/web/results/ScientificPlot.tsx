@@ -71,6 +71,7 @@ const DataSpaceLine = memo(function DataSpaceLine({ line, color, xmin, xmax, ymi
 });
 export interface ScientificPlotProps {
   mcpConfiguration?:NativeMcpSettings;
+  mcpConfigurations?:Record<string,NativeMcpSettings>;
   title: string; xLabel: string; yLabel: string; series: readonly ScientificPlotSeries[];
   selectedIndex?: number; onSelectIndex?(index: number): void;
   /** Energy/trajectory picks seek by X; discrete levels select only their own series. */
@@ -78,6 +79,7 @@ export interface ScientificPlotProps {
   reverseX?: boolean; reverseY?: boolean;
   viewport?: ScientificPlotViewport | null; onViewportChange?(value: ScientificPlotViewport | null): void;
   resetKey?: string | number; exportFileName?: string; exportText?: { fileName: string; text: string | (()=>string) };
+  exportRawText?: { fileName:string; text:string|(()=>string) };
   ariaLabel?: string; testId?: string; metadata?: unknown; height?: number; responsive?: boolean; children?: ReactNode;
   exportLabel?: string; subtitle?: string;
   /** Controls of this figure, composed into its owning toolbar. */

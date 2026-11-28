@@ -1,15 +1,10 @@
-import type { PesNetMethod } from '../../modeling/pes/contracts';
 import { isPesNetMethod, isPesTrainedStateNetMethod } from '../../modeling/pes/contracts';
 import { InputSettingsField } from '../InputSettingsFields';
 import { netMethods } from '../modeling/tool-session';
 
-export function conformerNetMethods(_periodic: boolean): PesNetMethod[] {
-  return [];
-}
-
 export function ConformerMethodField({ method, onChange, ariaLabel, xtb, disabled, retainedLabel }: {
   method: string; onChange(method: string): void; ariaLabel: string;
-  xtb: readonly (readonly [string, string])[]; net?: readonly PesNetMethod[];
+  xtb: readonly (readonly [string, string])[];
   disabled?: boolean; retainedLabel?: string;
 }) {
   const selected = xtb.find(([id]) => id === method)?.[1] ?? (isPesNetMethod(method) ? netMethods[method] : method);

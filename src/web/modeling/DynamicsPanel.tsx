@@ -81,7 +81,7 @@ export default function DynamicsPanel({controller,disabled=false,compact=true,be
         <label className="xtb-optimization-method"><span>方法</span>
           <select aria-label="MD计算级别" title={methods.find(item=>item.value===method)?.label} value={method} disabled={active||startPending} onChange={event=>{
             const value=event.target.value as MDMethod;
-            if(supportsMDIntegrator(value,periodic,integrator))update({method:value});
+            if(isXtbMethod(value)&&supportsMDIntegrator(value,periodic,integrator))update({method:value});
           }}>{!isXtbMethod(method)&&<option value={method} disabled>{method}（请改选可用方法）</option>}{methods.filter(item=>supportsMDIntegrator(item.value,periodic,integrator)||method===item.value).map(item=>
             <option key={item.value} value={item.value} disabled={!supportsMDIntegrator(item.value,periodic,integrator)}>{item.value==='gxtb'?gxtbMethodLabel(gxtbBackend):item.label}</option>
           )}</select>

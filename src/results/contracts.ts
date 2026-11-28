@@ -104,7 +104,7 @@ export interface TrajectoryResult {
   label: string;
   kind: 'trajectory' | 'optimization' | 'collection' | 'calculation';
   engine: 'xyz' | 'gaussian' | 'orca' | 'structure';
-  source: { id: string; name: string; size: number; sha256?: string; software?: 'gaussian' | 'orca' | 'cp2k' | 'xtb' | 'unknown'; nativeJobName?: string };
+  source: { id: string; name: string; size: number; sha256?: string; software?: 'gaussian' | 'orca' | 'cp2k' | 'xtb' | 'unknown'; nativeJobName?: string; nativeMethod?: string; nativeDevice?: string };
   jobIndex: number;
   status: ResultStatus;
   messages: string[];

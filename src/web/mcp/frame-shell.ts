@@ -2,7 +2,8 @@ import type { AdvancedTaskRecord } from '../../modeling/advanced/contracts';
 import type { AdvancedFrameSource } from '../../modeling/advanced/frame-source';
 import type { WorkspaceDocumentEntry, WorkspaceRegistry } from '../../modeling/workspace-registry';
 import type { PesFrame, PesPathRecord, PesRun } from '../../modeling/pes/contracts';
-import { pesRecordedTrajectory, pesTrajectory } from '../../modeling/pes/result-adapter';
+import { pesRecordedTrajectory, pesResultSeries, pesSeriesForFrame, pesTrajectory } from '../../modeling/pes/result-adapter';
+import { structureForPesFrame } from '../../modeling/pes/controller';
 import type { PesResultFrameOrigin, TrajectoryResult } from '../../results/contracts';
 import { trajectoryViewDocument } from '../../results/playback';
 import type { PostprocessDocument, PostprocessScientificFileDocument } from '../../results/postprocess-document';
@@ -11,7 +12,7 @@ import { boundAdvancedCanvasResult } from '../advanced/capture-source';
 import type { AnalysisCanvas } from '../results/analysis-canvas';
 import type { TrajectoryPlaybackBridge } from '../results/trajectory-playback-bridge';
 import type { FrameOwner, FrameToolContext } from './frame-tools';
-import { viewTrajectoryCanvas } from './frame-tools';
+import { isStageCollectionId, viewTrajectoryCanvas } from './frame-tools';
 import { toolError } from './types';
 
 type ViewReceipt = ReturnType<typeof viewTrajectoryCanvas>;
@@ -20,6 +21,7 @@ export interface FrameShellPorts extends Pick<FrameToolContext, 'captureCurrent'
   projectEpoch(): string | number;
   activeTarget(): string | undefined;
   file(id: string): PostprocessScientificFileDocument | undefined;
+  fileIds?(): readonly string[];
   binding(id: string): PostprocessDocument | undefined;
   /** Only the viewport that currently owns presentation, including file-owned and legacy players. */
   canvas(id: string): AnalysisCanvas | undefined;
@@ -33,13 +35,15 @@ export interface FrameShellPorts extends Pick<FrameToolContext, 'captureCurrent'
   pesRecord?(targetId: string, recordId: string): { run: PesRun; record: PesPathRecord;
     readFrame(frameId: string, seriesId: string, signal?: AbortSignal): Promise<PesFrame> } | undefined;
   retainedOptimization?(targetId: string, collectionId: string): PesRun | undefined;
+  retainedPesRuns?(targetId: string): readonly PesRun[];
   isClosing?(id: string): boolean;
-  activate(owner: FrameOwner): void | Promise<void>;
+  activate(owner: FrameOwner, frameIndex?: number): void | Promise<void>;
 }
 
 export const pesRecordRef = (targetId: string, recordId: string) => JSON.stringify(['es-pes-record-v1', targetId, recordId]);
 export function retainedOptimizationCollection(run: PesRun) {
-  if(!run.retainTrajectory||run.request.operation!=='opt'||!run.workerSettled||!run.result?.frames.some(frame=>frame.seriesId==='opt'))return;
+  if(!run.retainTrajectory||run.request.operation!=='opt'||run.workerSettled!==true||
+    !['completed','stopped','failed'].includes(run.status)||!run.result?.frames.some(frame=>frame.seriesId==='opt'))return;
   const {groupId,runId}=run.request.runIdentity;
   return {collectionRef:JSON.stringify(['es-retained-opt-v1',groupId,runId]),collectionId:`${runId}:opt`};
 }
@@ -49,6 +53,24 @@ export function parseOptimizationCollectionRef(ref: string): { groupId: string; 
   try{value=JSON.parse(ref);}catch{throw Error('保留优化集合引用无效。');}
   if(!Array.isArray(value)||value.length!==3||typeof value[1]!=='string'||typeof value[2]!=='string')throw Error('保留优化集合引用无效。');
   return {groupId:value[1],runId:value[2]};
+}
+
+export function retainedPesSeriesCollections(run: PesRun) {
+  if (!run.workerSettled || !run.result?.frames.length || run.request.operation === 'opt') return [];
+  const { groupId, runId } = run.request.runIdentity;
+  return pesResultSeries(run).map(series => ({
+    ...series, seriesId: series.id, collectionId: `${runId}:${series.id}`,
+    collectionRef: JSON.stringify(['es-pes-series-v1', groupId, runId, series.id]),
+  }));
+}
+
+export function parsePesSeriesCollectionRef(ref: string): { groupId: string; runId: string; seriesId: string } | undefined {
+  if (!ref.startsWith('["es-pes-series-v1",')) return;
+  let value: unknown;
+  try { value = JSON.parse(ref); } catch { throw Error('保留势能面序列引用无效。'); }
+  if (!Array.isArray(value) || value.length !== 4 || value.slice(1).some(id => typeof id !== 'string' || !id.trim()))
+    throw Error('保留势能面序列引用无效。');
+  return { groupId: value[1], runId: value[2], seriesId: value[3] };
 }
 export const conformerRunCollectionId = (runId: string) => `${runId}:retained`;
 export const conformerRunCollectionRef = (taskId: string, runId: string) => JSON.stringify(['es-conformer-run-v1', taskId, runId]);
@@ -116,6 +138,10 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
   const conformerIndex = new WeakMap<AdvancedTaskRecord, Map<string, AdvancedFrameSource>>();
   const fileDocuments = new WeakMap<TrajectoryResult, ReturnType<typeof trajectoryViewDocument>>();
   const recordResults = new WeakMap<PesPathRecord, TrajectoryResult>();
+  const seriesResults = new WeakMap<NonNullable<PesRun['result']>, Map<string, TrajectoryResult>>();
+  const nativeSeriesFrames = new WeakMap<NonNullable<PesRun['result']>, Map<string,PesFrame>>();
+  const conformerAliases = new Map<string,{targetId:string;collectionId:string}>();
+  let aliasEpoch: ReturnType<FrameShellPorts['projectEpoch']>|undefined;
   let projectionCache = new WeakMap<object, { epoch: string; versions: Map<string, TrajectoryResult> }>();
   let projectEpoch: string | number | undefined;
 
@@ -134,8 +160,11 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
     }
     return frames;
   }
-  function assertCollection(result: TrajectoryResult | undefined, requested?: string) {
-    if (requested && !result) throw Error('轨迹集合已关闭或来源已变化。');
+  function assertCollection(result: TrajectoryResult | undefined, targetId: string, requested?: string) {
+    if (requested && !result) throw toolError('collection_unavailable', '指定轨迹集合已关闭、未准备或来源已变化。', {
+      targetId, collectionId: requested, committed: false,
+      recovery: { tool: 'es_targets', arguments: { kind: 'collection' } },
+    });
     return result;
   }
   function collectionFor(targetId: string, result: TrajectoryResult, sourceRevision: string, collectionId = result.id, stageId?: string) {
@@ -155,15 +184,47 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
     return cache.versions.get(requested);
   }
 
+  function stageTarget(ports: FrameShellPorts, ref: string) {
+    const documents = new Set(ports.registry.getSnapshot().documents.map(entry => entry.id));
+    const ids = new Set(documents);
+    for (const id of ports.fileIds?.() ?? []) ids.add(id);
+    const active = ports.activeTarget();
+    if (active) ids.add(active);
+    const matches = [...ids].filter(id => {
+      if (ports.isClosing?.(id)) return false;
+      const file = ports.file(id);
+      const entry = !file && documents.has(id) ? ports.registry.document(id) : undefined;
+      const visible = ports.canvas(id), retained = ports.retainedCanvas?.(id);
+      if (visible?.result?.id !== ref && retained?.result?.id !== ref && file?.displayResult?.id !== ref
+        && !file?.output.source.jobs.some(job => job.id === ref) && entry?.result?.id !== ref
+        && entry?.legacyResult?.id !== ref && ports.binding(id)?.result?.id !== ref
+        && !(file && projectionCache.get(file)?.versions.has(ref)) && !(entry && projectionCache.get(entry)?.versions.has(ref))) return false;
+      try {
+        // Recheck the live owner and source version. A display ID alone cannot establish ownership.
+        return owner(id, ref).collection?.collectionId === ref;
+      } catch { return false; }
+    });
+    if (matches.length === 1) return { targetId: matches[0], collectionId: ref };
+    throw toolError(matches.length ? 'collection_conflict' : 'collection_unavailable',
+      matches.length ? '多个对象拥有同名阶段集合，请同时提供确切的 targetRef。' : '这个阶段集合已关闭、未准备或来源已变化。', {
+        collectionRef: ref, candidateTargets: matches, committed: false,
+        recovery: { tool: 'es_targets', arguments: { kind: 'collection' } },
+      });
+  }
+
   function locate(ports: FrameShellPorts, targetId?: string, collectionId?: string) {
+    if (aliasEpoch!==ports.projectEpoch()) { aliasEpoch=ports.projectEpoch(); conformerAliases.clear(); }
     const input = targetId ?? ports.activeTarget();
     if (!input) throw Error('当前窗口没有结构或科学来源。');
     const named = namedScientificCollection(input);
     const knownOwner = ports.registry.getSnapshot().documents.some(row => row.id === input) || !!ports.file(input);
-    const found = named ?? (knownOwner ? undefined : ports.resolveTarget?.(input));
-    if (named && collectionId && named.collectionId !== collectionId)
+    const retained = conformerAliases.get(input);
+    const exact = named ?? retained ?? (parsePesSeriesCollectionRef(input) || parseOptimizationCollectionRef(input) ? ports.resolveTarget?.(input) : undefined)
+      ?? (!knownOwner && isStageCollectionId(input) ? stageTarget(ports, input) : undefined);
+    const found = exact ?? (knownOwner ? undefined : ports.resolveTarget?.(input));
+    if (exact?.collectionId && collectionId && exact.collectionId !== collectionId)
       throw toolError('collection_conflict', '对象引用与指定科学集合不一致。', {
-        targetRef: input, collectionId, expectedCollectionId: named.collectionId, committed: false,
+        targetRef: input, collectionId, expectedCollectionId: exact.collectionId, committed: false,
         recovery: { tool: 'frames_select', arguments: { targetRef: input } },
       });
     return { targetId: found?.targetId ?? input, collectionId: collectionId ?? found?.collectionId, kind: named?.kind };
@@ -174,6 +235,67 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
     const selectedId = canvas?.result?.frames[canvas.frameIndex ?? 0]?.pesOrigin?.recordId;
     const id = collectionId ?? selectedId;
     return id ? ports.pesRecord?.(targetId, id) : undefined;
+  }
+
+  function seriesResult(run: PesRun, seriesId: string, projection?: TrajectoryResult) {
+    const native = run.result;
+    if (!native) return;
+    let versions = seriesResults.get(native);
+    if (!versions) { versions = new Map(); seriesResults.set(native, versions); }
+    const resultId=projection?.id??`${run.request.id}:${seriesId}`;
+    const cached = versions.get(resultId);
+    if (cached) return cached;
+    const adapted = pesTrajectory(run, seriesId);
+    if (adapted?.seriesId !== seriesId) return;
+    const base=adapted.result;
+    if(projection){
+      const prefix=`${base.id}:stage:`;
+      const indices=projection.id===base.id?base.frames.map(frame=>frame.index):
+        base.stages?.find(stage=>projection.id===prefix+stage.id)?.frameIndices;
+      if(indices?.length!==projection.frames.length||indices.some((source,index)=>{
+        const original=base.frames[source]?.pesOrigin,shown=projection.frames[index]?.pesOrigin;
+        return !samePesOwner(original,shown)||original?.seriesId!==shown?.seriesId||original?.frameId!==shown?.frameId;
+      }))return;
+    }
+    const membership=projection??base;
+    let frames=nativeSeriesFrames.get(native);
+    if(!frames){frames=new Map(native.frames.map(frame=>[JSON.stringify([frame.seriesId,frame.id]),frame]));nativeSeriesFrames.set(native,frames);}
+    const nativeFrames=frames;
+    // The renderer disposes its own projection on tab/series changes. Retain
+    // only the native frame membership and scientific reader here.
+    const result: TrajectoryResult = { ...membership,
+      async getFrame(index,signal) {
+        signal?.throwIfAborted();
+        const origin = membership.frames[index]?.pesOrigin;
+        const frame = origin && nativeFrames.get(JSON.stringify([origin.seriesId,origin.frameId]));
+        if (!frame) throw Error('该科学帧已不在保留的势能面序列中。');
+        return structureForPesFrame(run.request.structure,frame);
+      },
+      dispose() {},
+    };
+    versions.set(resultId,result);
+    return result;
+  }
+
+  function retainedSeries(ports: FrameShellPorts,target: string,requested: string|undefined,canvas?:AnalysisCanvas) {
+    if (!requested && !canvas?.result?.frames[0]?.pesOrigin) return;
+    const shown = canvas?.result, origin = shown?.frames[0]?.pesOrigin;
+    for (const run of ports.retainedPesRuns?.(target) ?? []) {
+      if (!run.result || (requested ? !requested.startsWith(run.request.id+':') : run.request.id!==origin?.runId)) continue;
+      const previous=requested&&seriesResults.get(run.result)?.get(requested);
+      if(previous)return {run,result:previous};
+      const collections = retainedPesSeriesCollections(run);
+      if (requested) {
+        const item=collections.find(row=>row.collectionId===requested);
+        const result=item&&seriesResult(run,item.seriesId);
+        if (result) return { run, result };
+      } else if (origin && !origin.recordId && run.request.id === origin.runId) {
+        const seriesId=pesSeriesForFrame(run,origin.frameId);
+        if (!seriesId || !collections.some(row=>row.seriesId===seriesId)) continue;
+        const result=seriesResult(run,seriesId,shown);
+        if (result) return { run, result };
+      }
+    }
   }
 
   function prepareOwner(targetId?: string, collectionId?: string, signal?: AbortSignal) {
@@ -191,6 +313,7 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
         // make a missing, replaced or unrelated collection available.
         const current = owner(prepared.targetId, prepared.collectionId);
         if (!current.result || current.collection?.collectionId !== prepared.collectionId) throw Error('保留构象集合尚未由工作台实际接管。');
+        conformerAliases.set(targetId!,prepared);
         return prepared;
       });
     }
@@ -236,7 +359,7 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
       const fileToken = token(file), fileSourceEpoch = JSON.stringify([epoch, fileToken, displayedBase ? token(displayedBase) : null]);
       const displayed = displayedBase && canvas?.result && sameSource(displayedBase, canvas.result) ? canvas.result : undefined;
       const picked = chosen || pickResult(file, fileSourceEpoch, displayedBase, displayed, requestedCollection);
-      const candidate = assertCollection(picked, requestedCollection);
+      const candidate = assertCollection(picked, target, requestedCollection);
       if (!candidate) throw Error('当前科学文件的作业没有可靠的完整结构。');
       const exactJob = declaredJob && declaredJob.kind !== 'diagnostic' && candidate.id === declaredJob.id ? declaredJob : undefined;
       const result = exactJob ?? candidate;
@@ -257,16 +380,18 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
 
     const entry = ports.registry.document(target);
     const optimization = requestedCollection && ports.retainedOptimization?.(target,requestedCollection);
-    if(optimization){
-      const result=pesTrajectory(optimization,'opt')?.result;
-      if(!result||result.id!==requestedCollection)throw Error('保留优化轨迹不可用。');
+    const retained = optimization ? {run:optimization,result:seriesResult(optimization,'opt')} :
+      entry.pesGroup ? retainedSeries(ports,target,requestedCollection,canvas) : undefined;
+    if(retained){
+      const {run,result}=retained;
+      if(!result)throw Error('保留的势能面轨迹不可用。');
       const visible=activeCanvas?.scientificFrameReady===false?undefined:activeCanvas?.result?.frames[activeCanvas.frameIndex??0]?.pesOrigin;
       const index=visible&&samePesOwner(result.frames[0]?.pesOrigin,visible)?result.frames.findIndex(frame=>frame.pesOrigin?.frameId===visible.frameId):-1;
       let snapshot=fileDocuments.get(result);
       if(!snapshot){snapshot=trajectoryViewDocument(result,result.initialStructure,0);fileDocuments.set(result,snapshot);}
-      return {targetId:target,document:{...snapshot,id:entry.id,revision:entry.store.getSnapshot().revision},documentEpoch:entry.epoch,
-        sourceEpoch:JSON.stringify([epoch,entry.epoch,optimization.request.id,token(result)]),label:result.label,result,
-        collection:collectionFor(target,result,token(result),requestedCollection),currentIndex:index<0?undefined:index};
+      return {targetId:target,document:{...snapshot,id:entry.id,revision:run.source.revision},documentEpoch:entry.epoch,retainedPesSeries:true,
+        sourceEpoch:JSON.stringify([epoch,entry.epoch,run.request.id,token(result)]),label:result.label,result,
+        collection:collectionFor(target,result,token(result)),currentIndex:index<0?undefined:index};
     }
     const record = selectedPesRecord(ports, target, requestedCollection);
     const recordResult = record && recordResults.get(record.record);
@@ -298,7 +423,7 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
       ? canvas.result : undefined;
     const base = registered ?? separatePes;
     const sourceEpoch = JSON.stringify([epoch, entry.epoch, entry.sourceEpoch, base ? token(base) : null, binding ? token(binding) : null]);
-    const result = assertCollection(pickResult(entry, sourceEpoch, base, displayed, requestedCollection, entry.trajectory?.identity.collectionId), requestedCollection);
+    const result = assertCollection(pickResult(entry, sourceEpoch, base, displayed, requestedCollection, entry.trajectory?.identity.collectionId), target, requestedCollection);
     if (!result && (entry.result || entry.legacyResult || entry.trajectory))
       throw Error('当前结果因模型来源已修改而不可用。');
     if (!result && (entry.store.hasTransaction?.() || entry.store.isRuntimeSessionActive?.()
@@ -354,6 +479,7 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
   }
 
   return {
+    referenceEpoch: () => getPorts().projectEpoch(),
     owner,
     prepareOwner,
     captureCurrent: () => getPorts().captureCurrent(),
@@ -368,8 +494,9 @@ export function createFrameShell(getPorts: () => FrameShellPorts): FrameToolCont
       }
       if (!stillOwned(expected)) return superseded(expected);
       const deadline = performance.now() + viewObservationMs;
-      if (!nativeCanvas(expected) || getPorts().activeTarget() !== expected.targetId || expected.selectOutputJob && !activeCanvas(expected))
-        await getPorts().activate(expected);
+      if (!nativeCanvas(expected) || getPorts().activeTarget() !== expected.targetId ||
+        (expected.selectOutputJob || expected.retainedPesSeries) && !activeCanvas(expected))
+        await getPorts().activate(expected,command.action==='seek'?command.index:undefined);
       const activationEpoch = getPorts().registry.getSnapshot().activationEpoch;
       const sameActivation = () => getPorts().registry.getSnapshot().activationEpoch === activationEpoch && getPorts().activeTarget() === expected.targetId;
       let route: ReturnType<NonNullable<TrajectoryPlaybackBridge['routeFrame']>>;

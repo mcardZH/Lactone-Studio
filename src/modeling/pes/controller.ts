@@ -1,13 +1,14 @@
 import { readPesFloat64Rows } from './terminal-numeric';
 import { clonePesSnapshotForPersistence, ownPesResultNumerics } from '../../projects/pes-asset-codec';
-import { baseElectronicStateParameterError as baseElectronicStateError, initialBaseElectronicState } from '../../core/base-electronic-state';
-import type { SharedModelConstraints } from '../../core/modeling/contracts';
+import { baseElectronicStateParameterError as baseElectronicStateError, initialBaseElectronicState, type BaseElectronicStateValues } from '../../core/base-electronic-state';
+import type { BondOrderObservation, SharedModelConstraints } from '../../core/modeling/contracts';
 import type { Structure } from '../../core/types';
+import type { XtbResourceOverrides } from '../resource-preferences';
 import { modelCoordinateKey } from '../constraints';
 import { coordinatesFingerprint } from '../../core/modeling/graph';
 import { samePesScanSource, scanCardDraft } from './scan-source';
-import { PES_SCHEMA, PES_CALC_PROFILE, pesCardParameterDraft, type PesOptimizationInput, type PesOptimizationUpdate, type PesBridge, type PesCard, type PesCardKind, type PesEvent, type PesFrame, type PesFrameSelection, type PesGeometry,
-  type PesGroup, type PesMethodDraft, type PesParameters, type PesNode, type PesProjectSnapshot, type PesRun, type PesRunIdentity, type PesTsDraft, type PesOptimizationGeometryCommit } from './contracts';
+import { PES_SCHEMA, PES_CALC_PROFILE, isPesNetMethod, pesCardParameterDraft, persistedPesCard, type PesOptimizationInput, type PesOptimizationUpdate, type PesBridge, type PesCard, type PesCardKind, type PesEvent, type PesFrame, type PesFrameSelection, type PesGeometry,
+  type PesGroup, type PesMethodDraft, type PesParameters, type PesNode, type PesProjectSnapshot, type PesRecoveryClaim, type PesRun, type PesRunIdentity, type PesTsDraft, type PesOptimizationGeometryCommit } from './contracts';
 import { defaultPesCard, defaultPesMethod, defaultPesTs, pesId } from './defaults';
 import { cardSource, preparePesRequest, projectPesConstraintDefinitions, type PesWorkbenchInput } from './request';
 import { createPesFfModel, pesFfModelMatches, pesSourceFfModel } from './ff-model';
@@ -15,7 +16,7 @@ import { ordinaryOptimizationPreparation, projectOrdinaryOptimizationStructure }
 import { lastOrdinaryOptimizationFrame, validPesFrame } from './frames';
 import {PesPathRecordOwner,acquirePesPathRecord,bindPesPathRecordOwner,pesPathRecordOwner,pesPathRecords,transferPesPathRecordOwner,validPesPathRecord} from './path-records';
 import type {PesPathRecord} from './contracts';
-import { hasSuccessfulWorkbenchResult, PesCompositionChange, PesSubmissionChanged, pesElectronicSourceKey } from './input-state';
+import { hasSuccessfulWorkbenchResult, PesCompositionChange, PesSubmissionChanged, pesElectronicConfirmation, pesElectronicDraft, pesElectronicSourceKey, savePesElectronicDraft } from './input-state';
 
 const isLive = (run: PesRun) => run.status === 'starting' || run.status === 'running' || run.status === 'stopping';
 const msg = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -45,6 +46,14 @@ interface ObservedPesFrame {
   groupId:string; nodeId:string; run:PesRun;
   anchor?:PesFrameSelection; followRunId?:string;
   selection:PesFrameSelection; frame:PesFrame; captured?:boolean;
+}
+type TerminalEvent = Extract<PesEvent, { event: 'terminal' }>;
+type PreparedOptimizationGeometry={structure?:Structure;warning?:string;bondOrderObservation?:BondOrderObservation};
+type BindOptimizationTarget = (node:PesNode) => Pick<PesGeometry,'documentId'|'revision'>;
+interface TerminalPayload {
+  result: TerminalEvent['result'];
+  frames: Map<string, PesFrame>;
+  frameIds: string[];
 }
 function pathRecordForFrame(run:PesRun, seriesId:string, frameId:string, recordId?:string) {
   return pesPathRecords(run).find(record=>{
@@ -228,13 +237,16 @@ export function selectInitialPesFrame<T extends Pick<PesFrame,'id'|'seriesId'|'e
 type XtbSolvation = { model: 'alpb'; solvent: string };
 const solvationDraft = (solvation?: XtbSolvation) => ({ solvationModel: solvation?.model ?? 'none' as const, solvent: solvation?.solvent ?? '' });
 
-function staticSnapshot(snapshot: PesProjectSnapshot, defaultSolvation?: XtbSolvation, shareProjectNumbers = false): PesProjectSnapshot {
+function staticSnapshot(snapshot: PesProjectSnapshot, defaultSolvation?: XtbSolvation, shareProjectNumbers = false, projectLevel?: PesMethodDraft): PesProjectSnapshot {
   if (snapshot.schema !== PES_SCHEMA) throw Error('不支持此势能面项目数据版本。');
   const copy = shareProjectNumbers ? clonePesSnapshotForPersistence(snapshot) : structuredClone(snapshot);
   for (const group of copy.groups) {
-    group.sharedMethod ??= { ...defaultPesMethod(), ...solvationDraft(defaultSolvation) };
+    if (projectLevel) group.sharedMethod = projectLevel;
+    else group.sharedMethod ??= { ...defaultPesMethod(), ...solvationDraft(defaultSolvation) };
+    if (!Array.isArray(group.initialElementSequence) || !group.initialElementSequence.every(element => typeof element === 'string'))
+      group.initialElementSequence = group.nodes.find(node => node.id === group.initialNodeId)?.geometry.structure.atoms.map(atom => atom.element);
     if (group.lifecycleVersion === 'v223') {
-      group.cards = group.cards.map(pesCardParameterDraft);
+      group.cards = group.cards.map(card => persistedPesCard(group.id, card));
       if (group.cardDrafts) group.cardDrafts = Object.fromEntries(Object.entries(group.cardDrafts).map(([key,card]) => [key,pesCardParameterDraft(card)]));
     }
     for (const node of group.nodes) delete node.followRunId;
@@ -278,6 +290,8 @@ export class PesController {
   private bridgeUnsubscribe?: () => void;
   private notificationFrame?: number;
   private nativePathSources=new Map<PesPathRecordOwner,PesRunIdentity>();
+  private recoveryPathClaims=new WeakMap<PesPathRecordOwner,string>();
+  private recoveryEpoch=0;
   private pathReleases=new Set<Promise<void>>();
   private terminalReads = new Map<PesRun['request'], AbortController>();
   private terminalAccepted = new Map<PesRun['request'], { identity: PesRunIdentity; assets: string[] }>();
@@ -291,10 +305,15 @@ export class PesController {
   constructor(private readonly bridge?: PesBridge, snapshot?: PesProjectSnapshot,
     private readonly options: { canFollowWorkbench?(groupId: string, nodeId: string, runId: string): boolean;
       submittingDocument?(): string;onPathSourceReleaseError?(message:string):void;
+      confirmLiveElectronicState?(groupId:string,geometry:PesGeometry,values:BaseElectronicStateValues):void;
+      assertLiveElectronicSource?(groupId:string,geometry:PesGeometry):void;
       prepareOptimizationGeometry?(geometry:PesGeometry,frame:PesFrame,request:PesRun['request'],signal:AbortSignal):Promise<Structure>;
+      prepareOptimizationBonds?(geometry:PesGeometry,frame:PesFrame,request:PesRun['request'],signal:AbortSignal,result:NonNullable<PesRun['result']>):Promise<PreparedOptimizationGeometry>;
       onOptimizationGeometry?(commit:PesOptimizationGeometryCommit):void|false|Pick<PesGeometry,'revision'|'structure'>;
-      defaultXtbSolvation?(): XtbSolvation | undefined } = {}) {
-    this.state = snapshot ? staticSnapshot(snapshot, options.defaultXtbSolvation?.()) : { schema: PES_SCHEMA, groups: [] };
+      defaultXtbSolvation?(): XtbSolvation | undefined;
+      projectCalculationLevel?: { read(): PesMethodDraft; update(patch: Partial<PesMethodDraft>): void };
+    } = {}) {
+    this.state = snapshot ? staticSnapshot(snapshot, options.defaultXtbSolvation?.(), false, options.projectCalculationLevel?.read()) : { schema: PES_SCHEMA, groups: [] };
     this.bridgeUnsubscribe = bridge?.onPesEvent(event => this.accept(event));
   }
 
@@ -319,12 +338,105 @@ export class PesController {
 
   importSnapshot(snapshot: PesProjectSnapshot, options?:{shareProjectNumbers?:boolean}): void {
     if (this.state.groups.some(group => Object.values(group.runs).some(isLive))) throw Error('请等待势能面计算结束后再恢复项目。');
-    const restored=staticSnapshot(snapshot, this.options.defaultXtbSolvation?.(),options?.shareProjectNumbers);
+    const restored=staticSnapshot(snapshot, this.options.defaultXtbSolvation?.(),options?.shareProjectNumbers,this.options.projectCalculationLevel?.read());
+    this.recoveryEpoch++;
     this.observedFrames.clear();
     this.publish(restored);
   }
 
+  async recoverCompletedRun(claim: PesRecoveryClaim, guard?: () => void): Promise<{groupId:string;nodeId:string}> {
+    const { request, terminal } = claim, { groupId, runId, taskId } = request.runIdentity;
+    if (request.schema !== PES_SCHEMA || request.id !== runId || request.operation === 'opt' ||
+        terminal.schema !== PES_SCHEMA || terminal.event !== 'terminal' || terminal.workerSettled !== true ||
+        terminal.status !== 'completed' || terminal.runIdentity.groupId !== groupId ||
+        terminal.runIdentity.runId !== runId || terminal.runIdentity.taskId !== taskId || !terminal.result)
+      throw Error('PES 恢复记录与已完成的计算不符。');
+    const epoch = this.recoveryEpoch;
+    const current = () => {
+      guard?.();
+      if (this.recoveryEpoch !== epoch) throw new DOMException('恢复的势能面项目已改变。', 'AbortError');
+      const group = this.state.groups.find(item => item.id === groupId);
+      const previous = group && Object.hasOwn(group.runs, runId) ? group.runs[runId] : undefined;
+      if (previous && (previous.status !== 'interrupted' || previous.request.sourceDocumentId !== request.sourceDocumentId ||
+          previous.request.runIdentity.taskId !== taskId || previous.request.operation !== request.operation ||
+          previous.request.method !== request.method || previous.request.algorithm !== request.algorithm))
+        throw Error('该计算来源已在当前项目中使用。');
+      return { group, previous };
+    };
+    current();
+    const frameIds = terminal.resultFrameIds ?? terminal.result.frames.map(frame => frame.id);
+    const payload: TerminalPayload = { result: terminal.result,
+      frames: new Map(terminal.result.frames.map(frame => [frame.id, frame])), frameIds };
+    let error = terminal.error;
+    try {
+      await this.readTerminalPayload(terminal, request, payload, current);
+    } catch (cause) {
+      current();
+      const warning = 'PES 恢复资料读取受限，已保留可核验的结果：' + msg(cause);
+      error = { message: warning, detail: terminal.error?.message };
+      payload.result = { ...payload.result!, frames: frameIds.flatMap(id => {
+        const frame = payload.frames.get(id);
+        return frame && validPesFrame(frame, request.structure.atoms.length) ? [frame] : [];
+      }), provenance: { ...terminal.result.provenance, terminalFrameAdoption: 'incomplete', terminalFrameAdoptionWarning: warning } };
+    }
+    const result = payload.result!;
+    const records = (result.pathRecords ?? []).filter(validPesPathRecord);
+    const preferredRecord = records.find(record => record.id === result.lastPathRecordId);
+    const candidates = records.filter(record=>record!==preferredRecord).reverse();
+    if(preferredRecord)candidates.unshift(preferredRecord);
+    let lastRecord: PesPathRecord | undefined;
+    if(candidates.length && !this.bridge?.readPesPathRecord) throw Error('当前环境无法读取恢复路径的原始帧。');
+    for (const record of candidates) {
+      try {
+        const frames = await this.bridge!.readPesPathRecord!({ runIdentity: request.runIdentity, recordId: record.id });
+        current();
+        if (frames.length !== record.frames.length || frames.some((frame, index) =>
+          frame.id !== record.frames[index].id || !validPesFrame(frame, request.structure.atoms.length)))
+          throw Error('PES 恢复路径的坐标与帧记录不符。');
+        lastRecord = record;
+        break;
+      } catch (cause) {
+        current();
+        error ??= {message:'部分恢复路径轮读取受限，原文件已保留。',detail:msg(cause)};
+      }
+    }
+    if (!result.frames.length && !lastRecord)
+      throw Error('PES 恢复记录中没有可读取的结果，原文件已保留。');
+    ownPesResultNumerics(result);
+
+    const { group, previous } = current();
+    const source: PesGeometry = previous?.source ?? { documentId: request.sourceDocumentId, revision: 0, structure: request.structure };
+    const owner = group ?? this.newGroup(source, groupId, { constraints: {
+      frozenAtomIds: request.constraints.frozenAtomIds,
+      coordinates: request.constraints.coordinates.map(coordinate => ({ ...coordinate, action:'freeze', steps:1, increment:null })),
+    } });
+    const previousNode = previous && owner.nodes.find(node => node.id === previous.nodeId);
+    const nodeId = previousNode?.id ?? pesId('recovered');
+    const selected = lastRecord ? selectInitialPesFrame(lastRecord.frames,request.operation) : selectInitialPesFrame(result.frames,request.operation);
+    const selection = selected && { runId, frameId: selected.id, seriesId: selected.seriesId,
+      ...(lastRecord ? { recordId: lastRecord.id } : {}) };
+    const run: PesRun = { ...previous, request, source, nodeId, status: 'completed', workerSettled: true,
+      lastSeq: terminal.seq, result, error, ...(records.length ? { pathRecords: records } : {}),
+      ...(result.scanPoints ? { scanPoints: result.scanPoints } : {}) };
+    if (records.length) {
+      this.bindPathSource(run,run);
+      const pathOwner = pesPathRecordOwner(run);
+      if (pathOwner) this.recoveryPathClaims.set(pathOwner,claim.id);
+    }
+    const node: PesNode = previousNode ? { ...previousNode, selection: previousNode.selection ?? selection } :
+      { id:nodeId, name:`${algorithmPrefix[request.algorithm] ?? request.operation.toUpperCase()} · 恢复`,
+        kind:'result', geometry:source, runIds:[runId], selection };
+    const updated = { ...owner, activeNodeId:nodeId, runs:{...owner.runs,[runId]:run},
+      nodes: previousNode ? owner.nodes.map(item=>item.id===nodeId?node:item) : [...owner.nodes,node] };
+    this.publish({ ...this.state, groups:group ? this.state.groups.map(item=>item===group?updated:item) : [...this.state.groups,updated] });
+    if (!records.length) await this.bridge?.closePesRecovery?.(claim.id).catch(cause=>{
+      this.options.onPathSourceReleaseError?.('PES 恢复读取资源尚未释放：'+msg(cause));
+    });
+    return { groupId, nodeId };
+  }
+
   dispose(): void {
+    this.recoveryEpoch++;
     this.bridgeUnsubscribe?.();
     this.bridgeUnsubscribe = undefined;
     this.cancelNotificationFrame();
@@ -344,21 +456,27 @@ export class PesController {
   }
   async settlePathSourceReleases(){await Promise.all([...this.pathReleases]);}
 
-  createGroup(initial: PesGeometry, groupId = pesId('pes'), options?: { constraints?: SharedModelConstraints; initialName?: string }): PesGroup {
+  createGroup(initial: PesGeometry, groupId = pesId('pes'), options?: { constraints?: SharedModelConstraints; initialName?: string; electronicConfirmed?: boolean }): PesGroup {
     if (this.state.groups.some(group => group.id === groupId)) throw Error('该势能面组已存在。');
     const group = this.newGroup(initial, groupId, options);
     this.publish({ ...this.state, groups: [...this.state.groups, group] });
     return group;
   }
 
-  private newGroup(initial: PesGeometry, groupId: string, options?: { constraints?: SharedModelConstraints; initialName?: string }): PesGroup {
+  private newGroup(initial: PesGeometry, groupId: string, options?: { constraints?: SharedModelConstraints; initialName?: string; electronicConfirmed?: boolean }): PesGroup {
     const id = pesId('initial');
     const values = initialBaseElectronicState(initial.structure);
     const node: PesNode = { id, name: options?.initialName ?? 'initial', kind: 'initial', geometry: structuredClone(initial), runIds: [] };
-    return { lifecycleVersion:'v223', id: groupId, name: nextName('pes', this.state.groups, true), initialNodeId: id, activeNodeId: id,
-      sharedMethod: { ...defaultPesMethod(), ...solvationDraft(this.options.defaultXtbSolvation?.()) },
+    const group:PesGroup={ lifecycleVersion:'v223', id: groupId, name: nextName('pes', this.state.groups, true), initialNodeId: id, activeNodeId: id,
+      initialElementSequence: initial.structure.atoms.map(atom => atom.element),
+      sharedMethod: this.defaultCalculationLevel(),
       nodes: [node], cards: [], runs: {}, electronic: { charge: String(values.charge), multiplicity: String(values.multiplicity) },
       constraints: options?.constraints ? structuredClone(options.constraints) : { frozenAtomIds: [], coordinates: [], enabled: true }, ts: defaultPesTs() };
+    if(options?.electronicConfirmed && initial.structure.charge===values.charge && initial.structure.multiplicity===values.multiplicity &&
+      !baseElectronicStateError(initial.structure,values)) {
+      group.electronic=savePesElectronicDraft(group.electronic,pesElectronicSourceKey(group,initial),group.electronic,values);
+    }
+    return group;
   }
 
   renameGroup(groupId: string, name: string) { if (name.trim()) this.edit(groupId, group => ({ ...group, name: name.trim() })); }
@@ -426,7 +544,7 @@ export class PesController {
     if(selection&&record)return;
     if (run && isLive(run) && node.followRunId === run.request.id) return { ...run.source, label: node.name,
       ffModel: pesSourceFfModel(group, { ...run.source, source: { runId: run.request.id } }), source: { ...source, runId: run.request.id } };
-    return { ...node.geometry, label: node.name, source };
+    return { ...node.geometry, ...(node.kind==='initial'||node.kind==='workbench'?{inputSnapshotId:undefined}:{}), label: node.name, source };
   }
 
   currentScanGeometry(groupId: string, readDisplayed?: () => PesGeometry | undefined): PesGeometry | undefined {
@@ -444,26 +562,27 @@ export class PesController {
     return source;
   }
 
-  updateNodeGeometry(groupId: string, nodeId: string, geometry: PesGeometry, options?: { removedAtomIds?: readonly string[]; electronicChanged?:boolean; electronicConfirmed?:boolean }) {
+  updateNodeGeometry(groupId: string, nodeId: string, geometry: PesGeometry, options?: { removedAtomIds?: readonly string[]; electronicChanged?:boolean; electronicConfirmed?:boolean; geometryChanged?:boolean }) {
     this.edit(groupId, group => {
       const node = group.nodes.find(item => item.id === nodeId);
       if (!node || (node.kind !== 'initial' && node.kind !== 'workbench')) return group;
-      if (node.geometry.documentId === geometry.documentId && node.geometry.revision === geometry.revision &&
+      if (!options?.electronicChanged && node.geometry.documentId === geometry.documentId && node.geometry.revision === geometry.revision &&
         node.geometry.structure.charge===geometry.structure.charge && node.geometry.structure.multiplicity===geometry.structure.multiplicity) return group;
       const removed = new Set(nodeId===group.initialNodeId?options?.removedAtomIds??[]:[]);
       const constraints=removed.size?{...group.constraints,coordinates:group.constraints.coordinates.filter(row=>!row.atomIds.some(id=>removed.has(id))),
         frozenAtomIds:group.constraints.frozenAtomIds.filter(id=>!removed.has(id))}:group.constraints;
-      const {charge,multiplicity}=geometry.structure;
-      let electronic=options?.electronicChanged && charge!=null && multiplicity!=null &&
-        (Number(group.electronic.charge)!==charge||Number(group.electronic.multiplicity)!==multiplicity)
-        ? {charge:String(charge),multiplicity:String(multiplicity),confirmationHistory:group.electronic.confirmationHistory} : group.electronic;
-      const sourceKey=pesElectronicSourceKey(group,geometry);
-      if (sourceKey!==pesElectronicSourceKey(group,node.geometry) || options?.electronicChanged && options.electronicConfirmed) {
-        const confirmed=electronic.confirmationHistory?.[JSON.stringify([sourceKey,Number(electronic.charge),Number(electronic.multiplicity)])];
-        if (confirmed) electronic={...electronic,confirmed,sourceKey};
+      const updated={...node,geometry:structuredClone({...geometry,ffModel:geometry.ffModel??node.geometry.ffModel}),
+        ...(options?.geometryChanged===false?{}:{selection:undefined,followRunId:undefined})};
+      const next={...group,constraints,nodes:group.nodes.map(item=>item.id===nodeId?updated:item)};
+      if(options?.electronicChanged) {
+        const values=initialBaseElectronicState(geometry.structure);
+        const draft={charge:String(values.charge),multiplicity:String(values.multiplicity)};
+        const key=pesElectronicSourceKey(next,{...geometry,inputSnapshotId:undefined,source:{groupId,nodeId}});
+        const confirmed=options.electronicConfirmed && geometry.structure.charge===values.charge &&
+          geometry.structure.multiplicity===values.multiplicity && !baseElectronicStateError(geometry.structure,values) ? values : undefined;
+        next.electronic=savePesElectronicDraft(group.electronic,key,draft,confirmed);
       }
-      return { ...group, electronic, constraints, nodes: group.nodes.map(item => item.id !== nodeId ? item :
-        { ...item, geometry: structuredClone({ ...geometry, ffModel: geometry.ffModel ?? node.geometry.ffModel }), selection: undefined, followRunId: undefined }) };
+      return next;
     });
   }
 
@@ -574,7 +693,7 @@ export class PesController {
     const cardDrafts = { ...group.cardDrafts };
     if (previous) cardDrafts[cardDraftKey(previous)] = pesCardParameterDraft(previous);
     let card = (kind === 'scan' ? scanCardDraft(group) : cardDrafts[algorithm])
-      ?? { ...defaultPesCard(kind, nextName(cardPrefix[kind], Object.values(cardDrafts), true)), algorithm };
+      ?? { ...defaultPesCard(kind, nextName(cardPrefix[kind], Object.values(cardDrafts), true)), ...(kind === 'path' ? { algorithm } : {}) };
     if (previous?.kind === 'path' && kind === 'path') card = inheritPathEndpoints(previous, card);
     delete cardDrafts[algorithm];
     if (kind === 'scan' && cardDrafts[card.algorithm] === card) delete cardDrafts[card.algorithm];
@@ -626,23 +745,49 @@ export class PesController {
     const card = group.cards.find(item => item.id === cardId);
     if (!card || !this.isSlot(card, slot)) throw Error('该选帧槽已不存在。');
     if (!geometry.structure.atoms.length || geometry.structure.dimension === 2) throw Error('请先提供可记录的三维结构。');
+    this.options.assertLiveElectronicSource?.(groupId,geometry);
     const id = pesId('snapshot'), name = geometry.label ? `${geometry.label} · 快照` : '当前结构快照';
     const selected = { ...structuredClone(geometry), label: name, inputSnapshotId: id };
     const node: PesNode = { id, name, kind: 'snapshot', geometry: selected, runIds: [] };
     this.setSlot(groupId,cardId,slot,selected);
+    const confirmed=pesElectronicConfirmation(group,geometry);
+    if(confirmed&&(slot==='reactant'||slot==='start')) {
+      const draft=pesElectronicDraft(group,geometry);
+      this.edit(groupId,current=>({...current,electronic:savePesElectronicDraft(current.electronic,pesElectronicSourceKey(current,selected),draft,confirmed)}));
+    }
     return node;
   }
 
   createWorkbench(groupId: string, source: PesGeometry, prefix = 'CALC'): PesNode {
     const group = this.group(groupId);
-    const node: PesNode = { id: pesId('workbench'), name: prefix==='CALC'?nextCalcName(group):nextName(prefix, group.nodes, true), kind: 'workbench', geometry: structuredClone({...source,ffModel:pesSourceFfModel(group,source)}), runIds: [], tsMethodInitialized: true, calcProfile:PES_CALC_PROFILE };
+    const node=this.workbenchDraft(group,source,prefix);
     const method = this.ffSourceMethod(group, source);
     this.edit(groupId, current => ({ ...current, ...(prefix==='CALC'?{calcSequence:Number(node.name.slice(5))}:{}),...(method ? { ts: { ...current.ts, method } } : {}), nodes: [...current.nodes, node], activeNodeId: node.id }));
     return node;
   }
 
+  private workbenchDraft(group:PesGroup,source:PesGeometry,prefix='CALC'):PesNode {
+    return { id:pesId('workbench'),name:prefix==='CALC'?nextCalcName(group):nextName(prefix,group.nodes,true),
+      kind:'workbench',geometry:structuredClone({...source,ffModel:pesSourceFfModel(group,source)}),
+      runIds:[],tsMethodInitialized:true,calcProfile:PES_CALC_PROFILE };
+  }
+
   updateTs(groupId: string, edit: (draft: PesTsDraft) => PesTsDraft) { this.edit(groupId, group => ({ ...group, ts: edit(group.ts) })); }
+  defaultCalculationLevel(): PesMethodDraft {
+    return this.options.projectCalculationLevel?.read() ?? { ...defaultPesMethod(), ...solvationDraft(this.options.defaultXtbSolvation?.()) };
+  }
+  syncProjectCalculationLevel() {
+    const level=this.options.projectCalculationLevel?.read();
+    if (!level || this.state.groups.every(group => group.sharedMethod === level)) return;
+    this.publish({ ...this.state, groups: this.state.groups.map(group => ({ ...group, sharedMethod: level })) });
+  }
   updateSharedMethod(groupId: string, patch: Partial<PesMethodDraft>) {
+    if (this.options.projectCalculationLevel) {
+      this.group(groupId);
+      this.options.projectCalculationLevel.update(patch);
+      this.syncProjectCalculationLevel();
+      return;
+    }
     this.edit(groupId, group => ({ ...group, sharedMethod: { ...defaultPesMethod(), ...group.sharedMethod, ...patch } }));
   }
   syncXtbSolvation(solvation?: XtbSolvation) {
@@ -686,31 +831,38 @@ export class PesController {
     });
   }
 
-  editElectronic(groupId: string, field: 'charge' | 'multiplicity', value: string) {
-    const {charge,multiplicity}=this.group(groupId).electronic;
-    this.editElectronicPair(groupId,{charge,multiplicity,[field]:value});
+  editElectronic(groupId: string, field: 'charge' | 'multiplicity', value: string, geometry?:PesGeometry) {
+    const group=this.group(groupId);
+    const {charge,multiplicity}=geometry?pesElectronicDraft(group,geometry):group.electronic;
+    this.editElectronicPair(groupId,{charge,multiplicity,[field]:value},geometry);
   }
 
-  editElectronicPair(groupId:string, values:{charge:string;multiplicity:string}) {
-    this.edit(groupId, group => group.electronic.charge===values.charge && group.electronic.multiplicity===values.multiplicity
-      ? group : {...group,electronic:{...values,confirmationHistory:group.electronic.confirmationHistory}});
+  editElectronicPair(groupId:string, values:{charge:string;multiplicity:string}, geometry?:PesGeometry) {
+    this.edit(groupId,group=>{
+      const draft=geometry?pesElectronicDraft(group,geometry):group.electronic;
+      if(draft.charge===values.charge&&draft.multiplicity===values.multiplicity)return group;
+      const electronic=geometry?savePesElectronicDraft(group.electronic,pesElectronicSourceKey(group,geometry),values)
+        : {...group.electronic,...values,confirmed:undefined,sourceKey:undefined,pendingUnscopedEdit:true};
+      return {...group,electronic};
+    });
   }
 
-  confirmElectronic(groupId: string, geometry: PesGeometry) {
+  confirmElectronic(groupId: string, geometry: PesGeometry, explicit?:BaseElectronicStateValues, shareWithModel=false) {
     const group = this.group(groupId);
-    const { charge: q, multiplicity: m } = group.electronic;
+    const { charge: q, multiplicity: m } = explicit?{charge:String(explicit.charge),multiplicity:String(explicit.multiplicity)}:pesElectronicDraft(group,geometry);
     if (!/^[+-]?\d+$/.test(q) || !/^\+?\d+$/.test(m)) throw Error('电荷必须为整数，自旋多重度必须为正整数。');
     const values = { charge: Number(q), multiplicity: Number(m) };
     if (!Number.isSafeInteger(values.charge) || !Number.isSafeInteger(values.multiplicity)) throw Error('请检查电荷与自旋多重度。');
     const error = baseElectronicStateError(geometry.structure, values);
     if (error) throw Error(error);
-    const sourceKey = pesElectronicSourceKey(group, geometry);
-    this.edit(groupId, current => ({ ...current, electronic: { ...current.electronic, confirmed: values, sourceKey,
-      confirmationHistory:{...current.electronic.confirmationHistory,[JSON.stringify([sourceKey,values.charge,values.multiplicity])]:values} } }));
+    if(shareWithModel)this.options.confirmLiveElectronicState?.(groupId,geometry,values);
+    this.edit(groupId,current=>({...current,electronic:savePesElectronicDraft(current.electronic,pesElectronicSourceKey(current,geometry),
+      {charge:String(values.charge),multiplicity:String(values.multiplicity)},values)}));
     return values;
   }
 
-  startCard(groupId: string, cardId: string, authorizingDocumentId?: string, readDisplayedScanGeometry?: () => PesGeometry | undefined): PesNode {
+  startCard(groupId: string, cardId: string, authorizingDocumentId?: string, readDisplayedScanGeometry?: () => PesGeometry | undefined,
+    runMethod?: PesMethodDraft, resourceOverrides?: Pick<XtbResourceOverrides,'xtbBatchParallelism'>): PesNode {
     const group = this.group(groupId);
     const card = group.cards.find(item => item.id === cardId);
     if (!card) throw Error('该计算卡已不存在。');
@@ -718,7 +870,7 @@ export class PesController {
     if (this.calculationCardLocked(groupId)) throw Error('该工作区的常规计算仍在运行，请等待或停止。');
     const readScanGeometry = card.kind === 'scan' ? () => this.currentScanGeometry(groupId, readDisplayedScanGeometry) : undefined;
     const source = cardSource(group, card, readScanGeometry?.()), prefix = algorithmPrefix[card.algorithm] ?? cardPrefix[card.kind];
-    return this.start(group, source, card.id, nextName(prefix, group.nodes, true), undefined, { card, readScanGeometry }, authorizingDocumentId);
+    return this.start(group, source, card.id, nextName(prefix, group.nodes, true), undefined, { card, readScanGeometry, runMethod, resourceOverrides }, authorizingDocumentId);
   }
 
   startWorkbench(groupId: string, nodeId: string, source: PesGeometry, operation: PesWorkbenchInput['operation']): PesNode {
@@ -736,18 +888,27 @@ export class PesController {
 
   /** Route an ordinary optimizer without replacing its existing algorithm. */
   prepareOptimization(groupId:string,nodeId:string,source:PesGeometry):PesNode {
-    const group=this.group(groupId),node=group.nodes.find(value=>value.id===nodeId);
+    const group=this.group(groupId);
+    return this.editableOptimizationPage(group,nodeId)??this.createWorkbench(groupId,source);
+  }
+
+  private editableOptimizationPage(group:PesGroup,nodeId:string):PesNode|undefined {
+    const node=group.nodes.find(value=>value.id===nodeId);
     if(!node)throw Error('当前结构标签已关闭。');
     // A result/snapshot page only supplies input. A live solver on that page
     // does not own the new CALC node or its editable Store.
-    if(node.kind!=='initial'&&node.kind!=='workbench')return this.createWorkbench(groupId,source);
+    if(node.kind!=='initial'&&node.kind!=='workbench')return;
     if(Object.values(group.runs).some(run=>run.nodeId===nodeId&&isLive(run)))throw Error('该计算仍在运行，请先等待或停止。');
     return node;
   }
 
   /** Records a real ordinary-optimizer invocation; never calls the PES solver. */
-  beginOptimization(groupId:string,nodeId:string,source:PesGeometry,input:PesOptimizationInput,stop?:()=>Promise<void>):{node:PesNode;identity:PesRunIdentity} {
-    const target=this.prepareOptimization(groupId,nodeId,source),group=this.group(groupId);
+  beginOptimization(groupId:string,nodeId:string,source:PesGeometry,input:PesOptimizationInput,stop?:()=>Promise<void>,
+    bindTarget?:BindOptimizationTarget):{node:PesNode;identity:PesRunIdentity} {
+    if(isPesNetMethod(input.method))throw Error('此版本提供 xTB 优化，请重新选择计算级别。');
+    const group=this.group(groupId),editable=this.editableOptimizationPage(group,nodeId);
+    const target=editable??this.workbenchDraft(group,source);
+    const method=editable?undefined:this.ffSourceMethod(group,source);
     const inputSource=structuredClone({...source,ffModel:pesSourceFfModel(group,source)});
     const id=pesId('run'),identity={groupId,taskId:target.id,runId:id};
     const ffModel = input.method === 'gfnff' ? (stop ? inputSource.ffModel :
@@ -758,19 +919,27 @@ export class PesController {
       constraints:{frozenAtomIds:[...input.frozenAtomIds],coordinates:structuredClone(input.coordinates??[])},coordinates:[],
       parameters:stop ? {calcProfile:PES_CALC_PROFILE,ordinaryOptimization:structuredClone(input.parameters)} :
         {...structuredClone(input.parameters),calcProfile:PES_CALC_PROFILE,policyVersion:'v212',...(input.device ? {device:input.device} : {})},
+      ...(input.resourceOverrides ? {resourceOverrides:structuredClone(input.resourceOverrides)} : {}),
       ...(ffModel ? {ffModel} : {}), ...(input.solvation ? {solvation:input.solvation} : {}),
     };
     const node={...target,calcProfile:PES_CALC_PROFILE,runIds:[...target.runIds,id],followRunId:undefined};
+    if(bindTarget){
+      Object.assign(inputSource,bindTarget(node));
+      request.sourceDocumentId=inputSource.documentId;
+    }
     const run:PesRun={request,source:inputSource,nodeId:target.id,status:'starting',lastSeq:-1,
       ...(!stop&&input.retainTrajectory?{retainTrajectory:true as const}:{})};
     if (stop) this.optimizationStops.set(id,stop);
-    this.edit(groupId,current=>({...current,activeNodeId:node.id,nodes:current.nodes.map(value=>value.id===node.id?node:value),runs:{...current.runs,[id]:run}}));
+    this.edit(groupId,current=>({...current,activeNodeId:node.id,
+      ...(!editable?{calcSequence:Number(node.name.slice(5))}:{}),...(method?{ts:{...current.ts,method}}:{}),
+      nodes:editable?current.nodes.map(value=>value.id===node.id?node:value):[...current.nodes,node],
+      runs:{...current.runs,[id]:run}}));
     return{node,identity};
   }
 
-  startOrdinaryOptimization(groupId:string,nodeId:string,source:PesGeometry,input:PesOptimizationInput):PesNode {
+  startOrdinaryOptimization(groupId:string,nodeId:string,source:PesGeometry,input:PesOptimizationInput,bindTarget?:BindOptimizationTarget):PesNode {
     if (!this.bridge) throw Error('当前运行环境未连接结构优化器。');
-    const { node, identity } = this.beginOptimization(groupId,nodeId,source,input);
+    const { node, identity } = this.beginOptimization(groupId,nodeId,source,input,undefined,bindTarget);
     const run = this.group(groupId).runs[identity.runId];
     void this.bridge.startPes(run.request).catch(error => this.recordOptimization(identity, {
       event: 'terminal', workerSettled: true, status: 'failed', error: {message: '无法启动结构优化。', detail: msg(error)},
@@ -835,8 +1004,7 @@ export class PesController {
     const targetKeys = new Set(constraints.coordinates.map(row => row.id ?? modelCoordinateKey(row)));
     Object.assign(group, structuredClone({ ts: old.ts, sharedMethod: old.sharedMethod, ircParameters: old.ircParameters,
       hessianStepBohr: old.hessianStepBohr, cardDrafts: old.cardDrafts }), {
-      electronic: { charge: String(confirmed.charge), multiplicity: String(confirmed.multiplicity), confirmed, sourceKey,
-        confirmationHistory: { [JSON.stringify([sourceKey, confirmed.charge, confirmed.multiplicity])]: confirmed } },
+      electronic:savePesElectronicDraft(group.electronic,sourceKey,{charge:String(confirmed.charge),multiplicity:String(confirmed.multiplicity)},confirmed),
       constraintTargets: Object.fromEntries(Object.entries(old.constraintTargets ?? {}).filter(([key]) => targetKeys.has(key))),
     });
     const migrated = card && { ...(card.kind === 'scan' ? pesCardParameterDraft(card) : card), id: pesId('card'), runIds: [] };
@@ -851,8 +1019,10 @@ export class PesController {
   }
 
   private start(group: PesGroup, source: PesGeometry, taskId: string, name: string, existing: PesNode | undefined,
-    input: { card: PesCard; readScanGeometry?: () => PesGeometry | undefined } | PesWorkbenchInput, authorizingDocumentId?: string, origin?: PesNode): PesNode {
+    input: { card: PesCard; readScanGeometry?: () => PesGeometry | undefined; runMethod?: PesMethodDraft;
+      resourceOverrides?: Pick<XtbResourceOverrides,'xtbBatchParallelism'> } | PesWorkbenchInput, authorizingDocumentId?: string, origin?: PesNode): PesNode {
     if (!this.bridge) throw Error('当前运行环境未连接势能面求解器。');
+    this.options.assertLiveElectronicSource?.(group.id,source);
     if (Object.values(group.runs).some(run => run.request.runIdentity.taskId === taskId && isLive(run))) throw Error('该计算仍在运行，请先等待或停止。');
     const card = 'card' in input ? input.card : undefined;
     const readScanGeometry = 'card' in input ? input.readScanGeometry : undefined;
@@ -862,7 +1032,14 @@ export class PesController {
       nodes: group.nodes.map(node => node === origin ? { ...node, tsMethodInitialized: true as const } : node) } : group;
     const runId = pesId('run'), identity: PesRunIdentity = { groupId: group.id, taskId, runId };
     const inputSource = structuredClone(source);
-    const request = structuredClone(preparePesRequest(settings, identity, inputSource, input));
+    const requestSettings='card' in input&&input.runMethod?{...settings,sharedMethod:input.runMethod}:settings;
+    const request = structuredClone(preparePesRequest(requestSettings, identity, inputSource, input));
+    if('card'in input&&input.resourceOverrides){
+      const slots=input.resourceOverrides.xtbBatchParallelism;
+      if(request.operation!=='path'||!['ci-neb','fsm'].includes(request.algorithm)||isPesNetMethod(request.method)||!Number.isSafeInteger(slots)||slots!<1)
+        throw Error('xTB 批量并行数仅适用于 xTB CI-NEB 或 FSM，且须为正整数。');
+      request.resourceOverrides={xtbBatchParallelism:slots};
+    }
     if (authorizingDocumentId) request.sourceDocumentId = authorizingDocumentId;
     const atomCount = request.structure.atoms.length;
     const results = successfulPesResults(group);
@@ -874,7 +1051,8 @@ export class PesController {
       let handled = false;
       throw new PesCompositionChange(group.id, atomCount, existingAtomCounts, conflictingResults, () => {
         const current = this.state.groups.find(item => item.id === group.id);
-        if (handled || !current || current.electronic !== group.electronic || current.constraints !== group.constraints ||
+        const electronic=current&&pesElectronicConfirmation(current,inputSource);
+        if (handled || !current || electronic?.charge!==request.charge || electronic.multiplicity!==request.uhf+1 || current.constraints !== group.constraints ||
           current.constraintTargets !== group.constraintTargets || current.sharedMethod !== group.sharedMethod ||
           current.hessianStepBohr !== group.hessianStepBohr || this.options.submittingDocument?.() !== activeDocument) throw new PesSubmissionChanged();
         if (card) {
@@ -926,14 +1104,73 @@ export class PesController {
     return node;
   }
 
-  private async adoptTerminalFrames(event: Extract<PesEvent, { event: 'terminal' }>, run: PesRun) {
+  private async readTerminalPayload(event: TerminalEvent, request: PesRun['request'], payload: TerminalPayload, current: () => void) {
+    const { frameIds, frames: available } = payload, { resultNumericAssets } = event;
+    const identity = request.runIdentity;
+    const ordered: PesFrame[] = [];
+    current();
+    if (!event.result || !Array.isArray(frameIds) || frameIds.some(id => typeof id !== 'string' || !id)
+        || new Set(frameIds).size !== frameIds.length || event.resultFrameIds && event.result.frames.length)
+      throw Error('优化终态的帧清单与来源不符。');
+    const atomCount = request.structure.atoms.length;
+    for (let offset = 0; offset < frameIds.length;) {
+      const live = available.get(frameIds[offset]);
+      if (live) { ordered.push(live); offset++; continue; }
+      if (!this.bridge?.readPesTerminalFrames) throw Error('当前环境没有优化终态分页读取能力。');
+      const limit = Math.min(64, frameIds.length - offset);
+      const page = await this.bridge.readPesTerminalFrames({ runIdentity: identity, offset, limit });
+      current();
+      if (page.offset !== offset || page.total !== frameIds.length
+          || !Array.isArray(page.frames) || !page.frames.length || page.frames.length > limit
+          || page.done !== (offset + page.frames.length === frameIds.length))
+        throw Error('优化终态分页边界与来源不符。');
+      for (const frame of page.frames) {
+        if (!validPesFrame(frame, atomCount) || frame.id !== frameIds[offset])
+          throw Error('优化终态中的帧身份或坐标无效。');
+        const original = available.get(frame.id);
+        if (original && (original.seriesId !== frame.seriesId || original.step !== frame.step
+            || original.phase !== frame.phase || original.energyHartree !== frame.energyHartree
+            || original.positions.some((row, index) => row.some((value, axis) => value !== frame.positions[index][axis]))))
+          throw Error('优化终态改变了已接管帧。');
+        available.set(frame.id, original ?? frame);
+        ordered.push(original ?? frame);
+        offset++;
+      }
+    }
+    payload.result = { ...event.result, frames: ordered };
+    if (resultNumericAssets) {
+      const read = this.bridge?.readBinaryAsset?.bind(this.bridge);
+      if (!read) throw Error('当前环境没有优化数值资产分段读取能力。');
+      if (resultNumericAssets.hessianMatrix) {
+        const asset = resultNumericAssets.hessianMatrix;
+        const [rows, columns] = asset.shape;
+        if (asset.shape.length !== 2 || rows !== columns || !payload.result.hessian || typeof payload.result.hessian !== 'object')
+          throw Error('优化 Hessian 资产形状无效。');
+        const matrixHartreePerBohr2 = await readPesFloat64Rows(asset, rows, columns, read, current);
+        payload.result = { ...payload.result, hessian: { ...payload.result.hessian, matrixHartreePerBohr2 } };
+      }
+      if (resultNumericAssets.modeDisplacements) {
+        const asset = resultNumericAssets.modeDisplacements;
+        const [modes, atoms, components] = asset.shape;
+        if (asset.shape.length !== 3 || atoms !== atomCount || components !== 3
+            || !Array.isArray(payload.result.frequencies) || payload.result.frequencies.length !== modes)
+          throw Error('优化振动资产形状无效。');
+        const triples = await readPesFloat64Rows(asset, modes * atoms, 3, read, current);
+        payload.result = { ...payload.result, frequencies: payload.result.frequencies.map((mode, index) => ({
+          ...mode, displacements: triples.slice(index * atoms, (index + 1) * atoms),
+        })) };
+      }
+    }
+    current();
+  }
+
+  private async adoptTerminalFrames(event: TerminalEvent, run: PesRun) {
     const request = run.request, identity = request.runIdentity;
     if (this.terminalReads.has(request)) return;
     const work = new AbortController();
     this.terminalReads.set(request, work);
     const frameIds = event.resultFrameIds ?? event.result?.frames.map(frame => frame.id) ?? [];
     const available = new Map([...(run.acceptedFrames ?? []), ...(event.result?.frames ?? [])].map(frame => [frame.id, frame]));
-    const ordered: PesFrame[] = [];
     const current = () => {
       work.signal.throwIfAborted();
       const owner = this.state.groups.find(group => group.id === identity.groupId)?.runs[identity.runId];
@@ -941,64 +1178,11 @@ export class PesController {
         throw new DOMException('优化终态来源已改变。', 'AbortError');
     };
     const { resultFrameIds: _frameIds, resultNumericAssets, ...terminal } = event;
-    let result = event.result;
+    const payload = { result: event.result, frames: available, frameIds };
     try {
-      current();
-      if (!event.result || !Array.isArray(frameIds) || frameIds.some(id => typeof id !== 'string' || !id)
-          || new Set(frameIds).size !== frameIds.length || event.resultFrameIds && event.result.frames.length)
-        throw Error('优化终态的帧清单与来源不符。');
-      const atomCount = request.structure.atoms.length;
-      for (let offset = 0; offset < frameIds.length;) {
-        const live = available.get(frameIds[offset]);
-        if (live) { ordered.push(live); offset++; continue; }
-        if (!this.bridge?.readPesTerminalFrames) throw Error('当前环境没有优化终态分页读取能力。');
-        const limit = Math.min(64, frameIds.length - offset);
-        const page = await this.bridge.readPesTerminalFrames({ runIdentity: identity, offset, limit });
-        current();
-        if (page.offset !== offset || page.total !== frameIds.length
-            || !Array.isArray(page.frames) || !page.frames.length || page.frames.length > limit
-            || page.done !== (offset + page.frames.length === frameIds.length))
-          throw Error('优化终态分页边界与来源不符。');
-        for (const frame of page.frames) {
-          if (!validPesFrame(frame, atomCount) || frame.id !== frameIds[offset])
-            throw Error('优化终态中的帧身份或坐标无效。');
-          const original = available.get(frame.id);
-          if (original && (original.seriesId !== frame.seriesId || original.step !== frame.step
-              || original.phase !== frame.phase || original.energyHartree !== frame.energyHartree
-              || original.positions.some((row, index) => row.some((value, axis) => value !== frame.positions[index][axis]))))
-            throw Error('优化终态改变了已接管帧。');
-          available.set(frame.id, original ?? frame);
-          ordered.push(original ?? frame);
-          offset++;
-        }
-      }
-      result = { ...event.result, frames: ordered };
-      if (resultNumericAssets) {
-        const read = this.bridge?.readBinaryAsset?.bind(this.bridge);
-        if (!read) throw Error('当前环境没有优化数值资产分段读取能力。');
-        if (resultNumericAssets.hessianMatrix) {
-          const asset = resultNumericAssets.hessianMatrix;
-          const [rows, columns] = asset.shape;
-          if (asset.shape.length !== 2 || rows !== columns || !result.hessian || typeof result.hessian !== 'object')
-            throw Error('优化 Hessian 资产形状无效。');
-          const matrixHartreePerBohr2 = await readPesFloat64Rows(asset, rows, columns, read, current);
-          result = { ...result, hessian: { ...result.hessian, matrixHartreePerBohr2 } };
-        }
-        if (resultNumericAssets.modeDisplacements) {
-          const asset = resultNumericAssets.modeDisplacements;
-          const [modes, atoms, components] = asset.shape;
-          if (asset.shape.length !== 3 || atoms !== atomCount || components !== 3
-              || !Array.isArray(result.frequencies) || result.frequencies.length !== modes)
-            throw Error('优化振动资产形状无效。');
-          const triples = await readPesFloat64Rows(asset, modes * atoms, 3, read, current);
-          result = { ...result, frequencies: result.frequencies.map((mode, index) => ({
-            ...mode, displacements: triples.slice(index * atoms, (index + 1) * atoms),
-          })) };
-        }
-      }
-      current();
+      await this.readTerminalPayload(event, request, payload, current);
       this.terminalAccepted.set(request, { identity, assets: Object.values(resultNumericAssets ?? {}).map(asset => asset.id) });
-      this.accept({ ...terminal, result });
+      this.accept({ ...terminal, result: payload.result });
     } catch (error) {
       if (work.signal.aborted || error instanceof Error && error.name === 'AbortError') return;
       const warning = '优化终态读取受限，已保留可用帧：' + msg(error);
@@ -1006,6 +1190,7 @@ export class PesController {
         const frame = available.get(id);
         return frame ? [frame] : [];
       }) : [...available.values()];
+      const result = payload.result;
       this.accept({ ...terminal, error: { message: warning, detail: event.error?.message },
         result: result ? { ...result, frames: usable,
           provenance: { ...result.provenance, terminalFrameAdoption: 'incomplete', terminalFrameAdoptionWarning: warning } } : undefined });
@@ -1014,7 +1199,7 @@ export class PesController {
     }
   }
 
-  private accept(event: PesEvent, prepared?: { structure?:Structure; warning?:string }) {
+  private accept(event: PesEvent, prepared?: PreparedOptimizationGeometry) {
     if (event.schema !== PES_SCHEMA) return;
     const { groupId, taskId, runId } = event.runIdentity;
     const group = this.state.groups.find(item => item.id === groupId), run = group?.runs[runId];
@@ -1034,9 +1219,12 @@ export class PesController {
     }
     if (event.event === 'started') {
       next.nativeStarted=true;
+      if(event.resourceGrant)next.resourceGrant=event.resourceGrant;
       if(next.status==='starting')next.status='running';
     }
     if (event.event === 'evaluation-started') next.nativeBackend=event.backend;
+    if (event.event === 'net-batch' && isPesNetMethod(run.request.method) && (run.request.parameters.device??'gpu')==='gpu'
+      && Number.isSafeInteger(event.size) && event.size>=1 && event.size<=8) next.actualGpuBatchWidth=event.size;
     if (event.event === 'progress') next.progress = { stage: event.stage, completed: event.completed, total: event.total, elapsedSeconds: event.elapsedSeconds };
     if (event.event === 'frame' && validPesFrame(event.frame, run.request.structure.atoms.length)) {
       next.preview = event.frame;
@@ -1110,26 +1298,42 @@ export class PesController {
           geometry=finalGeometry=optimizationFinalGeometry(next,final);
           if(sharedOpt)geometry.structure.preparation=ordinaryOptimizationPreparation(event.status,next.result,final);
           const prepare=this.options.prepareOptimizationGeometry;
-          if(converged&&run.status!=='stopping'&&prepare&&run.request.parameters.rebuildBonds===true&&!prepared){
+          const prepareBonds=this.options.prepareOptimizationBonds;
+          const result=next.result;
+          const canRebuild=converged||(sharedOpt&&run.request.method==='gfn2'&&
+            event.status==='completed'&&!next.error&&result&&['not-converged','unconverged'].includes(result.status));
+          if(canRebuild&&run.status!=='stopping'&&(prepare||prepareBonds)&&result&&run.request.parameters.rebuildBonds===true&&!prepared){
             if (this.optimizationPreparation.has(runId)) return;
             const work = new AbortController();
             this.optimizationPreparation.set(runId, work);
-            const finish=(outcome:{structure?:Structure;warning?:string})=>{
+            const finish=(outcome:PreparedOptimizationGeometry)=>{
               if (this.optimizationPreparation.get(runId) !== work) return;
               this.optimizationPreparation.delete(runId);
               this.accept(event,work.signal.aborted?{}:outcome);
             };
             void (async () => {
-              let structure: Structure;
-              try { structure = await prepare(geometry!, final, run.request, work.signal); }
+              let outcome:PreparedOptimizationGeometry;
+              try {
+                outcome=prepareBonds?await prepareBonds(geometry!,final,run.request,work.signal,result)
+                  :{structure:await prepare!(geometry!,final,run.request,work.signal)};
+              }
               catch (error) { finish({ warning: msg(error) }); return; }
-              finish({ structure });
+              finish(outcome);
             })();
             return;
           }
           if(prepared?.structure)geometry.structure=prepared.structure;
           if(prepared?.warning&&next.result)next.result={...next.result,provenance:{...next.result.provenance,bondPerceptionWarning:prepared.warning}};
-          const adopted=this.options.onOptimizationGeometry?.({groupId,nodeId:node.id,runId,source:structuredClone(run.source),geometry});
+          const commit={groupId,nodeId:node.id,runId,source:structuredClone(run.source),geometry};
+          let adopted: void | false | Pick<PesGeometry,'revision'|'structure'>;
+          try{adopted=this.options.onOptimizationGeometry?.({...commit,bondOrderObservation:prepared?.bondOrderObservation});}
+          catch(error){
+            if(!prepared?.structure)throw error;
+            geometry.structure=optimizationFinalGeometry(next,final).structure;
+            if(sharedOpt)geometry.structure.preparation=ordinaryOptimizationPreparation(event.status,next.result,final);
+            if(next.result)next.result={...next.result,provenance:{...next.result.provenance,bondPerceptionWarning:msg(error)}};
+            adopted=this.options.onOptimizationGeometry?.(commit);
+          }
           if(adopted===false)throw Error('优化最终结构未接管。');
           if(adopted){geometry.revision=adopted.revision;geometry.structure=structuredClone(adopted.structure);}
         }catch(error){
@@ -1138,7 +1342,7 @@ export class PesController {
           else {next.status='failed';next.error={message:msg(error)};}
         }
       }
-      if(next.result){const {positions:_positions,...finalObservation}=final??{};next.result={...next.result,frames:run.retainTrajectory?next.result.frames:[],...(final?{finalObservation}:{}),...(finalGeometry?{finalStructure:finalGeometry.structure}:{})};}
+      if(next.result){const {positions:_positions,...finalObservation}=final??{};next.result={...next.result,frames:run.retainTrajectory?next.result.frames:[],...(final?{finalObservation:{...finalObservation,...(geometry&&prepared?.bondOrderObservation?{bondOrderObservation:prepared.bondOrderObservation}:{})}}:{}),...(finalGeometry?{finalStructure:finalGeometry.structure}:{})};}
       const retainedSelection=run.retainTrajectory?selection:undefined;
       this.edit(groupId,current=>({...current,runs:geometry?retireWorkbenchResults(current,node,runId,{...current.runs,[runId]:next},!converged):{...current.runs,[runId]:next},
         nodes:current.nodes.map(value=>value.id!==node.id?value:geometry?{...value,geometry,selection:retainedSelection,followRunId:undefined}:
@@ -1258,8 +1462,12 @@ export class PesController {
   }
   private retirePathSource(owner:PesPathRecordOwner,identity:PesRunIdentity){
     owner.dispose();this.nativePathSources.delete(owner);
-    if(!this.bridge?.releasePesPathRecords)return;
-    const released=this.bridge.releasePesPathRecords(identity).catch(error=>{this.options.onPathSourceReleaseError?.('路径来源临时资产尚未释放：'+msg(error));}).finally(()=>this.pathReleases.delete(released));
+    const recoveryId=this.recoveryPathClaims.get(owner);
+    this.recoveryPathClaims.delete(owner);
+    const release=recoveryId&&this.bridge?.closePesRecovery
+      ? this.bridge.closePesRecovery(recoveryId) : this.bridge?.releasePesPathRecords?.(identity);
+    if(!release)return;
+    const released=release.catch(error=>{this.options.onPathSourceReleaseError?.('路径来源临时资产尚未释放：'+msg(error));}).finally(()=>this.pathReleases.delete(released));
     this.pathReleases.add(released);
   }
 

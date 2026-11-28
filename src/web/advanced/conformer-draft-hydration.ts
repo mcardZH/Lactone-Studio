@@ -1,5 +1,6 @@
 import {isPeriodic} from '../../core/periodic';
 import type {AdvancedTaskSpec,AdvancedOptimizationStageConfig} from '../../modeling/advanced/contracts';
+import {DEFAULT_CONFORMER_CONVERGENCE,LEGACY_CONFORMER_CONVERGENCE} from '../../modeling/advanced/conformer-shared-optimization';
 import {getConformerSamplingCapability,suggestConformerSamplingSphere} from '../../modeling/advanced/sampling-contracts';
 import {convertEnergy} from '../../results/energy';
 import {initialAdvancedMethod} from './AdvancedMethodControls';
@@ -9,21 +10,34 @@ import type {ConformerTorsionDraft} from './ConformerTorsionControls';
 
 const {maxSteps:_genericOptimizationSteps,...conformerStageMethod}=initialAdvancedMethod;
 export const initialConformerStageMethod:Readonly<ConformerOptimizationDraft['method']>=Object.freeze({
-  ...conformerStageMethod,optimizer:'lbfgs',convergencePreset:'loose',
+  ...conformerStageMethod,convergencePreset:DEFAULT_CONFORMER_CONVERGENCE,
 });
+
+export function resetConformerConvergence(method:ConformerOptimizationDraft['method']):ConformerOptimizationDraft['method']{
+  const {convergenceLimits:_oldLimits,...next}=method;
+  return {...next,convergencePreset:DEFAULT_CONFORMER_CONVERGENCE};
+}
 
 export function restoreConformerStages(stages:readonly AdvancedOptimizationStageConfig[]):ConformerOptimizationDraft[]{
   return stages.map((stage,index)=>{
     const method=stage.method,options=method.backend==='forcefield'?null:method.options,solvation=method.backend==='xtb'?method.options.solvation:undefined;
-    const draft:ConformerOptimizationDraft['method']={...initialConformerStageMethod,method:options?.method??'gfn2',threads:options?.threads??1,internalConstraintsConfirmed:options?.internalConstraintsConfirmed??false,solvationModel:solvation?.model??'none',solvent:solvation?.solvent??'water'};
+    const draft:ConformerOptimizationDraft['method']={...initialConformerStageMethod,optimizer:'lbfgs',convergencePreset:LEGACY_CONFORMER_CONVERGENCE,
+      method:options?.method??'gfn2',threads:options?.threads??1,internalConstraintsConfirmed:options?.internalConstraintsConfirmed??false,
+      solvationModel:solvation?.model??'none',solvent:solvation?.solvent??'water'};
     if(method.backend==='forcefield')draft.retiredMethod=method.forcefield;
-    if(method.backend==='net')draft.device=method.options.device;
-    if(method.backend==='xtb'&&method.options.maxSccIterations!==undefined){draft.sccIterationLimit=method.options.maxSccIterations;draft.sccIterationLimitExplicit=true;}
+    if(method.backend==='net'){
+      draft.device=method.options.device;
+      if(method.options.netGpuBatchLimit!==undefined)draft.netGpuBatchLimit=method.options.netGpuBatchLimit;
+    }
+    if(method.backend==='xtb'){
+      if(method.options.maxSccIterations!==undefined){draft.sccIterationLimit=method.options.maxSccIterations;draft.sccIterationLimitExplicit=true;}
+      if(method.options.resourceOverrides!==undefined)draft.resourceOverrides={...method.options.resourceOverrides};
+    }
     if(options?.maxSteps!==undefined)draft.maxSteps=options.maxSteps;
     if(method.backend!=='forcefield'&&method.optimizer)Object.assign(draft,{optimizer:method.optimizer.algorithm,
       convergencePreset:method.optimizer.convergencePreset==='custom'&&
         !Number.isFinite((method.optimizer.convergenceLimits as Record<string, number> | undefined)?.energyDifferenceHartree)
-        ?'loose':method.optimizer.convergencePreset,
+        ?LEGACY_CONFORMER_CONVERGENCE:method.optimizer.convergencePreset??LEGACY_CONFORMER_CONVERGENCE,
       convergenceLimits:method.optimizer.convergenceLimits,maxSteps:method.options.maxSteps});
     return{id:stage.id,method:draft,energyThresholdKcalMol:stage.clustering?.maxDeltaEnergyHartree===undefined?.25:convertEnergy({value:stage.clustering.maxDeltaEnergyHartree,unit:'hartree'},'kcal/mol')!,rmsdThresholdAngstrom:stage.clustering?.rmsdThresholdAngstrom??.1,rmsdMatching:stage.clustering?.rmsdMatching??'fixed',eliminateEquivalent:stage.clustering?.eliminateEquivalent===true,...(index?{inputClusterCount:stage.inputClusterCount??stages[index-1].advanceCount??10}:{inputStride:stage.inputStride??1}),checkpointAfter:stage.checkpointAfter};
   });

@@ -32,13 +32,27 @@ function createSyProjectIPC({ store, dialog, ownerWindow, createWindow, executab
     return request.requestId;
   }
   const inspectRecovery = indexPath => store.inspectRecovery(indexPath);
+  async function openWithProtection(window, indexPath, recovery) {
+    try { return await store.open(indexPath, { recovery }); }
+    catch (error) {
+      if (error.code !== 'SY_WRITE_CONFLICT') throw error;
+      const answer = await dialog.showMessageBox(window, {
+        type: 'question', title: '项目写入保护', message: '要以只读方式打开此项目吗？',
+        detail: `${error.message}\n可以查看已保存结果或另存副本。原项目和已有写入锁将保留。`,
+        buttons: ['只读打开', '取消'], defaultId: 0, cancelId: 1, noLink: true
+      });
+      if (answer.response !== 0) return { cancelled: true };
+      return store.open(indexPath, { recovery, readOnly: true });
+    }
+  }
   async function recover(window, indexPath) {
     const inspected = await store.inspectRecovery(indexPath);
     const kinds = ['auto', 'previous'].filter(kind => inspected.points[kind]);
     if (!kinds.length) throw Object.assign(new Error('项目索引不可用，且没有有效恢复点。'), { code: 'SY_RECOVERY_MISSING' });
     const choice = await dialog.showMessageBox(window, { type: 'question', title: '恢复项目', message: '项目索引不可用，选择一个有效保存点恢复。', detail: '恢复后为未保存状态；原手动保存点不会被自动覆盖。', buttons: [...kinds.map(kind => kind === 'auto' ? '恢复自动快照' : '恢复上一手动保存'), '取消'], cancelId: kinds.length, defaultId: 0, noLink: true });
     if (choice.response >= kinds.length) return { cancelled: true };
-    const description = await store.open(indexPath, { recovery: kinds[choice.response] });
+    const description = await openWithProtection(window, indexPath, kinds[choice.response]);
+    if (description.cancelled) return description;
     return { ...description, recovered: true };
   }
   async function loadQueued(window, queued) {
@@ -46,7 +60,9 @@ function createSyProjectIPC({ store, dialog, ownerWindow, createWindow, executab
     if (recovery) {
       let description;
       try {
-        description = { ...await store.open(indexPath, { recovery }), recovered: true };
+        description = await openWithProtection(window, indexPath, recovery);
+        if (description.cancelled) return description;
+        description = { ...description, recovered: true };
         return bind(window, description);
       } catch (error) {
         if (description) { try { await store.close(description.sessionId); } catch { /* Keep primary failure. */ } }
@@ -54,17 +70,22 @@ function createSyProjectIPC({ store, dialog, ownerWindow, createWindow, executab
       }
     }
     let description;
-    try { description = await store.open(indexPath); } catch (error) {
+    try { description = await openWithProtection(window, indexPath); } catch (error) {
       if (!(error instanceof SyntaxError) && !['SY_INDEX_MISSING', 'SY_INVALID_INDEX'].includes(error.code)) throw error;
       description = await recover(window, indexPath);
     }
     if (description.cancelled) return description;
     try {
       const automatic = description.recovery?.auto;
-      if (!description.recovered && automatic && automatic.generation > description.manifest.generation) {
+      if (!description.recovered && !description.readOnly && automatic && automatic.generation > description.manifest.generation) {
         const choice = await dialog.showMessageBox(window, { type: 'question', title: '恢复项目', message: '此项目有较新的自动恢复快照。', detail: '恢复快照会保留手动保存点，并将项目标记为未保存。', buttons: ['恢复自动快照', '打开手动保存点', '取消'], defaultId: 0, cancelId: 2, noLink: true });
         if (choice.response === 2) { await store.close(description.sessionId); return { cancelled: true }; }
-        if (choice.response === 0) { await store.close(description.sessionId); description = { ...await store.open(indexPath, { recovery: 'auto' }), recovered: true }; }
+        if (choice.response === 0) {
+          await store.close(description.sessionId);
+          description = await openWithProtection(window, indexPath, 'auto');
+          if (description.cancelled) return description;
+          description = { ...description, recovered: true };
+        }
       }
       return bind(window, description);
     } catch (error) { try { await store.close(description.sessionId); } catch { /* Keep primary failure. */ } throw error; }

@@ -12,5 +12,13 @@
 /* The detached model uses the same title/actions inside its existing drag root. */
 .shared-model-heading>.shared-model-tab{flex:0 0 auto;min-inline-size:0;max-inline-size:min(18em,45vw)}
 .workspace-tab-close-icon{flex:none;inline-size:calc(12px * var(--ui-font-scale,1));block-size:calc(12px * var(--ui-font-scale,1))}
-:is(.workspace-document-tabs,.shared-model-heading) .workspace-tab-close{display:inline-flex;align-items:center;justify-content:center;align-self:stretch;flex:0 0 auto;box-sizing:border-box;inline-size:max(24px,calc(24px * var(--ui-font-scale,1)));min-inline-size:max(24px,calc(24px * var(--ui-font-scale,1)));margin-inline-start:auto;line-height:1}
+:is(.workspace-document-tabs,.shared-model-heading) .workspace-tab-close{display:inline-flex;align-items:center;justify-content:center;align-self:center;flex:0 0 auto;box-sizing:border-box;inline-size:max(22px,calc(22px * var(--ui-font-scale,1)));block-size:max(22px,calc(22px * var(--ui-font-scale,1)));min-inline-size:max(22px,calc(22px * var(--ui-font-scale,1)));margin-inline-start:auto;margin-inline-end:3px;border-radius:4px;color:var(--ui-control-muted);line-height:1;transition:var(--ui-transition)}
+:is(.workspace-document-tabs,.shared-model-heading) .workspace-tab-close:hover{background:color-mix(in srgb,var(--ui-control-ink) 9%,transparent);color:var(--ui-control-ink)}
 .workspace-tab-group>.workspace-tab-close{margin-inline-end:4px}
+.workspace-tab-name-editor{inline-size:12em;min-inline-size:4em;max-inline-size:40vw;border:1px solid var(--ui-control-accent);border-radius:var(--ui-control-radius);padding:3px 8px;color:var(--ui-control-ink);background:var(--ui-control-bg);font:inherit}
+.workspace-tab-group>.workspace-tab-name-editor{width:12em;color:var(--ui-control-ink);border-color:var(--ui-control-accent)}
+.workspace-tab-context-menu{position:fixed;z-index:1100;padding:5px;border:1px solid var(--ui-surface-border);border-radius:var(--ui-subcard-radius);background:var(--ui-popover-bg,var(--ui-control-bg));backdrop-filter:var(--ui-popover-blur,none);box-shadow:var(--ui-popover-shadow)}
+.workspace-tab-context-menu>button{display:block;text-align:start;inline-size:100%;padding:5px 12px;border:0;border-radius:var(--ui-control-radius);background:transparent;color:var(--ui-control-ink);font-size:var(--ui-control-small-font);transition:var(--ui-transition)}
+.workspace-tab-context-menu>button:hover:not(:disabled){background:var(--ui-control-hover-bg);color:var(--ui-control-selected-ink)}
+.workspace-tab-group>button.workspace-tab-group-fold{flex:none;padding-inline:6px}
+.workspace-document-tabs>.workspace-tab-group-new{display:grid;place-items:center;flex:none}

@@ -12,7 +12,10 @@ import { plotFontFamily, plotPt, usePlotAppearance, usePlotFont } from './Scient
 import type {PlotFigureEdits, PlotFontRole, PlotPosition} from '../../results/scientific-plot-editing';
 import {PlotEditorToolbar, PlotInspector, PlotPresetControls, PlotQuickControls, PlotQuickPopover, canRemovePlotTarget, type PlotTarget} from './ScientificPlotEditor';
 import {applyPlotPreset, fallbackPlotStyle, plotPresetSnapshot, plotTextInput, usePlotFigure, usePlotPresetLibrary} from './scientific-plot-figure';
-import {plotEditorPane, plotMapping} from './plot-editor-pane';
+import {editCurrentPlot,plotCanvasConfiguration,plotEditorPane,plotMapping,plotPartCapabilities} from './plot-editor-pane';
+import {ResultsMcpPlotRegistration,type PlotPartCapabilities} from './results-mcp-context';
+import {objectSchema} from '../mcp/types';
+import {settingColor} from './analysis-mcp-settings';
 import {plotGeometry} from './ScientificPlotDrawing';
 import {targetFromPlotHit, usePlotGestures} from './use-plot-gestures';
 import {PlotSettingsWindow} from './VisualizationPresetDialog';
@@ -123,13 +126,63 @@ export default function HirshfeldContactContribution({ rows, merged, decimals, n
   const selectedSlice=quickTarget?.kind==='line'?slices.find(slice=>slice.id===quickTarget.id):undefined;
   const hovered=hover&&slices.find(slice=>slice.id===hover.id);
   const capturePng = (owner: Document, signal?: AbortSignal) => captureScientificSvgPng(svg.current, owner, signal);
-  const exportChart = async (kind: 'svg' | 'png' | 'txt') => { const node = svg.current; if (!node) return; try {
+  async function captureChart(kind:'svg'|'png'|'txt',signal?:AbortSignal){
+    const node=svg.current;
+    if(!node?.isConnected)throw new Error('图窗尚未准备好或已关闭。');
+    signal?.throwIfAborted();
     const txt = () => [['inside','outside','area_A2','native_percent'],
       ...rows.map(row=>[row.insideElement,row.outsideElement,row.area,row.nativePercent])].map(row=>row.join('\t')).join('\n')+'\n';
-    const blob = kind==='png' ? await capturePng(node.ownerDocument)
+    const blob = kind==='png' ? await capturePng(node.ownerDocument,signal)
       : kind==='svg'?new Blob([serializeOptimizationSvg(node)],{type:'image/svg+xml;charset=utf-8'}):new Blob([txt()],{type:'text/plain;charset=utf-8'});
-    exportBlob(blob, `Ester-Studio-hirshfeld-contributions.${kind}`, node.ownerDocument); setError('');
+    signal?.throwIfAborted();
+    return {blob,filename:`Ester-Studio-hirshfeld-contributions.${kind}`};
+  }
+  const exportChart = async (kind:'svg'|'png'|'txt') => { const node=svg.current;if(!node)return;try{
+    const {blob,filename}=await captureChart(kind);
+    exportBlob(blob,filename,node.ownerDocument);setError('');
   } catch (value) { setError(String(value instanceof Error ? value.message : value)); } };
+  const assertIdle=()=>{if(draft||gesture.inProgress())throw new Error('图形手势正在进行。');};
+  const mcpPort=!embeddedPresetEditor&&slices.length>0?<ResultsMcpPlotRegistration chartId="hirshfeld-contact-contribution"
+    figureIdentity={JSON.stringify([key,rows,decimals,numberFormat])} port={{
+    read(){
+      const main=plotPartCapabilities(textContext);
+      const edits:PlotPartCapabilities['editOperations']=['text','font','insert-text','edit-text','move-figure','legend','undo','redo',
+        ...(main.editOperations.includes('remove-text')?['remove-text' as const]:[])];
+      const textIds=main.textIds.filter(id=>id!=='ticks');
+      const series=slices.map(slice=>({id:slice.id,label:slice.label,pointCount:1,lineStyle:false,pointStyle:false}));
+      return {title:figure.text?.title?.content??title,xLabel:'',yLabel:'',family:'contact',figure,range:null,formats:['svg','png','txt'],
+        metadata:{merged,rows,areaUnit:'angstrom^2',percentageUnit:'%'},series,textIds,edits,
+        partCapabilities:{main:{editOperations:edits,textIds,series}},presets:[...library.builtins,...library.personal].map(({id,label})=>({id,label})),
+        defaultPresetId:library.defaultId,canUndo:record.canUndo,canRedo:record.canRedo};
+    },
+    edit(change){
+      assertIdle();
+      if(change.operation==='text'&&change.role!=='title')throw new Error('接触贡献图只有图标题。');
+      editCurrentPlot(change,textContext,record);
+    },
+    preset(id){assertIdle();choose(id);},
+    savePreset(label){assertIdle();const id=library.save(label,snapshot);choose(id,snapshot);return id;},
+    defaultPreset:library.makeDefault,
+    configuration:{canvas:plotCanvasConfiguration(textContext,assertIdle),'slice-colors':{
+      schema:objectSchema(Object.fromEntries(slices.map(slice=>[slice.id,settingColor]))),
+      read:()=>Object.fromEntries(slices.map(slice=>[slice.id,slice.color])),
+      apply(patch){
+        assertIdle();
+        const series={...figure.series};
+        for(const [id,color] of Object.entries(patch))series[id]={...(series[id]??style.line),color:color as string};
+        edit({series});
+      },
+    }},
+    canSelectPoint:!!onContact,
+    point(seriesId,pointIndex,action){
+      const slice=slices.find(item=>item.id===seriesId);
+      if(!slice||pointIndex!==0)return;
+      if(action==='select'){assertIdle();onContact?.(slice.focus);}
+      return slice.row;
+    },
+    export(format,signal){if(format==='raw')throw new Error('当前图形没有该格式的导出。');return captureChart(format,signal);},
+    isVisible:()=>!!svg.current?.getClientRects().length,
+  }}/>:null;
   const closeQuick=()=>setQuick(undefined);
   const legendPosition=figure.text?.legend?.position;
   const art = <div className="scientific-plot hirshfeld-contribution-plot" onKeyDown={keyboard}>
@@ -202,7 +255,7 @@ export default function HirshfeldContactContribution({ rows, merged, decimals, n
     <div className="plot-preset-art">{art}</div><aside className="plot-preset-fields">{sidebar}</aside>
   </div>;
   return <>
-    <PlotEditorToolbar library={library} active={figure.presetId} style={snapshot} onChoose={choose} onAdvanced={()=>{closeQuick();setAdvanced(true);}}/>
+    {mcpPort}<PlotEditorToolbar library={library} active={figure.presetId} style={snapshot} onChoose={choose} onAdvanced={()=>{closeQuick();setAdvanced(true);}}/>
     {advanced?<PlotSettingsWindow category="contact" ownerDocument={svg.current?.ownerDocument} onClose={()=>{setAdvanced(false);closeQuick();}} onKeyDown={keyboard}
       figure={art} sidebar={sidebar}/>:art}
   </>;

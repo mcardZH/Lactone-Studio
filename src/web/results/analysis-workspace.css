@@ -35,3 +35,4 @@
 .analysis-detached-header>div{display:flex;align-items:center;gap:8px}
 .analysis-detached-header strong{flex:1;color:var(--ui-section-ink,#13766e)}
 .analysis-detached-header button{min-height:var(--ui-control-height);border:1px solid var(--ui-control-border);border-radius:var(--ui-control-radius);background:white;padding:var(--ui-control-padding);color:inherit;font:inherit}
+:root[data-interface-paradigm=dark-studio] .analysis-detached-header button{background:var(--ui-control-bg);color:var(--ui-control-ink)}

@@ -41,15 +41,7 @@ class PeriodicBondEvaluator:
     def __init__(self, request, runtime, workspace, cancel=None):
         require(request.get('method') == 'gfn2' and request.get('calculation') == 'singlepoint',
                 'Periodic bond orders require a GFN2 singlepoint')
-        # Reuse geometry/electron/resource validation, without claiming or
-        # initializing an optimizer; frozen atoms need not be movable for SP.
-        normalized = copy.deepcopy(request)
-        normalized.update(calculation='optimize', frozenAtomIds=[])
-        self.initial, self.vectors, _ = validate(normalized)
-        ids = [atom['id'] for atom in request['structure']['atoms']]
-        frozen = request.get('frozenAtomIds', [])
-        require(isinstance(frozen, list) and len(set(frozen)) == len(frozen) and all(atom_id in ids for atom_id in frozen),
-                'Invalid fixed atom identities')
+        self.initial, self.vectors, _ = validate(request, calculation='singlepoint')
         self.request = copy.deepcopy(request)
         self.workspace = Path(workspace).resolve()
         require(self.workspace.is_dir() and not self.workspace.is_symlink(),

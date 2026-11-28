@@ -1,6 +1,13 @@
 import {useRef} from 'react';
 import type {InterfaceTheme} from './interface-theme-preferences';
-const choices=[{id:'mixed',label:'混合青绿（默认）'},{id:'mint',label:'明亮薄荷'},{id:'clear',label:'清透白青'}] as const;
+const choices=[
+  {id:'mixed',label:'混合青绿（默认）'},
+  {id:'mint',label:'明亮薄荷'},
+  {id:'clear',label:'清透白青'},
+  {id:'slate',label:'期刊冷瓷蓝灰'},
+  {id:'ivory',label:'暖纸护眼象牙'},
+  {id:'graphite',label:'极简中性银灰'},
+] as const;
 export default function InterfaceThemeControl({value,onChange}:{value:InterfaceTheme;onChange(value:InterfaceTheme):void}){
   const controls=useRef<Array<HTMLButtonElement|null>>([]);
   return <div className="settings-theme-choices" role="radiogroup" aria-label="界面配色">{choices.map((choice,index)=><button

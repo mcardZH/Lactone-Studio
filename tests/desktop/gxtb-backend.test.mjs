@@ -87,12 +87,28 @@ test('g-xTB backend validates POSIX executable permissions, injects library/XTBP
     const storeRoot = path.join(root, 'store');
     await fs.mkdir(storeRoot, { recursive: true });
 
-    // 1. Non-executable bin/xtb (0o644) is rejected on POSIX
+    // 1. Non-executable bin/xtb (0o644) and missing path are rejected with programPathError codes
     const nonExecDist = await createMockGxtbDistribution(path.join(root, 'nonexec'), { execMode: 0o644 });
     const nonExecStore = createGxtbBackendStore(path.join(storeRoot, 'nonexec'), {
       spawn: createFakeSpawn([]),
     });
-    await assert.rejects(() => nonExecStore.select(nonExecDist.executable), /chmod \+x/);
+    await assert.rejects(
+      () => nonExecStore.select(nonExecDist.executable),
+      (err) => err?.code === 'GXTB_PROGRAM_UNAVAILABLE' && /chmod \+x/.test(err.message),
+    );
+    await assert.rejects(
+      () => nonExecStore.select(path.join(root, 'missing-gxtb', 'xtb')),
+      { code: 'GXTB_PROGRAM_NOT_FOUND' },
+    );
+
+    const corruptStoreRoot = path.join(storeRoot, 'corrupt');
+    await fs.mkdir(corruptStoreRoot, { recursive: true });
+    await fs.writeFile(path.join(corruptStoreRoot, 'gxtb-backend.json'), '{broken', 'utf8');
+    const corruptStore = createGxtbBackendStore(corruptStoreRoot, { spawn: createFakeSpawn([]) });
+    const corruptInfo = await corruptStore.info();
+    assert.equal(corruptInfo.status, 'configuration-invalid');
+    assert.match(corruptInfo.details, /GXTB_CONFIGURATION_READ_FAILED|无法读取已有 g-xTB 配置/);
+    await assert.rejects(() => corruptStore.detect(), { code: 'GXTB_CONFIGURATION_READ_FAILED' });
 
     // 2. Executable bin/xtb (0o755) succeeds and detects --gxtb capability
     const dist = await createMockGxtbDistribution(root, { execMode: 0o755 });

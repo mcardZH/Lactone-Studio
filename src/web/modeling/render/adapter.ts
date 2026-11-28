@@ -48,7 +48,7 @@ import { retainViewerShapeResources } from './shape-resource-lifecycle';
 import { createNativePrimitiveBatch, nativePrimitiveBatchesAvailable, type NativeBatchArrow, type NativeBatchRod, type NativeBatchSphere } from './native-primitive-batch';
 import { createOrbitalLayer, type ViewportNtoLayer, type NtoMeshState } from './orbital-layer';
 import { createSurfaceLayers, type ViewportSurfaceLayer, type ViewportSurfaceExtrema, type SurfaceMeshState, type SurfaceLayerMeshState } from './surface-layer';
-import { createRenderCompletionObserver, createRendererSubmissionObserver, type ViewportRenderIdentity, type ViewportRenderObserver } from './render-completion';
+import { createRenderCompletionObserver, createRendererSubmissionObserver, observeRendererContext, type ViewportRenderIdentity, type ViewportRenderObserver } from './render-completion';
 import { transformGuidePrimitives, type TransformPreviewGuides } from './transform-guides';
 import { periodicDisplayInstancesWork, periodicDisplaySettings, preparePeriodicDisplayConnectionsWork, type PeriodicDisplayInstance, type PeriodicDisplayConnectionContext } from './periodic-display';
 import { fractionalToCartesian } from '../../../core/periodic';
@@ -211,6 +211,11 @@ export interface CameraZoomReceipt {
 export interface CameraZoomControls {
   getZoomDistance():number;
   zoomByFactor(factor:number):CameraZoomReceipt;
+  gesture?(command:import('../workspace-viewport').ModelCameraGesture):import('../workspace-viewport').ModelCameraGestureReceipt;
+}
+export interface ViewportCameraControls extends CameraZoomControls {
+  read?():{view:number[];perceivedDistance:number}|undefined;
+  apply?(command:import('../workspace-viewport').ModelCameraCommand|import('../workspace-viewport').ModelCameraGesture):import('../workspace-viewport').ModelCameraGestureReceipt|CameraZoomReceipt;
 }
 export interface RenderAdapter extends CameraZoomControls {
   drawAsync?(document: ModelDocument, display: DisplaySettings, highlights?: ViewerHighlights, preview?: Atom[], transform?: RigidTransform, measurement?: MeasurementState, feedback?: RenderFeedbackOptions,signal?:AbortSignal):Promise<void>;
@@ -220,6 +225,7 @@ export interface RenderAdapter extends CameraZoomControls {
   cooperativeDisplay?():boolean;
   /** Published scene can accept pointer interaction; staging never exposes partial picks. */
   presentationReady?():boolean;
+  presentationContextAvailable?(): boolean;
   cameraInputReady?(documentId: string): boolean;
   draw(document: ModelDocument, display: DisplaySettings, highlights?: ViewerHighlights, preview?: Atom[], transform?: RigidTransform, measurement?: MeasurementState, feedback?: RenderFeedbackOptions): void;
   setOrbitalLayer(layer: ViewportOrbitalLayer | null): void;
@@ -273,7 +279,7 @@ export interface RenderAdapter extends CameraZoomControls {
   /** Display-only absolute raw coordinates for one stable affected-ID set.
    * Null restores the last committed draw; never commits a model transaction. */
   previewFragment?(atoms:readonly Atom[]|null,context?:FragmentRenderPreviewContext):void;
-  dispose(): void;
+  dispose(preserveOffscreenFront?: HTMLElement): void;
 }
 export function requiresCooperativeDisplay(document:ModelDocument,display:DisplaySettings,feedback?:RenderFeedbackOptions):boolean{
   const structure=document.draft.structure;
@@ -297,7 +303,7 @@ export interface FragmentRenderPreviewContext {
 /** A window owns one persistent adapter. Model/style switches update that
  * instance. Electron windows must load their own renderer realm, not Portal a
  * canvas into a foreign document: locked 3Dmol uses ambient document/window. */
-interface RenderAdapterOptions {orthographic?:boolean;backgroundAlpha?:0|1;asyncMeshes?:boolean;onAsyncMeshState?():void;onAsyncMeshError?(error:unknown):void}
+interface RenderAdapterOptions {orthographic?:boolean;backgroundAlpha?:0|1;asyncMeshes?:boolean;onAsyncMeshState?():void;onAsyncMeshError?(error:unknown):void;onContextLost?():void}
 
 export async function createRenderAdapter(container: HTMLDivElement, options: RenderAdapterOptions = {}): Promise<RenderAdapter> {
   if (container.ownerDocument !== globalThis.document) throw new Error('建模视口需要独立窗口自身的渲染环境。');
@@ -326,7 +332,15 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   const trajectoryLayer = createTrajectoryLayer(viewer, shapeResources, periodicBondGlyphs, atomRadius);
   const samplingSphereShapes = createSamplingSphereLayer(viewer);
   const calculationRangeShapes = createShapeLayer(viewer);
-  const renderCompletion=createRenderCompletionObserver(()=>viewer.getCanvas?.(),realm,()=>viewer.getRenderer?.()?.getContext?.());
+  const readRenderContext = () => viewer.getRenderer?.()?.getContext?.();
+  const renderCompletion=createRenderCompletionObserver(()=>viewer.getCanvas?.(),realm,readRenderContext);
+  const renderContext = observeRendererContext(readRenderContext, () => {
+    renderCompletion.cancelPending();
+    options.onContextLost?.();
+  });
+  const assertPresentationContext = () => {
+    if (!renderContext.available()) throw new Error('WebGL 绘制环境已失活。');
+  };
   const observedGraphs=new WeakMap<readonly Bond[],string>();
   let cameraPreparedAt:number|undefined;
   const renderSubmissions=createRendererSubmissionObserver(viewer,renderCompletion,()=>{
@@ -497,19 +511,31 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   // render to the normal draw/pick path; hidden/stale projections still repair.
   const pixelRatio=()=>Math.max(2,realm.devicePixelRatio??1); // locked antialias/upscale policy
   let projectionSize=physicalViewportSize(initialBounds.width,initialBounds.height,pixelRatio());
+  function nativeCanvasSize(){
+    const canvas=viewer.getCanvas?.();
+    return canvas&&canvas.width>0&&canvas.height>0?{canvas,width:canvas.width,height:canvas.height}:null;
+  }
+  let sizedCanvas=nativeCanvasSize(),wasHidden=false;
   let layoutResizing=false;
   function synchronizeSize(force = false): boolean {
-    assertLive(); const bounds = container.getBoundingClientRect();
-    if (![bounds.width, bounds.height].every(Number.isFinite) || bounds.width <= 0 || bounds.height <= 0) { projectionSize = null; return false; }
+    assertLive();
+    if (!renderContext.available()) return false;
+    const bounds = container.getBoundingClientRect();
+    const next=physicalViewportSize(bounds.width,bounds.height,pixelRatio());
+    if (!next) { wasHidden=true; return false; }
     if((layoutResizing||resizeSettler.pending())&&!force)return true;
     const canvas = viewer.getCanvas?.();
     const nativeSizeLost = canvas && (canvas.width <= 0 || canvas.height <= 0);
-    const next=physicalViewportSize(bounds.width,bounds.height,pixelRatio());
-    if (force || nativeSizeLost || !samePhysicalViewportSize(projectionSize,next)) {
+    // A hidden pane has no usable coordinates. Its canvas may still own the
+    // correctly sized buffer when that same pane returns.
+    const hiddenBufferChanged=wasHidden&&(!sizedCanvas||sizedCanvas.canvas!==canvas||
+      sizedCanvas.width!==canvas.width||sizedCanvas.height!==canvas.height);
+    if (force || nativeSizeLost || hiddenBufferChanged || !samePhysicalViewportSize(projectionSize,next)) {
       // Locked GLViewer.resize already shows a healthy context, or performs
       // its own full render on recovery. Do not submit the same resize twice.
-      renderSubmissions.run('resize',()=>viewer.resize()); projectionSize=next;
+      renderSubmissions.run('resize',()=>viewer.resize()); projectionSize=next;sizedCanvas=nativeCanvasSize();
     }
+    wasHidden=false;
     return true;
   }
   let deferredResizeError:unknown;
@@ -1078,7 +1104,15 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       if(updateNativeBuffers())coordinateBufferUpdates++;
       else {renderedModel.setCoordinates([positions.map(coordinates)],'array');void renderedModel.setFrame(0);setNativeClickable();rendered=renderedModel.selectedAtoms({});}
     }
-    try { renderSubmissions.run('draw',()=>viewer.render()); surfaces.markSubmitted(); orbitals.markSubmitted(); } catch (error) { surfaces.failSubmission(error); orbitals.failSubmission(error); throw error; }
+    try {
+      assertPresentationContext();
+      renderSubmissions.run('draw', () => {
+        viewer.render();
+        assertPresentationContext();
+      });
+      surfaces.markSubmitted();
+      orbitals.markSubmitted();
+    } catch (error) { surfaces.failSubmission(error); orbitals.failSubmission(error); throw error; }
     // One material build/present supplies exact native bounds after every
     // coordinate update. Snapshot them so hover never changes pick geometry.
     for (let i = 0; i < positions.length; i++) {
@@ -1242,6 +1276,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
 
   function draw(document: ModelDocument, settings: DisplaySettings, incoming: ViewerHighlights = {}, preview?: Atom[], transform = identityTransform(), measurement?: MeasurementState, feedback: RenderFeedbackOptions = {}) {
     assertLive();
+    assertPresentationContext();
     scenePreparations++;
     if(drawController)throw new Error('异步显示准备尚未结束，请通过受管绘制入口更新。');lastDrawCooperative=false;
     cancelObsoleteCip(document,settings,feedback);
@@ -1250,7 +1285,10 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
     try{
       const signature=residentSignature(document,settings,incoming,transform,measurement,feedback);
       renderSubmissions.run('draw',()=>{
-        if(advanceResidentScene(signature,document,preview,feedback))return;
+        if(advanceResidentScene(signature,document,preview,feedback)){
+          assertPresentationContext();
+          return;
+        }
         finishRenderWork(drawContent(document,settings,incoming,preview,transform,measurement,feedback));
         rememberResidentScene(signature,document,settings);
       });
@@ -1297,6 +1335,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
   }
   async function drawAsync(document:ModelDocument,settings:DisplaySettings,incoming:ViewerHighlights={},preview?:Atom[],transform=identityTransform(),measurement?:MeasurementState,feedback:RenderFeedbackOptions={},signal?:AbortSignal){
     if(signal?.aborted)throw new DOMException('显示准备已取消。','AbortError');
+    assertPresentationContext();
     residentScene=undefined;
     if(preview&&!Object.isFrozen(preview))preview=preview.map(atom=>({...atom}));
     const requestedFragment = fragmentPreview;
@@ -1484,7 +1523,9 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       if(source)source.failure=undefined;
       syncCip(lastDraw);
     },
-    cooperativeDisplay:()=>lastDrawCooperative,presentationReady:()=>!atomicDraw, cameraInputReady:documentId=>!atomicDraw||atomicDraw.cameraOwner===documentId, project, projectMany, atomRadius, plane, hitTest, worldPoint, projectionReady,previewFragment,
+    cooperativeDisplay:()=>lastDrawCooperative,presentationReady:()=>!disposed&&renderContext.available()&&!atomicDraw,
+    presentationContextAvailable:()=>!disposed&&renderContext.available(),
+    cameraInputReady:documentId=>!disposed&&renderContext.available()&&(!atomicDraw||atomicDraw.cameraOwner===documentId), project, projectMany, atomRadius, plane, hitTest, worldPoint, projectionReady,previewFragment,
     projectSphere(sphere){
       const orthographic=typeof viewer.camera?.ortho==='boolean'?viewer.camera.ortho:(options.orthographic??true);
       if(!orthographic)return null;
@@ -1630,7 +1671,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
         ownedShapes:owned.shapes,ownedModels:owned.models,ownedResources:owned.resources,shapeSlots:Array.isArray(viewer.shapes)?viewer.shapes.length:null,modelSlots:Array.isArray(viewer.models)?viewer.models.length:null,
         gpuGeometries:count(memory?.geometries),gpuTextures:count(memory?.textures),gpuPrograms:count(memory?.programs)};
     },
-    dispose() {
+    dispose(preserveOffscreenFront) {
       if (disposed) return; disposed = true;
       wakeMeshes();
       releaseBackgroundObserver();
@@ -1640,7 +1681,7 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
       release(()=>atomicDraw?.rollback());
       release(()=>clearFragmentPreview(false));
       release(() => trajectoryLayer.dispose()); release(() => samplingSphereShapes.clear()); release(() => calculationRangeShapes.clear());
-      release(() => renderCompletion.dispose()); release(() => renderSubmissions.dispose()); release(() => resizeSettler.dispose());
+      release(() => renderContext.dispose()); release(() => renderCompletion.dispose()); release(() => renderSubmissions.dispose()); release(() => resizeSettler.dispose());
       release(()=>depthEnvelope.dispose());
       for(const owner of resizeOwners)release(() => owner.removeEventListener(VIEWPORT_LAYOUT_RESIZE_EVENT,acceptLayoutResize));
       release(() => captured.release()); release(() => orbitals.dispose()); release(() => surfaces.dispose());
@@ -1657,7 +1698,13 @@ export function buildRenderAdapter(container: HTMLDivElement, mol: any, options:
         const context = viewer.getRenderer?.()?.getContext?.() ?? canvas?.getContext('webgl2') ?? canvas?.getContext('webgl') ?? canvas?.getContext('experimental-webgl');
         if (context?.canvas === canvas) context.getExtension('WEBGL_lose_context')?.loseContext();
       });
-      release(() => canvas?.remove()); proxies = []; imageProxies=[]; positions = []; currentDocument = null; renderedModel = null; modelMaterial = undefined; cachedViews.clear(); framedDocuments.clear();
+      release(() => {
+        const context=readRenderContext();
+        if(preserveOffscreenFront&&canvas?.parentElement===container&&context?.canvas&&context.canvas!==canvas) {
+          preserveOffscreenFront.replaceChildren(canvas);
+        } else canvas?.remove();
+      });
+      proxies = []; imageProxies=[]; positions = []; currentDocument = null; renderedModel = null; modelMaterial = undefined; cachedViews.clear(); framedDocuments.clear();
       if (failure) throw failure;
     },
   };

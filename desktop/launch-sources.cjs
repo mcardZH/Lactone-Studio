@@ -88,18 +88,23 @@ function createLaunchSources() {
     assert(source && source.owner === owner && !source.closed && !disposed, 'LAUNCH_SOURCE_UNAVAILABLE: 输出来源已关闭或不属于本窗口。');
     return source;
   }
-  async function describe(owner, token) {
+  async function describe(owner, token, { signal } = {}) {
     const source = owned(owner, token);
     const operation = (async () => {
+      signal?.throwIfAborted();
       await verify(source);
       if (!source.revision) {
         const hash = createHash('sha256'), buffer = Buffer.allocUnsafe(COPY_CHUNK_BYTES); let offset = 0;
         while (offset < source.size) {
+          signal?.throwIfAborted();
           const length = Math.min(buffer.length, source.size - offset), { bytesRead } = await source.handle.read(buffer, 0, length, offset);
           assert(bytesRead === length, 'FILE_CHANGED: 来源在核对时截断。'); hash.update(buffer.subarray(0, bytesRead)); offset += bytesRead;
         }
-        await verify(source); source.revision = hash.digest('hex');
+        await verify(source);
+        signal?.throwIfAborted();
+        source.revision = hash.digest('hex');
       }
+      signal?.throwIfAborted();
       return { name: source.name, size: source.size, revision: source.revision };
     })();
     source.reads.add(operation);
@@ -141,7 +146,7 @@ function createLaunchSources() {
         const current = await fs.lstat(destination), saved = await output.stat();
         assert(current.isFile() && !current.isSymbolicLink() && current.nlink === 1 && identity(current) === identity(saved) && current.dev === created.dev && current.ino === created.ino && saved.size === source.size, 'SOURCE_IDENTITY: 受管副本已变化。');
         checkCancelled(); source.revision = revision; complete = true;
-        return { path: destination, name, revision, bytes: source.size };
+        return { path: destination, name, revision, bytes: source.size, identity: identity(saved) };
       } finally {
         await output.close();
         if (!complete && created) {

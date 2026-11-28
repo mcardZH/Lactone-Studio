@@ -262,15 +262,17 @@ class _PathResult:
             frames.append(item)
         return frames
 
-    def remember_band(self, values, phase):
+    def remember_band(self, values, phase, *, completed_initializer=False):
         self.physical = values
         self.last_phase = phase
         if self.recorder:
             step = max(row[2] for row in values.values())
             # FSM initialization can already have recorded physical rounds.
             # The first actual CI-NEB band still owns its own energy milestone.
+            neb = phase in ('ci-neb-ordinary', 'ci-neb-climb')
             self.recorder.consider(self.make_frames(values, phase, 'path', 'accepted'), phase,
-                                   step, first_physical=step == 0 and phase in ('ci-neb-ordinary', 'ci-neb-climb'))
+                                   step, first_physical=neb and step == 0, milestone=neb and step == 1,
+                                   retain_previous=neb or phase == 'fsm-growth', completed_phase=completed_initializer)
         else:
             self.history.extend(self.make_frames(values, phase, 'path-iterations', 'accepted'))
 
@@ -287,7 +289,7 @@ class _PathResult:
                 phase = self.provenance.get('initialGeometryPhase', 's-idpp')
                 self.recorder.consider(self.make_frames(self.reference, phase, 'path', 'geometry'),
                                        phase, 0, initial=True)
-            last = self.recorder.finish()
+            last = self.recorder.finish() or self.recorder.last_complete_id
             if last:
                 self.provenance['candidateFrameIds'] = [item['id'] for item in sorted(
                     (item for item in self.recorder.records[last]['frames'] if item.get('localEnergyMaximum')),
@@ -393,6 +395,46 @@ def _fsm_node(seed, tangent, ctx, node_steps, line_search, box, *, node_id=None,
     return optimize_fsm_node(seed, tangent, ctx, node_steps, line_search, box,
                              node_id=identity, observe=observe)
 
+
+def _fsm_evaluate_anchors(ctx, result, reference, indices):
+    def keep(index, xyz, identity, observation):
+        result.physical[index] = (xyz, observation['energyHartree'], 0,
+            {'role': 'endpoint' if index in (0, len(reference) - 1) else 'keyframe', 'nodeId': identity})
+
+    if getattr(ctx, 'supports_evaluation_batch', False):
+        nodes = [(index, ctx.new_node_id('fsm-endpoint'), reference[index]) for index in indices]
+        pin = getattr(ctx, 'pin_node', None)
+        if pin is not None:
+            for index, identity, _ in nodes:
+                pin(identity, index)
+        failure = None
+        try:
+            outcomes = ctx.evaluate_many([(identity, xyz) for _, identity, xyz in nodes])
+            for (index, identity, xyz), observation in zip(nodes, outcomes, strict=True):
+                if isinstance(observation, Exception):
+                    failure = failure or observation
+                else:
+                    keep(index, xyz, identity, observation)
+            if failure is not None:
+                raise failure
+        finally:
+            identities = [identity for _, identity, _ in nodes]
+            if getattr(ctx, 'release_nodes', None) is not None:
+                ctx.release_nodes(identities)
+            else:
+                for identity in identities:
+                    ctx.release_node(identity)
+        return
+
+    for index in indices:
+        identity = ctx.new_node_id('fsm-endpoint')
+        try:
+            xyz = reference[index]
+            keep(index, xyz, identity, ctx.evaluate(xyz, node_id=identity))
+        finally:
+            ctx.release_node(identity)
+
+
 def _fsm(reference, ctx, options, result, *, anchors=None, growth=None, phase='fsm-growth'):
     growth = options.get('fsmGrowth', 'sidpp') if growth is None else growth
     if growth not in ('native', 'sidpp'):
@@ -410,20 +452,16 @@ def _fsm(reference, ctx, options, result, *, anchors=None, growth=None, phase='f
     anchor_indices = [index for index, _ in anchors]
     result.provenance['keyframeBeads'] = [index + 1 for index in anchor_indices[1:-1]]
     result.provenance['segmentBeads'] = [[lo + 1, hi + 1] for lo, hi in zip(anchor_indices, anchor_indices[1:])]
-    for index in anchor_indices:
-        xyz = reference[index]
-        identity = ctx.new_node_id('fsm-endpoint')
-        try:
-            energy = ctx.evaluate(xyz, node_id=identity)['energyHartree']
-            result.physical[index] = (xyz, energy, 0,
-                {'role': 'endpoint' if index in (0, len(reference) - 1) else 'keyframe', 'nodeId': identity})
-        except Exception:
-            if result.physical:
-                result.remember_partial(dict(result.physical), phase + '-interrupted')
-            raise
-        finally:
-            ctx.release_node(identity)
-    result.remember_band(dict(result.physical), phase)
+    try:
+        _fsm_evaluate_anchors(ctx, result, reference, anchor_indices)
+    except Exception:
+        result.remember_partial(dict(result.physical), phase + '-interrupted')
+        raise
+    def remember_growth():
+        result.remember_band(dict(result.physical), phase,
+                             completed_initializer=phase == 'ci-fsm-initialization' and len(result.physical) == len(reference))
+
+    remember_growth()
     growth_round = 0
     for segment_index, (start, end) in enumerate(zip(anchor_indices, anchor_indices[1:])):
         lo, hi = start, end
@@ -442,31 +480,66 @@ def _fsm(reference, ctx, options, result, *, anchors=None, growth=None, phase='f
                 return ctx.constraints.project(proposed)
 
             indices = sorted({lo + 1, hi - 1})
-            for index in indices:
-                seed = corrected_reference(index)
-                tangent = (right - left if growth == 'native'
-                           else corrected_reference(index + 1) - corrected_reference(index - 1))
-                identity = ctx.new_node_id('fsm-node')
+            def frontier():
+                for index in indices:
+                    seed = corrected_reference(index)
+                    tangent = (right - left if growth == 'native'
+                               else corrected_reference(index + 1) - corrected_reference(index - 1))
+                    yield index, ctx.new_node_id('fsm-node'), seed, tangent
 
-                def retain_candidate(xyz, energy):
-                    result.physical[index] = (xyz.copy(), energy, growth_round,
-                        {'role': 'valid-node-candidate', 'nodeId': identity, 'segmentIndex': segment_index,
-                         'localStatus': 'in-progress'})
-                try:
-                    xyz, energy, evidence = _fsm_node(seed, tangent, ctx, node_steps, line_search, box,
-                                                      node_id=identity, observe=retain_candidate)
-                    result.physical[index] = (xyz, energy, growth_round,
-                        {'role': 'frozen-node', 'nodeId': identity, 'segmentIndex': segment_index, **evidence})
-                except Exception:
-                    result.remember_partial(dict(result.physical), phase + '-interrupted')
-                    raise
-                finally:
-                    ctx.release_node(identity)
+            def retain_candidate(index, identity, xyz, energy):
+                result.physical[index] = (xyz.copy(), energy, growth_round,
+                    {'role': 'valid-node-candidate', 'nodeId': identity, 'segmentIndex': segment_index,
+                     'localStatus': 'in-progress'})
+
+            def keep_finished(index, identity, observation):
+                xyz, energy, evidence = observation
+                result.physical[index] = (np.asarray(xyz), energy, growth_round,
+                    {'role': 'frozen-node', 'nodeId': identity, 'segmentIndex': segment_index, **evidence})
                 _progress(ctx, phase, len(result.physical), len(reference), rounds=growth_round,
                           segmentIndex=segment_index)
+
+            optimize_many = getattr(ctx, 'optimize_fsm_nodes', None)
+            if optimize_many is not None and len(indices) > 1:
+                entries = list(frontier())
+                jobs = []
+                for index, identity, seed, tangent in entries:
+                    ctx.pin_node(identity, index)
+                    jobs.append(dict(nodeId=identity, xyz=seed, tangent=tangent, nodeSteps=node_steps,
+                                     lineSearch=line_search, box=box))
+                failure = None
+                for (index, identity, _, _), (observation, partial) in zip(entries, optimize_many(jobs), strict=True):
+                    if isinstance(observation, Exception):
+                        if partial is not None:
+                            xyz, energy = partial
+                            retain_candidate(index, identity, np.asarray(xyz), energy)
+                        failure = failure or observation
+                    else:
+                        keep_finished(index, identity, observation)
+                if failure is not None:
+                    result.remember_partial(dict(result.physical), phase + '-interrupted')
+                    raise failure
+            else:
+                for index, identity, seed, tangent in frontier():
+                    if optimize_many is not None:
+                        # A singleton frontier needs no extra process. Keep its
+                        # electronic state in the same local context throughout.
+                        evaluator = ctx.base
+                    else:
+                        evaluator = ctx
+                    observe = lambda xyz, energy: retain_candidate(index, identity, xyz, energy)
+                    try:
+                        observation = _fsm_node(seed, tangent, evaluator, node_steps, line_search, box,
+                                                node_id=identity, observe=observe)
+                        keep_finished(index, identity, observation)
+                    except Exception:
+                        result.remember_partial(dict(result.physical), phase + '-interrupted')
+                        raise
+                    finally:
+                        evaluator.release_node(identity)
             lo, hi = indices[0], indices[-1]
             result.provenance['growthRounds'] = growth_round
-            result.remember_band(dict(result.physical), phase)
+            remember_growth()
     return 'completed'
 
 
@@ -989,9 +1062,11 @@ def _de_gsm(reference, ctx, options, result, *, anchors=None):
     return 'completed' if all(status == 'completed' for status in statuses) else 'not-converged'
 
 
-def run(request, ctx):
+def _run_path(request, ctx):
     options = request.get('parameters', {})
     algorithm = request['algorithm']
+    # New cards send their selected bead count, initializer and cadence.
+    # Omitted parameters keep the defaults of historical worker requests.
     count = _int(options, 'beads', 12, minimum=2 if algorithm in ('de-gsm', 'fsm') else 3)
     result = _PathResult(request, ctx)
     try:
@@ -1005,6 +1080,8 @@ def run(request, ctx):
         initializer = options.get('pathInitializer', 'sidpp') if algorithm == 'ci-neb' else None
         if initializer is not None and initializer not in ('sidpp', 'fsm'):
             raise PathInputError('pathInitializer requires sidpp or fsm')
+        if initializer is not None:
+            result.provenance['pathInitializer'] = initializer
         fsm_growth = options.get('fsmGrowth', 'sidpp')
         if algorithm == 'fsm' and fsm_growth not in ('native', 'sidpp'):
             raise PathInputError('fsmGrowth requires native or sidpp')
@@ -1020,8 +1097,19 @@ def run(request, ctx):
             result.provenance['sIdpp'] = {'used': False, 'segments': []}
             initial_phase = 'native-dlc-initial' if native_gsm else 'fsm-native-initial'
         else:
-            reference = _sidpp_reference(anchors, ctx, options, count, result)
+            if algorithm == 'ci-neb':
+                seeds = {index: (xyz, None, 0, {'initialAnchor': True}) for index, xyz in anchors}
+                result.reference = seeds
+                result.recorder.consider(result.make_frames(seeds, 'initial', 'path', 'geometry'),
+                                         'initial', 0, initial=True)
             result.provenance['sIdpp']['used'] = True
+            reference = None
+            try:
+                reference = _sidpp_reference(anchors, ctx, options, count, result)
+            finally:
+                if algorithm == 'ci-neb' and reference is None and any(not item[3].get('initialAnchor') for item in result.reference.values()):
+                    phase = 's-idpp-incomplete'
+                    result.recorder.consider_partial(result.make_frames(result.reference, phase, 'path', 'partial'), phase, 0)
             initial_phase = 's-idpp'
         result.provenance['initialGeometryPhase'] = initial_phase
         if reference is None:
@@ -1031,7 +1119,6 @@ def run(request, ctx):
                                      initial_phase, 0, initial=True)
         if algorithm == 'ci-neb':
             from pes_neb import run_ci_neb
-            result.provenance['pathInitializer'] = initializer
             if initializer == 'fsm':
                 status = _fsm(reference, ctx, options, result, anchors=anchors, growth='native',
                               phase='ci-fsm-initialization')
@@ -1064,3 +1151,17 @@ def run(request, ctx):
         return result.finish(ctx, 'failed', error={'code': getattr(error, 'code', 'PES_PATH_FAILED'),
                                                   'message': str(error), 'type': type(error).__name__})
     return result.finish(ctx, status)
+
+
+def run(request, ctx):
+    from pes_path_pool import PathPool, path_lane_count
+
+    lanes = path_lane_count(request)
+    if lanes <= 1:
+        return _run_path(request, ctx)
+    from threadpoolctl import threadpool_limits
+
+    with threadpool_limits(limits=1), PathPool(request, ctx, lanes) as pool:
+        result = _run_path(request, pool)
+    result['provenance'].update(pool.result_evidence())
+    return result

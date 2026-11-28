@@ -1,32 +1,36 @@
 import type { Vector3, Structure } from '../../core/types';
 import { elementSymbol } from '../../core/elements';
 import { BUILDER_TEMPLATES } from '../../core/builder-templates';
-import { defaultElementPresetId, getElementPreset } from '../../core/modeling/element-presets';
+import { defaultElementPresetId, getElementPreset, getElementPresets } from '../../core/modeling/element-presets';
 import { createModelStore, getFrozenAtomIds } from '../../core/modeling/model-store';
 import { referenceKey } from '../../core/modeling/graph';
-import { editBuilderGeometryBalanced, type GeometrySideMode } from '../../core/builder-geometry';
+import { builderEditableGeometryFrame, editBuilderGeometryBalanced, type GeometrySideMode } from '../../core/builder-geometry';
 import { createCopiedFragmentSeed } from '../../core/modeling/copied-fragment';
 import { newModelId } from '../../core/modeling/hydrogen-policy';
-import type { CellEditorRequest } from '../../core/modeling/cell-editor';
-import type { StructureTransformEdit } from '../../core/modeling/structure-transform';
+import { prepareCellEditorCandidate } from '../../core/modeling/cell-editor';
+import { mapStructureTransformDocument } from '../../core/modeling/structure-transform-document';
+import { inputSelectionIndices } from '../../core/input-selection';
 import type { BondOrder, ClipboardPayload, DisplaySettings, FragmentSnapshot, ModelCommand, ModelDocument, ModelSelection } from '../../modeling/contracts';
 import type { CrystalParameters } from '../../modeling/crystal-contracts';
 import { expandAtomSelectionByBonds, parseAtomSelectionText } from '../../modeling/application/atom-selection-tools';
 import { confirmCoordinateSelection } from '../../modeling/application/coordinate-selection';
 import { protectedPesDocument, type WorkspaceDocumentEntry, type WorkspaceRegistry } from '../../modeling/workspace-registry';
-import { applyStructureAppearancePreset, isSelectableStructureAppearancePreset, STRUCTURE_APPEARANCE_PRESETS } from '../../modeling/appearance-presets';
+import { applyStructureAppearancePreset, isSelectableStructureAppearancePreset } from '../../modeling/appearance-presets';
 import { createStructureLibraryClient, searchStructureLibrary, STRUCTURE_LIBRARY_CATEGORIES, type StructureLibraryEntry } from '../../modeling/structure-library';
-import { readModelDisplayPreferences, validateModelDisplay, applyStructureAppearanceSnapshot } from '../../modeling/platform/display-preferences';
+import { readModelDisplayPreferences, validateModelDisplay, applyStructureAppearanceSnapshot, captureStructureAppearance, writeModelDisplayPreferences, restoreModelDisplayPreferences } from '../../modeling/platform/display-preferences';
 import { desktopBridge } from '../../modeling/platform/desktop';
 import { createPersonalFragment, deletePersonalFragment, importPersonalFragments, personalFragmentClipboard, savePersonalFragment, validatePersonalFragmentLibrary } from '../../modeling/personal-fragments';
-import type { PeriodicModelingRequest } from '../modeling/PeriodicModelingPanel';
 import type { TwoDCommitGuard, TwoDImportRuntime } from '../modeling/TwoDSessionWorkspace';
-import type { ModelBondPerceptionRequest, ModelCameraCommand, WorkspaceViewportController } from '../modeling/workspace-viewport';
+import type { ModelBondPerceptionRequest, ModelCameraCommand, ModelTransformRequest, PreparedModelTransform, WorkspaceViewportController } from '../modeling/workspace-viewport';
 import { displayedCoordinateObjects } from '../modeling/coordinate-objects';
 import {carbonCipSource,prepareCarbonCipLabels,preparedCarbonCipUsage} from '../modeling/render/stereochemistry';
 import { objectSchema, presentationFields, presentationMode, toolError, type McCall, type McpPresentationMode, type McTool } from './types';
 import { tabTools,type TabToolContext } from './tab-tools';
 import { patchSketchStereoGroup,sketchStereoGroups } from './sketch-stereochemistry';
+import { patchSketchGraph, sketchGraphCommands, sketchGraphSummary } from './sketch-graph-edit';
+import { crystalTransformSummary, referencedGeometryEdit, structureSummary, transformMapping, transformProduct } from './model-transform-receipts';
+import { modelDisplayPatchSchema, selectableStylePresets } from './model-display-schema';
+import { applyResultCamera, type resolveResultCamera } from './result-camera';
 
 export interface ModelToolContext {
   registry: WorkspaceRegistry;
@@ -36,10 +40,13 @@ export interface ModelToolContext {
   assertTarget(id:string|undefined, kind:'read'|'edit'|'data-edit'|'view'):void;
   viewport(id:string): WorkspaceViewportController | undefined;
   currentFrame?(id:string): {frameRef:string; targetId:string; collectionId?:string|null} | null;
+  resultCamera?(ref:string): ReturnType<typeof resolveResultCamera>;
   display(): DisplaySettings;
   changeDisplay(settings:DisplaySettings): unknown | Promise<unknown>;
   createModel(label?:string, presentation?:McpPresentationMode):WorkspaceDocumentEntry;
   presentModel?(id:string,presentation:McpPresentationMode,call?:McCall):unknown|Promise<unknown>;
+  presentSelection?(id:string,presentation:McpPresentationMode,call?:McCall):unknown|Promise<unknown>;
+  presentTransform?(id:string,request:ModelTransformRequest,presentation:McpPresentationMode,derived:boolean,call?:McCall):unknown|Promise<unknown>;
   openSketch():void;
   sketch():TwoDImportRuntime | null;
   captureSketchGuard(modelRef?:string, revision?:number):TwoDCommitGuard;
@@ -262,17 +269,46 @@ function matrix(value:unknown,label:string):[Vector3,Vector3,Vector3]{
   if(rows.length!==3)throw Error(`${label} 需要三行。`);
   return [vector(rows[0],label),vector(rows[1],label),vector(rows[2],label)];
 }
-function transformRequest(value:unknown): StructureTransformEdit|PeriodicModelingRequest|CellEditorRequest {
-  const args=record(value,'transform'), pivot=args.pivot===undefined?undefined:vector(args.pivot,'pivot');
-  const scope=args.atomIds===undefined?{}:{atomIds:ids(args.atomIds,'atomIds')};
+function transformRequest(value:unknown, structure:Structure): ModelTransformRequest {
+  const args=record(value,'transform');
+  const atomIds=args.atomIds===undefined?undefined:ids(args.atomIds,'atomIds'),scope=atomIds?{atomIds}:{};
+  const pivotAtomId=optionalText(args.pivotAtomId,'pivotAtomId');
+  if(pivotAtomId&&args.pivot!==undefined)throw Error('请选择 pivot 或 pivotAtomId 中的一项。');
+  const pivotAtom=pivotAtomId?structure.atoms[inputSelectionIndices(structure,[pivotAtomId])[0]]:undefined;
+  const pivot:Vector3|undefined=pivotAtom?[pivotAtom.x,pivotAtom.y,pivotAtom.z]:args.pivot===undefined?undefined:vector(args.pivot,'pivot');
+  const references=(vectors:unknown,ref:unknown,field:string,refField:string,min:number,max=min)=>{
+    if((vectors===undefined)===(ref===undefined))throw Error(`请选择 ${field} 或 ${refField} 中的一项。`);
+    if(ref===undefined)return {value:vector(vectors,field)};
+    const atomIds=ids(ref,refField);
+    if(atomIds.length<min||atomIds.length>max)throw Error(`${refField} 的原子数不符合该变换要求。`);
+    return {atomIds};
+  };
   switch(args.type){
     case 'translate': return {type:args.type,...scope,delta:vector(args.delta,'delta')};
     case 'center': return {type:args.type,...scope,mode:choice(args.mode,'mode','geometry','mass'),target:args.target===undefined?undefined:vector(args.target,'target')};
-    case 'rotate': return {type:args.type,...scope,pivot,axis:vector(args.axis,'axis'),degrees:number(args.degrees,'degrees')};
+    case 'rotate': {
+      const axis=references(args.axis,args.axisAtomIds,'axis','axisAtomIds',2),degrees=number(args.degrees,'degrees');
+      if(axis.atomIds){
+        if(pivot)throw Error('旋转轴由两个原子定义时，以首个原子作为中心。');
+        return referencedGeometryEdit({type:'rotate',degrees},structure,{axisAtomIds:axis.atomIds},undefined,atomIds);
+      }
+      return {type:args.type,...scope,pivot,axis:axis.value!,degrees};
+    }
     case 'matrix': return {type:args.type,...scope,pivot,matrix:matrix(args.matrix,'matrix')};
-    case 'align': return {type:args.type,...scope,pivot,from:vector(args.from,'from'),to:vector(args.to,'to')};
+    case 'align': {
+      const from=references(args.from,args.fromAtomIds,'from','fromAtomIds',2,3),to=vector(args.to,'to');
+      if(from.atomIds)return referencedGeometryEdit({type:'align',to},structure,{fromAtomIds:from.atomIds},pivot,atomIds);
+      return {type:args.type,...scope,pivot,from:from.value!,to};
+    }
     case 'principal-axes': return {type:args.type,...scope,pivot,massWeighted:args.massWeighted===undefined?undefined:boolean(args.massWeighted,'massWeighted')};
-    case 'mirror': return {type:args.type,...scope,pivot,normal:vector(args.normal,'normal')};
+    case 'mirror': {
+      const normal=references(args.normal,args.planeAtomIds,'normal','planeAtomIds',3);
+      if(normal.atomIds){
+        if(pivot)throw Error('镜面由三个原子定义时，镜面经过首个原子。');
+        return referencedGeometryEdit({type:'mirror'},structure,{planeAtomIds:normal.atomIds},undefined,atomIds);
+      }
+      return {type:args.type,...scope,pivot,normal:normal.value!};
+    }
     case 'invert': return {type:args.type,...scope,pivot};
     case 'scale': return {type:args.type,...scope,pivot,factors:Array.isArray(args.factors)?vector(args.factors,'factors'):number(args.factors,'factors')};
     case 'crop': return {type:args.type,min:vector(args.min,'min'),max:vector(args.max,'max'),space:args.space===undefined?undefined:choice(args.space,'space','cartesian','fractional')};
@@ -307,13 +343,14 @@ function transformRequest(value:unknown): StructureTransformEdit|PeriodicModelin
     default: throw Error('未知结构变换操作。');
   }
 }
-const pivotScope = {pivot:vectorSchema,atomIds:stringsSchema};
+const pivotScope = {pivot:vectorSchema,pivotAtomId:{...stringSchema,description:'Use one stable atom ID as pivot in place of an explicit Cartesian point.'},atomIds:stringsSchema};
+const referenceAtoms = (count:number,max=count)=>({...stringsSchema,minItems:count,maxItems:max});
 const transformSchema = {oneOf:[
   commandShape('translate',{delta:vectorSchema,atomIds:stringsSchema},['delta']),
   commandShape('center',{mode:enumeration('geometry','mass'),target:vectorSchema,atomIds:stringsSchema},['mode']),
-  commandShape('rotate',{axis:vectorSchema,degrees:numberSchema,...pivotScope},['axis','degrees']),
-  commandShape('matrix',{matrix:matrixSchema,...pivotScope},['matrix']),commandShape('align',{from:vectorSchema,to:vectorSchema,...pivotScope},['from','to']),
-  commandShape('principal-axes',{massWeighted:booleanSchema,...pivotScope},[]),commandShape('mirror',{normal:vectorSchema,...pivotScope},['normal']),
+  commandShape('rotate',{axis:vectorSchema,axisAtomIds:{...referenceAtoms(2),description:'Ordered stable atom IDs defining the axis and first-atom pivot. Alternatively use axis and optional pivot.'},degrees:numberSchema,...pivotScope},['degrees']),
+  commandShape('matrix',{matrix:matrixSchema,...pivotScope},['matrix']),commandShape('align',{from:vectorSchema,fromAtomIds:{...referenceAtoms(2,3),description:'Two ordered atoms define a direction. Three define a plane normal. Alternatively use from.'},to:vectorSchema,...pivotScope},['to']),
+  commandShape('principal-axes',{massWeighted:booleanSchema,...pivotScope},[]),commandShape('mirror',{normal:vectorSchema,planeAtomIds:{...referenceAtoms(3),description:'Three ordered atoms define the mirror plane. Alternatively use normal and optional pivot.'},...pivotScope},[]),
   commandShape('invert',pivotScope,[]),commandShape('scale',{factors:{oneOf:[numberSchema,vectorSchema]},...pivotScope},['factors']),
   commandShape('crop',{min:vectorSchema,max:vectorSchema,space:enumeration('cartesian','fractional')},['min','max']),
   commandShape('reorder',{atomIds:stringsSchema}),commandShape('wrap'),commandShape('finite-cluster',{keepCell:booleanSchema},[]),
@@ -351,6 +388,10 @@ function mergeSelection(previous:ModelSelection,next:ModelSelection,mode:'add'|'
   const byId=(id:string)=>id;
   return {atomIds:merge(previous.atomIds,next.atomIds,byId),bonds:merge(previous.bonds,next.bonds,referenceKey),auxiliaryIds:merge(previous.auxiliaryIds,next.auxiliaryIds,byId),portIds:merge(previous.portIds??[],next.portIds??[],byId),coordinateIds:merge(previous.coordinateIds??[],next.coordinateIds??[],byId)};
 }
+function asCameraGesture(args:Args,action:'pan'|'rotate') {
+  return action==='pan'?{kind:action,dxPx:number(args.dxPx,'dxPx'),dyPx:number(args.dyPx,'dyPx')} as const:
+    {kind:action,axis:choice(args.axis,'axis','screen-x','screen-y'),degrees:number(args.degrees,'degrees')} as const;
+}
 function asCameraCommand(args:Args):ModelCameraCommand {
   switch(args.action){
     case 'reset':case 'standard': return {kind:args.action};
@@ -373,6 +414,15 @@ function asCameraCommand(args:Args):ModelCameraCommand {
 export function modelTools(ctx:ModelToolContext):McTool[] {
   const library=createStructureLibraryClient();
   const captures=new Map<string,{fragment:ClipboardPayload;source:ReturnType<typeof stamp>&{frameKey?:string}}>();
+  type TransformPreview = {
+    ref:string;
+    source:ReturnType<typeof stamp>&{frameKey?:string;scientificFrame?:ReturnType<NonNullable<ModelToolContext['currentFrame']>>};
+    request:ModelTransformRequest;
+    native:PreparedModelTransform;
+    disposition:'current'|'copy';
+    dataCell:boolean;
+  };
+  const previews=new Map<string,TransformPreview>();
   const def=(name:string,description:string,properties:Args,required:string[],call:McTool['call']):McTool=>({name,description,inputSchema:objectSchema(properties,required),call});
   const exactlyOneInput=(tool:McTool,fields:string[]):McTool=>({...tool,inputSchema:{...tool.inputSchema,oneOf:fields.map(field=>({required:[field]}))}});
   const activeRef=()=>{
@@ -409,8 +459,18 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
     return row;
   }
   function requirePort(row:ReturnType<typeof target>){
-    if(!row.port)throw toolError('viewport-unavailable','当前窗口尚无目标模型的操作宿主。');
+    if(!row.port)throw toolError('viewport-unavailable','当前窗口尚无目标模型的操作宿主。',{
+      ...stamp(row.entry),committed:false,recovery:{tool:'es_show',arguments:{target:{kind:'model',ref:row.entry.id},waitFor:'scene'}},
+    });
     return row.port;
+  }
+  function transformRecovery(modelRef:string){
+    return {tool:'es_show',arguments:{target:{kind:'model',ref:modelRef},module:'advanced-modeling'}};
+  }
+  function transformPreviewConflict(modelRef?:string){
+    return toolError('transform-preview-conflict','变换预览已失效，请读取原模型并重新预览。',{
+      modelRef,committed:false,recovery:{tool:'model_read',arguments:modelRef?{modelRef}:{}},
+    });
   }
   function assertFrame(args:Args,row:ReturnType<typeof target>){
     const expected=optionalText(args.frameKey,'frameKey'),actual=row.port?.frameKey();
@@ -474,18 +534,30 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       return {...stamp(created),status:'committed',source:{...stamp(row.entry),frameKey},selection:edited.selection,...placementReceipt(baseline,edited,commands)};
     }catch(error){if(pending.state()==='prepared')pending.cancel();throw error;}
   }
-  async function followEdit(receipt:ReturnType<typeof runEdit>,mode:McpPresentationMode,call?:McCall){
+  async function followEdit<T extends {modelRef:string}>(receipt:T,mode:McpPresentationMode,call?:McCall){
     if(mode==='background')return {...receipt,presentation:{mode,status:'background'}};
     if(call?.signal.aborted)return {...receipt,presentation:{mode,status:'cancelled'}};
     try{return {...receipt,presentation:await ctx.presentModel?.(receipt.modelRef,mode,call)};}
     catch(cause){return {...receipt,presentation:{mode,status:'unavailable',message:cause instanceof Error?cause.message:String(cause)}};}
   }
+  function submitModelEdit<T extends ReturnType<typeof runEdit>>(receipt:T,mode:McpPresentationMode,call?:McCall){
+    return receipt.status==='committed'&&(ctx.presentModel||mode==='background')?followEdit(receipt,mode,call):receipt;
+  }
   function placementReceipt(before:ModelDocument,after:ModelDocument,commands:ModelCommand[]){
-    const placements=commands.flatMap((command,index)=>command.type==='place-copied-fragment'?[{
-      commandIndex:index,sourceDocumentId:command.payload.sourceDocumentId,sourceAtomIds:command.payload.fragment.structure.atoms.map(atom=>atom.id!),
-      activeSourceAtomId:command.payload.fragment.structure.atoms[command.activeIndex??0].id!,
-      mode:command.mode,targetAtomId:command.targetAtomId,targetPortId:command.targetPortId,
-    }]:[]);
+    const placements=commands.flatMap<Record<string,unknown>>((command,index)=>{
+      const commandIndex=index;
+      switch(command.type){
+        case 'place-element': return [{commandIndex,type:command.type,element:command.element,presetId:command.presetId,targetAtomId:command.targetAtomId,targetPortId:command.targetPortId}];
+        case 'place-fragment': return [{commandIndex,type:command.type,templateId:command.templateId,activeAtomIndex:command.activeAtomIndex,targetAtomId:command.targetAtomId,targetPortId:command.targetPortId}];
+        case 'add-single-hydrogen': return [{commandIndex,type:command.type,targetAtomId:command.atomId}];
+        case 'place-copied-fragment': return [{
+          commandIndex,type:command.type,sourceDocumentId:command.payload.sourceDocumentId,sourceAtomIds:command.payload.fragment.structure.atoms.map(atom=>atom.id!),
+          activeSourceAtomId:command.payload.fragment.structure.atoms[command.activeIndex??0].id!,
+          mode:command.mode,targetAtomId:command.targetAtomId,targetPortId:command.targetPortId,
+        }];
+        default:return [];
+      }
+    });
     if(!placements.length)return {};
     const oldAtoms=new Map(before.draft.structure.atoms.map(atom=>[atom.id!,atom])),newAtoms=new Map(after.draft.structure.atoms.map(atom=>[atom.id!,atom]));
     return {placements,atomChanges:{
@@ -559,15 +631,16 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
         if(!commands.length)throw Error('请提供要提交的模型操作。');
         return commands.map(command=>modelCommand(command,document,resolveFragment));
       },mode!=='background'&&!ctx.presentModel);
-      return receipt.status==='committed'&&(ctx.presentModel||mode==='background')?followEdit(receipt,mode,call):receipt;
+      return submitModelEdit(receipt,mode,call);
     }),
-    def('model_select','Read or change the shared visible selection by stable IDs, 1-based atom numbers/ranges, bond-neighbor expansion, or clear/all.',{...editSchema,...frameSchema,...selectionVersionSchema,selection:selectionSchema,numbers:stringSchema,neighborDepth:{...integerSchema,minimum:0},mode:enumeration('read','replace','add','remove','all','clear')},[],args=>{
+    def('model_select','Read or change the active native view selection by stable IDs, 1-based atom numbers/ranges, bond-neighbor expansion, or clear/all. A background change keeps the current workbench module.',{...editSchema,...frameSchema,...selectionVersionSchema,...presentationFields,selection:selectionSchema,numbers:stringSchema,neighborDepth:{...integerSchema,minimum:0},mode:enumeration('read','replace','add','remove','all','clear')},[],(args,call)=>{
       if(args.mode==='read'){
         const row=target(args),selected=row.port?.selection()??row.document.selection;
         return {...stamp(row.entry),frameKey:row.port?.frameKey(),selection:selected,selectionVersion:selectionVersion(row,selected)};
       }
       const row=target(args,'view'),port=requirePort(row);assertFrame(args,row);
-      const structure=row.document.draft.structure,previous=assertSelection(args,row);
+      const structure=resultBound(row.entry)?port.source(row.document.revision).draft.structure:row.document.draft.structure,previous=assertSelection(args,row);
+      const presentation=presentationMode(args);
       const mode=args.mode===undefined?'replace':choice(args.mode,'mode','replace','add','remove','all','clear');
       let next=args.selection===undefined?emptySelection:selection(args.selection);
       if(args.numbers!==undefined){
@@ -579,10 +652,18 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       if(mode==='all')next={...emptySelection,atomIds:structure.atoms.map(atom=>atom.id!)};
       if(mode==='clear')next=emptySelection;
       if(mode==='add'||mode==='remove')next=mergeSelection(previous,next,mode);
-      const committed=port.select(row.document.revision,next);
-      return {...stamp(row.entry),frameKey:row.port?.frameKey(),selection:committed,selectionVersion:selectionVersion(row,committed)};
+      call?.signal.throwIfAborted();const committed=port.select(row.document.revision,next);
+      const receipt={...stamp(row.entry),frameKey:row.port?.frameKey(),selection:committed,selectionVersion:selectionVersion(row,committed)};
+      if(presentation==='background')return {...receipt,presentation:{mode:presentation,status:'background'}};
+      if(!ctx.presentSelection)return receipt;
+      return Promise.resolve(ctx.presentSelection(row.entry.id,presentation,call)).then(
+        actual=>({...receipt,presentation:actual}),
+        cause=>({...receipt,presentation:{mode:presentation,status:'unavailable',message:cause instanceof Error?cause.message:String(cause)}}),
+      );
     }),
-    def('model_constraints','Change shared modeling freezes. Atoms and coordinates commit together. Supply selectionVersion to use the current selection, or provide explicit atomIds and/or coordinateIds.',{...editSchema,...frameSchema,...selectionVersionSchema,disposition,action:enumeration('freeze','unfreeze','enable','disable','clear'),atomIds:stringsSchema,coordinateIds:stringsSchema},['expectedRevision','action'],args=>runEdit(args,document=>{
+    def('model_constraints','Change shared modeling freezes. Atoms and coordinates commit together. Supply selectionVersion to use the current selection, or provide explicit atomIds and/or coordinateIds.',{...editSchema,...frameSchema,...selectionVersionSchema,...presentationFields,disposition,action:enumeration('freeze','unfreeze','enable','disable','clear'),atomIds:stringsSchema,coordinateIds:stringsSchema},['expectedRevision','action'],(args,call)=>{
+      const presentation=presentationMode(args);call?.signal.throwIfAborted();
+      const receipt=runEdit(args,document=>{
       const action=choice(args.action,'action','freeze','unfreeze','enable','disable','clear');
       if(action==='enable'||action==='disable')return [{type:'set-shared-freezes-enabled',enabled:action==='enable'}];
       if(action==='clear')return [{type:'clear-shared-freezes'}];
@@ -597,37 +678,47 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       }
       if(!commands.length)throw Error('请指定原子或内坐标。');
       return commands;
-    })),
-    def('model_measure','Measure a distance, angle or dihedral using 2, 3 or 4 ordered atom IDs. Supply periodic endpoint images when relevant. Save optionally adds a model measurement object.',{...editSchema,...frameSchema,atomIds:stringsSchema,images:imagesSchema,save:booleanSchema,disposition},['atomIds'],args=>{
+      },presentation!=='background'&&!ctx.presentModel);
+      const after=ctx.registry.document(receipt.modelRef).store.getSnapshot();
+      return submitModelEdit({...receipt,effectiveFrozenAtomIds:getFrozenAtomIds(after),sharedConstraints:after.sharedConstraints},presentation,call);
+    }),
+    def('model_measure','Measure a distance, angle or dihedral using 2, 3 or 4 ordered atom IDs. Supply periodic endpoint images when relevant. Save optionally adds a model measurement object.',{...editSchema,...frameSchema,...presentationFields,atomIds:stringsSchema,images:imagesSchema,save:booleanSchema,disposition},['atomIds'],(args,call)=>{
       const row=target(args),atomIds=ids(args.atomIds,'atomIds');
       const images=args.images===undefined?undefined:list(args.images,'images').map(value=>image(value,'images'));
       const source=resultBound(row.entry)?(assertFrame(args,row),requirePort(row).source(row.document.revision)):row.document;
       const value=confirmCoordinateSelection(source.draft.structure,atomIds,images);
       if(args.save!==true)return {...stamp(row.entry),frameKey:row.port?.frameKey(),...value};
-      const id=newModelId();
-      const receipt=runEdit(args,()=>[{type:'upsert-coordinate-object',object:{id,type:value.type,atomIds,...(images?{images}:{})}}]);
-      return {...receipt,...value,coordinateId:id};
+      const presentation=presentationMode(args),id=newModelId();call?.signal.throwIfAborted();
+      const receipt=runEdit(args,()=>[{type:'upsert-coordinate-object',object:{id,type:value.type,atomIds,...(images?{images}:{})}}],presentation!=='background'&&!ctx.presentModel);
+      return submitModelEdit({...receipt,...value,coordinateId:receipt.status==='committed'?id:undefined},presentation,call);
     }),
-    def('model_geometry','Set an internal distance, angle or dihedral through ES’s balanced geometry editor. Values are Å for distance and degrees for angles. Side modes or explicit side atom IDs mirror the modeling controls.',{...editSchema,...frameSchema,disposition,...geometryFields},['expectedRevision','atomIds','value'],args=>{
+    def('model_geometry','Set an internal distance, angle or dihedral through ES’s balanced geometry editor. Values are Å for distance and degrees for angles. Omitted movement mode uses both connected branches, as in the native panel. Returns the actual moved atom IDs and internal coordinate.',{...editSchema,...frameSchema,...presentationFields,disposition,...geometryFields},['expectedRevision','atomIds','value'],(args,call)=>{
       const atomIds=ids(args.atomIds,'atomIds'),value=number(args.value,'value');
       const images=args.images===undefined?undefined:list(args.images,'images').map(item=>image(item,'images'));
       const sides=args.sides===undefined?undefined:record(args.sides,'sides');
       const sideAtomIds=args.sideAtomIds===undefined?undefined:record(args.sideAtomIds,'sideAtomIds');
       const sideMode=(value:unknown,label:string):GeometrySideMode=>choice(value,label,'fixed','atom','branch');
-      return runEdit(args,document=>{
+      const presentation=presentationMode(args),moving=args.moving===undefined?undefined:choice(args.moving,'moving','branch','selected','atom');
+      const sideModes=sides?{first:sideMode(sides.first,'first'),last:sideMode(sides.last,'last')}:
+        moving===undefined&&!sideAtomIds?{first:'branch',last:'branch'} as const:undefined;
+      call?.signal.throwIfAborted();
+      let applied:{type:string;unit:string;value:number;movedAtomIds:string[]}|undefined;
+      const receipt=runEdit(args,document=>{
         const structure=document.draft.structure,coordinate=confirmCoordinateSelection(structure,atomIds,images);
         if(coordinate.type!=='B'&&images?.some(offset=>offset.some(Boolean)))throw Error('手工 A/D 几何编辑未支持跨胞镜像路径。');
         const geometry=editBuilderGeometryBalanced(structure,{coordinate:coordinate.type,atomIds,value,images,
-          moving:args.moving===undefined?undefined:choice(args.moving,'moving','branch','selected','atom'),
+          moving,
           selectedAtomIds:args.movingAtomIds===undefined?undefined:ids(args.movingAtomIds,'movingAtomIds'),
-          sideModes:sides?{first:sideMode(sides.first,'first'),last:sideMode(sides.last,'last')}:undefined,
+          sideModes,
           sideAtomIds:sideAtomIds?{first:ids(sideAtomIds.first,'first'),last:ids(sideAtomIds.last,'last')}:undefined,
           fixedAtomIds:getFrozenAtomIds(document)});
         const touched=new Set(geometry.touchedIds);
+        applied={type:coordinate.type,unit:coordinate.unit,value:builderEditableGeometryFrame(geometry.structure,coordinate.type,atomIds,images).value,movedAtomIds:geometry.touchedIds};
         if(!touched.size)return [];
         return [{type:'manual-coordinates',documentId:document.id,expectedRevision:document.revision,
           atoms:geometry.structure.atoms.filter(atom=>touched.has(atom.id!)).map(atom=>({id:atom.id!,position:[atom.x,atom.y,atom.z]}))}];
-      });
+      },presentation!=='background'&&!ctx.presentModel);
+      return submitModelEdit({...receipt,coordinate:applied&&{...applied,atomIds,requestedValue:value,moving,sideModes}},presentation,call);
     }),
     def('model_bond_perception','Run native empirical or GFN2 bond perception on the selected working model. Effective empirical settings, electronic state and native phase are returned. For an observation use model_fragment to extract an editable source.',{...editSchema,...frameSchema,method:enumeration('empirical','gfn2'),mode:enumeration('rebuild','supplement'),parameters:empiricalSchema,electronic:electronicSchema,solvent:stringSchema,maxSccIterations:{...integerSchema,minimum:1}},['expectedRevision'],async(args,call)=>{
       const row=target(args,'view');assertFrame(args,row);
@@ -662,20 +753,82 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       const current=activeRef();
       return {status:changed?'committed':'unchanged',modelRef:row.entry.id,activeModelRef:current,revision:row.entry.store.getSnapshot().revision};
     }),
-    def('model_transform','Apply a native geometry or crystal transformation to the active source. Focus an explicit source with es_show before transforming it after a different derived model opens. Defaults to a derived model, except assign/edit cell on an ordinary working model.',{...editSchema,...frameSchema,disposition,transform:transformSchema},['expectedRevision','transform'],async args=>{
-      const row=target(args,'view'),before=stamp(row.entry),frameKey=assertFrame(args,row),request=transformRequest(args.transform);
-      const cellEdit=request.type==='assign-cell'||request.type==='edit-cell';
-      const mode=args.disposition===undefined?(cellEdit&&!resultBound(row.entry)?'current':'copy'):choice(args.disposition,'disposition','current','copy');
+    def('model_transform','Prepare or apply a native geometry or crystal transform with stable source IDs. action=preview returns the candidate summary and previewRef; apply accepts either the same previewRef or a transform request. Omit action to apply. Assign/edit cell defaults to updating an ordinary working model; the other operations derive a new model in the active source view. Background inplace cell edits retain the current page. Derived commits currently require the active native view and follow the resulting model. The atom mapping is opt-in; use model_derivation later to recover the saved mapping.',{
+      ...editSchema,...frameSchema,...presentationFields,disposition,action:enumeration('preview','apply'),previewRef:stringSchema,transform:transformSchema,includeAtomMapping:booleanSchema,
+    },['expectedRevision'],async(args,call)=>{
+      const action=choice(args.action??'apply','action','preview','apply'),presentation=presentationMode(args);
+      const ref=optionalText(args.previewRef,'previewRef');
+      if((ref===undefined)===(args.transform===undefined)||ref&&action==='preview')throw toolError('invalid-transform-input','请提供一个 transform，或用 action=apply 提交已得的 previewRef。');
+      const saved=ref?[...previews.values()].find(value=>value.ref===ref):undefined;
+      if(ref&&(!saved||args.modelRef!==undefined&&args.modelRef!==saved.source.modelRef))throw transformPreviewConflict(optionalText(args.modelRef,'modelRef'));
+      if(saved&&!ctx.registry.getSnapshot().documents.some(entry=>entry.id===saved.source.modelRef&&sameStructureContext(entry,saved.source)))
+        throw transformPreviewConflict(saved.source.modelRef);
+      const row=target({...args,...(saved?{modelRef:saved.source.modelRef}:{})});
+      const before=stamp(row.entry), frameKey=assertFrame({...args,frameKey:args.frameKey??saved?.source.frameKey},row);
+      if(saved&&saved.source.frameKey!==frameKey)throw transformPreviewConflict(before.modelRef);
+      if(integer(args.expectedRevision,'expectedRevision',0)!==before.revision)throw toolError('model-conflict','模型修订已变化，请重新读取。',{...before,committed:false,recovery:{tool:'model_read',arguments:{modelRef:before.modelRef}}});
+      const port=requirePort(row), ordinary=ordinaryDataOwner(row.entry), raw=args.transform===undefined?undefined:record(args.transform,'transform');
+      const cellEdit=(saved?.request.type??raw?.type)==='assign-cell'||(saved?.request.type??raw?.type)==='edit-cell';
+      const mode=choice(args.disposition??saved?.disposition??(cellEdit&&!resultBound(row.entry)?'current':'copy'),'disposition','current','copy');
+      if(saved&&mode!==saved.disposition)throw toolError('invalid-transform-input','提交变换预览时请沿用预览的 disposition。');
       if(mode==='current'&&!cellEdit)throw Error('此变换的原生工作流会生成独立派生模型。');
-      await requirePort(row).transform(row.document.revision,request,mode==='copy');
-      const created=activeRef();
-      if(mode==='copy'){
-        if(!created||created===before.modelRef)throw Error('本次变换未提交派生模型。');
-        const entry=ctx.registry.document(created);
-        if(entry.derivation?.parentDocumentId!==before.modelRef||entry.derivation.parentRevision!==before.revision)throw Error('本次变换未取得同来源的派生模型回执。');
-        return {...stamp(entry),status:'committed',source:{...before,frameKey},operation:entry.derivation.operation};
+      const background=action==='apply'&&presentation==='background';
+      if(background&&(!ordinary||mode==='copy')){
+        const recovery=ordinary&&before.modelRef===currentModel()
+          ? {tool:'model_transform',arguments:{...args,modelRef:before.modelRef,presentation:'follow'}}
+          : transformRecovery(before.modelRef);
+        throw toolError('transform-background-unavailable','该变换提交使用活动原生视图，并会定位产物。请允许跟随，或先预览。',{...before,committed:false,recovery});
       }
-      return {...stamp(row.entry),frameKey,status:before.revision===row.entry.store.getSnapshot().revision?'unchanged':'committed'};
+      const dataCell=cellEdit&&ordinary&&mode==='current'&&(saved?.dataCell||background||before.modelRef!==currentModel());
+      if(dataCell)ctx.assertTarget(before.modelRef,action==='apply'?'data-edit':'read');
+      else{
+        try{ctx.assertTarget(before.modelRef,'view');}
+        catch(cause){
+          throw toolError('transform-view-unavailable',cause instanceof Error?cause.message:String(cause),{...before,committed:false,recovery:transformRecovery(before.modelRef)});
+        }
+      }
+      call?.signal.throwIfAborted();
+      const source=saved?.native.source??(resultBound(row.entry)?editSource(row,()=>port.source(before.revision)):row.document);
+      const request=saved?.request??transformRequest(raw,source.draft.structure);
+      const native=saved?.native??(dataCell&&cellEdit
+        ? {source,candidate:prepareCellEditorCandidate(source,request as Parameters<typeof prepareCellEditorCandidate>[1])} as PreparedModelTransform
+        : await port.prepareTransform(before.revision,request));
+      call?.signal.throwIfAborted();
+      const snapshot=ctx.registry.getSnapshot().documents;
+      const current=snapshot.find(entry=>entry.id===before.modelRef);
+      if(!current||!sameStructureContext(current,before)||port.frameKey()!==frameKey)throw transformPreviewConflict(before.modelRef);
+      const sourceIdentity={...before,frameKey,scientificFrame:frameKey?ctx.currentFrame?.(before.modelRef):undefined};
+      const crystal=crystalTransformSummary(native.crystal);
+      const receipt={source:sourceIdentity,operation:native.candidate.operation,parameters:request,crystal,
+        ...(args.includeAtomMapping===true?{atomMapping:native.candidate.atomMapping}:{})};
+      if(action==='preview'){
+        const output=mapStructureTransformDocument(native.source,native.candidate),previewRef=`es-transform:${newModelId()}`;
+        for(const [id] of previews)if(!snapshot.some(entry=>entry.id===id))previews.delete(id);
+        previews.set(before.modelRef,{ref:previewRef,source:sourceIdentity,request,native,disposition:mode,dataCell});
+        return {...before,...receipt,status:'preview',previewRef,product:transformProduct(native.source,output)};
+      }
+      ctx.assertTarget(before.modelRef,dataCell?'data-edit':'view');
+      const modelRef=await port.commitTransform(before.revision,native,{derive:mode==='copy',signal:call?.signal,dataCell,
+        allowInactive:dataCell&&(before.modelRef!==currentModel()||ctx.isDetached?.(before.modelRef))});
+      if(!modelRef)return {...before,...receipt,status:'cancelled',committed:false};
+      const output=ctx.registry.document(modelRef);
+      if(ref&&previews.get(before.modelRef)?.ref===ref)previews.delete(before.modelRef);
+      const execution={...stamp(output),...receipt,previewRef:ref,status:mode==='copy'||output.store.getSnapshot().revision!==before.revision?'committed':'unchanged',
+        product:transformProduct(native.source,output.store.getSnapshot())};
+      if(background)return {...execution,presentation:{mode:presentation,status:'background'}};
+      if(!ctx.presentTransform)return execution;
+      try{return {...execution,presentation:await ctx.presentTransform(modelRef,request,presentation,mode==='copy',call)};}
+      catch(cause){return {...execution,presentation:{mode:presentation,status:'unavailable',message:cause instanceof Error?cause.message:String(cause),recovery:transformRecovery(modelRef)}};}
+    }),
+    def('model_derivation','Read saved lineage of a derived model. The model and source composition are summarized. Request includeAtomMapping or filter the original sourceAtomIds to recover specific output IDs and image or copy identities.',{
+      ...targetSchema,includeAtomMapping:booleanSchema,sourceAtomIds:stringsSchema,
+    },[],args=>{
+      const row=target(args),lineage=row.entry.derivation;
+      if(!lineage)throw toolError('model-derivation-unavailable','当前模型没有原生派生记录。',{...stamp(row.entry),recovery:{tool:'model_read',arguments:{modelRef:row.entry.id}}});
+      const {atomMapping,sourceStructure,parentDocumentId,parentDocumentEpoch,parentRevision,operation}=lineage;
+      return {...stamp(row.entry),operation,source:{modelRef:parentDocumentId,documentEpoch:parentDocumentEpoch,revision:parentRevision,...structureSummary(sourceStructure)},
+        product:structureSummary(row.document.draft.structure),atomMappingCount:atomMapping.length,atomMappingScope:'creation',
+        ...(args.includeAtomMapping===true||args.sourceAtomIds!==undefined?{atomMapping:transformMapping(atomMapping,args.sourceAtomIds===undefined?undefined:ids(args.sourceAtomIds,'sourceAtomIds'))}:{})};
     }),
     def('model_crystal_inspect','Inspect symmetry or available slab terminations with the configured native crystal modeler. An explicit ordinary modelRef can be inspected in the background without changing the visible model.',{...targetSchema,...frameSchema,operation:enumeration('symmetry','slab-terminations'),parameters:crystalSchema},['operation'],async(args,call)=>{
       const row=target(args);assertFrame(args,row);
@@ -692,11 +845,15 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       }
       return requirePort(row).inspectCrystal(row.document.revision,request);
     }),
-    def('model_library','Find curated structures, built-in construction fragments or personal fragments.',{kind:enumeration('structure','fragment','personal'),query:stringSchema,category:{type:'string',enum:['all',...STRUCTURE_LIBRARY_CATEGORIES.map(category=>category.id)]}},[],async args=>{
+    def('model_library','Find curated structures, built-in construction fragments, element placement presets including geometry and slots, or personal fragments. For element presets choose kind=element and a chemical element symbol.',{kind:enumeration('structure','fragment','element','personal'),element:stringSchema,query:stringSchema,category:{type:'string',enum:['all',...STRUCTURE_LIBRARY_CATEGORIES.map(category=>category.id)]}},[],async args=>{
       ctx.assertTarget(undefined,'read');
-      const kind=args.kind===undefined?'structure':choice(args.kind,'kind','structure','fragment','personal');
+      const kind=args.kind===undefined?'structure':choice(args.kind,'kind','structure','fragment','element','personal');
       if(args.query!==undefined&&typeof args.query!=='string')throw Error('query 需要字符串。');
       const query=args.query?.trim()??'';
+      if(kind==='element'){
+        const element=elementSymbol(text(args.element,'element'));
+        return {element,defaultPresetId:defaultElementPresetId(element),presets:getElementPresets(element)};
+      }
       if(kind==='fragment')return {entries:BUILDER_TEMPLATES.filter(item=>`${item.id} ${item.label} ${item.category??''} ${item.family??''}`.toLowerCase().includes(query.toLowerCase())).map(({id,label,category,family,connectionAnchor,independentOnly})=>({id,label,category,family,connectionAnchor,independentOnly}))};
       if(kind==='personal'){
         const bridge=desktopBridge();if(!bridge?.readPersonalFragments)throw Error('当前工作台没有个人片段存储。');
@@ -740,7 +897,7 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       if(!created||created.id===before.documentId||created.store.getSnapshot().draft.structure.libraryProvenance?.entryId!==entry.id)throw Error('未取得本次结构库载入的模型回执。');
       return {...stamp(created),entryId:entry.id};
     }),
-    def('model_personal_fragment_place','Attach or place a personal fragment from the customer’s ES library using its saved geometry and connection anchor.',{...editSchema,...frameSchema,disposition,fragmentId:stringSchema,activeAtomIndex:integerSchema,...placementSchema},['expectedRevision','fragmentId','position'],async(args,call)=>{
+    def('model_personal_fragment_place','Attach or place a personal fragment from the customer’s ES library using its saved geometry and connection anchor.',{...editSchema,...frameSchema,...presentationFields,disposition,fragmentId:stringSchema,activeAtomIndex:integerSchema,...placementSchema},['expectedRevision','fragmentId','position'],async(args,call)=>{
       const before=editTarget(args),identity=stamp(before.entry);
       assertFrame(args,before);
       const bridge=desktopBridge();if(!bridge?.readPersonalFragments)throw Error('当前工作台没有个人片段存储。');
@@ -748,12 +905,50 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       const fragment=catalog.fragments.find(item=>item.id===id);if(!fragment)throw Error('个人库没有指定片段。');
       call?.signal.throwIfAborted();if(!sameStructureContext(ctx.registry.document(identity.modelRef),identity))throw Error('片段载入期间模型已变化。');
       const targetAtomId=optionalText(args.targetAtomId,'targetAtomId'),targetPortId=optionalText(args.targetPortId,'targetPortId');
-      return runEdit({...args,modelRef:identity.modelRef},()=>[{type:'place-copied-fragment',payload:personalFragmentClipboard(fragment),activeIndex:args.activeAtomIndex===undefined?fragment.activeIndex:integer(args.activeAtomIndex,'activeAtomIndex',0),mode:targetAtomId||targetPortId?'graft':'independent',position:vector(args.position,'position'),targetAtomId,targetPortId}]);
+      const presentation=presentationMode(args);
+      const receipt=runEdit({...args,modelRef:identity.modelRef},()=>[{type:'place-copied-fragment',payload:personalFragmentClipboard(fragment),activeIndex:args.activeAtomIndex===undefined?fragment.activeIndex:integer(args.activeAtomIndex,'activeAtomIndex',0),mode:targetAtomId||targetPortId?'graft':'independent',position:vector(args.position,'position'),targetAtomId,targetPortId}],presentation!=='background'&&!ctx.presentModel);
+      return submitModelEdit(receipt,presentation,call);
     }),
-    def('view_style','Read window structure display settings, or apply a preset and only the changed fields on its native display settings. Example patch: {representation:"ball-stick",backgroundColor:"#ffffff",atomScale:1.25,bondScale:0.8}. Use a six-digit CSS color with #. Patch takes the display fields directly.',{patch:{type:'object',properties:{representation:enumeration('vdw','ball-stick','stick'),backgroundColor:{...stringSchema,pattern:'^#[0-9a-fA-F]{6}$'},atomScale:numberSchema,bondScale:numberSchema},additionalProperties:true},preset:stringSchema,personalPreset:stringSchema},[],async(args,call)=>{
+    def('view_style','Read or adjust session appearance using native display settings. Read lists built-in and personal presets and the persisted preferences version. Set preset or personalPreset and an optional patch of native display fields. To save the current appearance for reuse, use action=save-personal, name and expectedVersion from read. Overwrite requires replace=true. set-default and restore-default change the startup preference only.',{
+      action:enumeration('read','apply','save-personal','set-default','restore-default'),
+      patch:modelDisplayPatchSchema,preset:stringSchema,personalPreset:stringSchema,name:stringSchema,expectedVersion:stringSchema,replace:booleanSchema,
+    },[],async(args,call)=>{
       ctx.assertTarget(undefined,'read');
       const previous=ctx.display();
-      if(args.patch===undefined&&args.preset===undefined&&args.personalPreset===undefined)return {display:previous,presets:STRUCTURE_APPEARANCE_PRESETS.map(item=>item.id)};
+      const hasAppearancePatch=args.patch!==undefined||args.preset!==undefined||args.personalPreset!==undefined;
+      const action=choice(args.action??(hasAppearancePatch?'apply':'read'),'action','read','apply','save-personal','set-default','restore-default');
+      if(action!=='apply'&&hasAppearancePatch)throw toolError('invalid-display-action','请先应用外观设置，再读取或保存当前状态。');
+      if(action==='read'){
+        const presets=selectableStylePresets.map(item=>item.id);
+        try{
+          const prefs=await readModelDisplayPreferences();
+          return {display:ctx.display(),presets,builtInPresets:selectableStylePresets,personalPresets:prefs.namedPresets?.map(item=>item.name)??[],
+            preferences:{version:prefs.version,writable:prefs.writable,startupDisplay:prefs.display,error:prefs.error}};
+        }catch(cause){
+          return {display:ctx.display(),presets,builtInPresets:selectableStylePresets,preferences:{writable:false,error:cause instanceof Error?cause.message:String(cause)}};
+        }
+      }
+      if(action!=='apply'){
+        ctx.assertTarget(undefined,'edit');
+        const snapshot=await readModelDisplayPreferences();
+        const recovery={tool:'view_style',arguments:{action:'read'}};
+        if(text(args.expectedVersion,'expectedVersion')!==snapshot.version)throw toolError('display-conflict','显示偏好版本已变化，请重新读取。',{version:snapshot.version,committed:false,recovery});
+        if(snapshot.error&&!snapshot.writable)throw toolError('display-preferences-unavailable',snapshot.error,{committed:false,recovery});
+        call?.signal.throwIfAborted();ctx.assertTarget(undefined,'edit');
+        if(action!=='restore-default'&&ctx.display()!==previous)throw toolError('display-conflict','读取偏好期间会话外观已变化。',{committed:false,recovery});
+        let saved;
+        if(action==='save-personal'){
+          const name=text(args.name,'name').trim(),current=snapshot.namedPresets??[];
+          if(selectableStylePresets.some(item=>item.label===name))throw toolError('display-preset-readonly','内置预设为只读，请使用其他名称。',{committed:false,recovery});
+          if(current.some(item=>item.name===name)&&args.replace!==true)throw toolError('display-preset-exists','存在同名个人预设。确认覆盖后传入 replace=true。',{name,committed:false,requiresUser:true});
+          saved=await writeModelDisplayPreferences(snapshot,snapshot.display,undefined,undefined,[
+            ...current.filter(item=>item.name!==name),{name,appearance:captureStructureAppearance(previous)},
+          ]);
+        }else saved=action==='restore-default'?await restoreModelDisplayPreferences(snapshot):await writeModelDisplayPreferences(snapshot,previous);
+        if(saved.error)throw toolError('display-preferences-unavailable',saved.error,{committed:false,recovery});
+        return {status:'saved',scope:action==='save-personal'?'personal-presets':'startup-default',version:saved.version,
+          personalPresets:saved.namedPresets?.map(item=>item.name)??[],startupDisplay:saved.display};
+      }
       ctx.assertTarget(undefined,'view');
       let display=previous;
       if(args.preset!==undefined){
@@ -762,22 +957,55 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       }
       if(args.personalPreset!==undefined){
         const name=text(args.personalPreset,'personalPreset'),preferences=await readModelDisplayPreferences();
-        const preset=preferences.namedPresets?.find(item=>item.name===name);if(!preset)throw Error('未找到个人显示预设。');
+        const preset=preferences.namedPresets?.find(item=>item.name===name);if(!preset)throw toolError('display-preset-unavailable','未找到个人显示预设。',{name,recovery:{tool:'view_style',arguments:{action:'read'}}});
         call?.signal.throwIfAborted();ctx.assertTarget(undefined,'view');
         if(ctx.display()!==previous)throw toolError('display-conflict','读取预设期间窗口显示已变化。');
         display=applyStructureAppearanceSnapshot(display,preset.appearance);
       }
       display=validateModelDisplay({...display,...(args.patch===undefined?{}:record(args.patch,'patch'))});
       await ctx.changeDisplay(display);
-      return {status:'submitted',requestedDisplay:display,display:ctx.display()};
+      return {status:'submitted',scope:'session',requestedDisplay:display,display:ctx.display()};
     }),
-    def('view_camera','Read the live camera with action=read before a scientific-frame camera edit. Copy its modelRef, revision as expectedRevision, and exact frameKey. Rotate once with action=step and direction; use action=zoom with factor=1.2 for 20% magnification. The zoom receipt gives the actual multiplier and native limit. Restore an exact saved 8-number raw view with action=set.',{...editSchema,...frameSchema,action:enumeration('read','reset','standard','cell','step','set','zoom'),factor:{...numberSchema,exclusiveMinimum:0,description:'Relative native zoom multiplier, only for action=zoom. Example: 1.2 enlarges by 20%; 0.8 reduces by 20%.'},direction:enumeration('left','right','up','down'),preset:enumeration('a','a*','b','b*','c','c*'),view:{...numbersSchema,minItems:8,maxItems:8}},[],args=>{
+    def('view_camera','Read a live native camera. For a displayed scientific result use targetRef and pass its current cameraKey for changes. A raw 8-number view can be copied to another visible result using that result’s own cameraKey. For a model use modelRef, expectedRevision and frameKey. Use pan with dxPx/dyPx, rotate around screen-x or screen-y, step by 45 degrees, zoom by a multiplier, or set an exact raw view.',{
+      ...editSchema,...frameSchema,action:enumeration('read','reset','standard','cell','step','set','zoom','pan','rotate'),
+      targetRef:{...stringSchema,description:'Exact displayed scientific result or file-job reference. Uses the actual submitted result viewport.'},
+      cameraKey:{...stringSchema,description:'Opaque key returned by the target result camera read. Obtain a new key after changing result, stage or frame.'},
+      factor:{...numberSchema,exclusiveMinimum:0,description:'Relative native multiplier, e.g. 1.2 for 20% magnification.'},direction:enumeration('left','right','up','down'),
+      preset:enumeration('a','a*','b','b*','c','c*'),view:{...numbersSchema,minItems:8,maxItems:8},
+      dxPx:{...numberSchema,description:'Horizontal viewport CSS pixels, positive right.'},dyPx:{...numberSchema,description:'Vertical viewport CSS pixels, positive down.'},
+      axis:enumeration('screen-x','screen-y'),degrees:{...numberSchema,description:'Signed camera rotation in degrees around a fixed screen axis.'},
+    },[],args=>{
       const action=args.action??'read';
       if(args.factor!==undefined&&action!=='zoom')throw toolError('INVALID_CAMERA_ARGUMENTS','factor 仅用于 action=zoom；读取视角或恢复 raw view 时请省略该字段。');
+      if(args.targetRef!==undefined){
+        if(args.modelRef!==undefined||args.expectedRevision!==undefined||args.frameKey!==undefined)throw toolError('INVALID_CAMERA_ARGUMENTS','结果相机使用 targetRef 和 cameraKey；模型相机使用 modelRef 和模型修订。');
+        if(action!=='read')ctx.assertTarget(undefined,'view');
+        const targetRef=text(args.targetRef,'targetRef'),result=ctx.resultCamera?.(targetRef);
+        if(!result)throw toolError('CAMERA_UNAVAILABLE','当前窗口尚无该结果的原生相机。',{targetRef});
+        const {state,port:_port,...identity}=result;
+        if(action==='read')return {targetRef,...identity,status:state?'ready':'preparing',view:state?.view,perceivedDistance:state?.perceivedDistance,
+          operations:state?['set','reset','standard','step','zoom','pan','rotate',...(state.cell?['cell']:[])]:[],
+          ...(!state?{recovery:{tool:'es_show',arguments:{target:targetRef,waitFor:'scene'}}}:{})};
+        const command=action==='pan'||action==='rotate'?asCameraGesture(args,action):asCameraCommand(args);
+        return {targetRef,...identity,status:'applied',command,...applyResultCamera(result,targetRef,args.cameraKey,command)};
+      }
+      if(args.cameraKey!==undefined)throw toolError('INVALID_CAMERA_ARGUMENTS','结果相机需要显式 targetRef。');
       const row=target(args,action==='read'?'read':'view');
       const view=row.controller?.getCameraView?.();
-      if(action==='read')return {...stamp(row.entry),status:view?'ready':'preparing',frameKey:row.port?.frameKey(),view,perceivedDistance:row.controller?.getCameraZoomDistance?.()};
+      if(action==='read'){
+        const perceivedDistance=view?row.controller?.getCameraZoomDistance?.():undefined;
+        return {...stamp(row.entry),status:view?'ready':'preparing',frameKey:row.port?.frameKey(),view,perceivedDistance,
+          operations:view?['set','reset','standard','step',...(row.document.draft.structure.cell?['cell']:[]),
+            ...(perceivedDistance!==undefined?['zoom']:[]),...(row.port?.cameraGesture?['pan','rotate']:[])]:[]};
+      }
       assertFrame(args,row);
+      if(action==='pan'||action==='rotate'){
+        const port=requirePort(row);
+        const recovery={tool:'view_camera',arguments:{action:'read',modelRef:row.entry.id}};
+        if(!port.cameraGesture)throw toolError('CAMERA_UNAVAILABLE','目标尚无可用的原生相机操作。',{recovery});
+        const command=asCameraGesture(args,action);
+        return {...stamp(row.entry),status:'applied',frameKey:row.port?.frameKey(),command,...port.cameraGesture(row.document.revision,command)};
+      }
       const command=asCameraCommand(args),receipt=requirePort(row).camera(row.document.revision,command);
       if(command.kind==='zoom'){
         if(!receipt)throw toolError('CAMERA_ZOOM_UNAVAILABLE','目标视口未返回原生缩放回执。');
@@ -791,8 +1019,10 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
       if(current?.status==='ready')return {status:'ready',draftId:current.snapshot.documentKey,revision:current.snapshot.revision};
       return {status:'opening'};
     }),
-    def('sketch_read','Read the actual 2D editor KET, draft identity and revision, or opening status.',{},[],async()=>{
-      ctx.assertTarget(undefined,'read');return await ctx.sketch()?.sketch.read()??{status:'closed'};
+    def('sketch_read','Read the actual 2D editor KET, draft identity and revision, or opening status. Set includeGraph=true for revision-bound atom and bond IDs, KET drawing positions and editable molecule nodes.',{includeGraph:booleanSchema},[],async args=>{
+      ctx.assertTarget(undefined,'read');
+      const current=await ctx.sketch()?.sketch.read()??{status:'closed' as const};
+      return args.includeGraph===true&&current.status==='ready'?{...current,graph:sketchGraphSummary(current.snapshot.ket)}:current;
     }),
     def('sketch_stereochemistry','Read or toggle native 2D R/S labels and inspect each atom’s actual enhanced stereo group. ABS defines absolute stereo, AND a mixture, OR an unknown member. To change an explicitly selected group, pass atomRefs from this receipt and group:{type:"ABS"} or {type:"AND"|"OR",id:1}. The native editor commits one undo step with the existing drawn geometry and source.',
       {...sketchSchema,shown:booleanSchema,retry:booleanSchema,
@@ -824,17 +1054,29 @@ export function modelTools(ctx:ModelToolContext):McTool[] {
             warning:error instanceof Error?error.message:String(error),recovery:{tool:'sketch_read',arguments:{}}};
         }
       })),
-    exactlyOneInput(def('sketch_edit','Replace the drawn graph in the same 2D draft with one native undo step. Pass exactly one of ket (valid 2D coordinates) or smiles (native Indigo layout). The loaded source provenance is retained. Example: {draftId:"<from sketch_read>",expectedRevision:0,smiles:"c1ccccc1"}.',
-      {...sketchSchema,ket:{...stringSchema,description:'Ketcher KET with finite atom location coordinates. Supply ket or smiles, never both.'},smiles:{...stringSchema,description:'SMILES to parse and lay out natively into the current draft. Example: c1ccccc1. Supply smiles or ket, never both.'}},['draftId','expectedRevision'],async(args,call)=>sketchOperation(async()=>{
-      if((args.ket!==undefined)===(args.smiles!==undefined))throw toolError('INVALID_SKETCH_INPUT','请只提供 ket 或 smiles 中的一项，原草稿已保留。');
+    exactlyOneInput(def('sketch_edit','Draw step by step or load a graph in the same 2D draft with one native undo step. Pass exactly one of commands, ket or smiles. For ordinary molecule nodes use commands to add/remove atoms and bonds or change bond order. Use sketch_read includeGraph=true for actual IDs at the exact revision. The returned graph gives the actual post-edit IDs.',
+      {...sketchSchema,ket:{...stringSchema,description:'Ketcher KET with finite atom location coordinates.'},smiles:{...stringSchema,description:'SMILES to lay out natively into the current draft, e.g. c1ccccc1.'},commands:sketchGraphCommands},['draftId','expectedRevision'],async(args,call)=>sketchOperation(async()=>{
+      if([args.ket,args.smiles,args.commands].filter(input=>input!==undefined).length!==1)throw toolError('INVALID_SKETCH_INPUT','请从 ket、smiles 或 commands 中选择一项。');
       const expected=integer(args.expectedRevision,'expectedRevision',0);
       const draftId=text(args.draftId,'draftId');
       if(args.smiles!==undefined&&typeof args.smiles!=='string')throw toolError('INVALID_SKETCH_SMILES','SMILES 需要字符串，原草稿已保留。');
-      const {documentKey,revision,dirty,hasContent,ket}=args.smiles!==undefined
-        ?await sketch().applySmiles(draftId,expected,args.smiles as string,call?.signal)
-        :await sketch().apply(draftId,expected,text(args.ket,'ket'));
-      return {draftId:documentKey,revision,dirty,hasContent,ket,status:revision===expected?'unchanged':'committed'};
-    })),['ket','smiles']),
+      const owner=sketch();
+      let replacement=args.ket;
+      if(args.commands!==undefined){
+        const current=await owner.read();
+        if(current.status!=='ready'||current.snapshot.documentKey!==draftId||current.snapshot.revision!==expected||current.busy)
+          throw toolError('sketch-conflict','二维草稿身份、版本或操作状态已变化，请重新读取。',{committed:false,recovery:{tool:'sketch_read',arguments:{includeGraph:true}}});
+        replacement=patchSketchGraph(current.snapshot.ket,args.commands);
+      }
+      call?.signal.throwIfAborted();
+      const {documentKey,revision,dirty,hasContent,ket}=typeof args.smiles==='string'
+        ?await owner.applySmiles(draftId,expected,args.smiles,call?.signal)
+        :await owner.apply(draftId,expected,text(replacement,'ket'));
+      const receipt={draftId:documentKey,revision,dirty,hasContent,ket,status:revision===expected?'unchanged':'committed'};
+      if(args.commands===undefined)return receipt;
+      try{return {...receipt,graph:sketchGraphSummary(ket)};}
+      catch(cause){return {...receipt,warning:cause instanceof Error?cause.message:String(cause),recovery:{tool:'sketch_read',arguments:{includeGraph:true}}};}
+    })),['ket','smiles','commands']),
     def('sketch_history','Undo or redo in the native 2D editor history.',{...sketchSchema,direction:enumeration('undo','redo')},['draftId','expectedRevision','direction'],async args=>{
       const expected=integer(args.expectedRevision,'expectedRevision',0);
       const {documentKey,revision,dirty,hasContent,ket}=await sketch().history(text(args.draftId,'draftId'),expected,choice(args.direction,'direction','undo','redo'));

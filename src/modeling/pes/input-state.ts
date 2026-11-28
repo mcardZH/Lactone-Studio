@@ -1,19 +1,65 @@
+import { initialBaseElectronicState, type BaseElectronicStateValues } from '../../core/base-electronic-state';
+import { electronicInventorySignature } from '../../core/modeling/electronic-state-policy';
 import type { PesGeometry, PesGroup, PesNode, PesRun } from './contracts';
 
-// A confirmation is scoped to its PES group. Rendering a result or projecting
-// the same source into a different workspace tab must not revoke it.
+export function pesEditableElectronicNode(group: PesGroup, geometry: PesGeometry): PesNode | undefined {
+  const source=geometry.source;
+  if(geometry.inputSnapshotId || source?.runId || source?.frameId || source?.recordId || geometry.originFrame?.frameId && !source) return;
+  if(source) {
+    if(source.groupId!==group.id)return;
+    return group.nodes.find(node=>node.id===source.nodeId&&node.geometry.documentId===geometry.documentId&&(node.kind==='initial'||node.kind==='workbench'));
+  }
+  return group.nodes.find(node=>node.geometry.documentId===geometry.documentId&&(node.kind==='initial'||node.kind==='workbench'));
+}
+
 export function pesElectronicSourceKey(group: PesGroup, geometry: PesGeometry): string {
-  const members = geometry.structure.atoms.map(atom => [atom.id, atom.element]).sort((a,b) =>
-    String(a[0]).localeCompare(String(b[0])) || String(a[1]).localeCompare(String(b[1])));
-  return JSON.stringify([group.id, members]);
+  const members=electronicInventorySignature(geometry.structure);
+  const editable=pesEditableElectronicNode(group,geometry), source=geometry.source;
+  const owner=geometry.inputSnapshotId ? ['snapshot',geometry.inputSnapshotId]
+    : editable ? ['model',editable.id,geometry.structure.id]
+    : source?.runId ? ['run',source.groupId,source.nodeId,source.runId,source.seriesId,source.frameId,source.recordId]
+    : ['source',source?.groupId,source?.nodeId,geometry.originFrame??[geometry.documentId,geometry.revision]];
+  return JSON.stringify([group.id, owner, members]);
+}
+
+export function pesElectronicDraft(group: PesGroup, geometry: PesGeometry) {
+  const electronic=group.electronic;
+  const key=pesElectronicSourceKey(group,geometry);
+  const saved=electronic.drafts?.[key];
+  if(electronic.pendingUnscopedEdit || electronic.sourceKey===key || !electronic.drafts && pesEditableElectronicNode(group,geometry)?.id===group.initialNodeId)
+    return {charge:electronic.charge,multiplicity:electronic.multiplicity};
+  if(saved)return saved;
+  const {charge,multiplicity}=initialBaseElectronicState(geometry.structure);
+  return {charge:String(charge),multiplicity:String(multiplicity)};
+}
+
+export function pesElectronicConfirmation(group: PesGroup, geometry: PesGeometry) {
+  const {charge,multiplicity}=pesElectronicDraft(group,geometry);
+  const key=pesElectronicSourceKey(group,geometry);
+  const confirmed=group.electronic.confirmationHistory?.[JSON.stringify([key,Number(charge),Number(multiplicity)])];
+  if(confirmed?.charge===Number(charge) && confirmed.multiplicity===Number(multiplicity))return confirmed;
+  const source=geometry.source;
+  const run=source?.groupId===group.id&&source.runId&&group.runs[source.runId];
+  if(!run||run.nodeId!==source?.nodeId||!source.frameId||!run.workerSettled||
+    Number(charge)!==run.request.charge||Number(multiplicity)!==run.request.uhf+1||
+    geometry.structure.charge!==run.request.charge||geometry.structure.multiplicity!==run.request.uhf+1)return;
+  const frames=source.recordId?run.result?.pathRecords?.find(record=>record.id===source.recordId)?.frames:run.result?.frames;
+  if(frames?.some(frame=>frame.id===source.frameId&&frame.seriesId===source.seriesId))
+    return {charge:run.request.charge,multiplicity:run.request.uhf+1};
 }
 
 export function pesElectronicConfirmed(group: PesGroup, geometry: PesGeometry): boolean {
-  const { confirmed, sourceKey, charge, multiplicity } = group.electronic;
-  if(!confirmed||confirmed.charge!==Number(charge)||confirmed.multiplicity!==Number(multiplicity))return false;
-  const key=pesElectronicSourceKey(group,geometry);
-  if(sourceKey!==undefined)return key===sourceKey;
-  return false;
+  return pesElectronicConfirmation(group,geometry)!==undefined;
+}
+
+export function savePesElectronicDraft(electronic: PesGroup['electronic'], key: string,
+  draft: { charge: string; multiplicity: string }, confirmed?: BaseElectronicStateValues): PesGroup['electronic'] {
+  const {charge,multiplicity}=draft;
+  const receiptKey=JSON.stringify([key,Number(charge),Number(multiplicity)]);
+  const confirmationHistory={...electronic.confirmationHistory};
+  if(confirmed)confirmationHistory[receiptKey]=confirmed;
+  else delete confirmationHistory[receiptKey];
+  return {charge,multiplicity,confirmed,sourceKey:key,confirmationHistory,drafts:{...electronic.drafts,[key]:{charge,multiplicity}}};
 }
 
 export function hasSuccessfulWorkbenchResult(run: Pick<PesRun, 'request' | 'status' | 'result' | 'error'> | undefined): boolean {

@@ -8,7 +8,7 @@ const presets = {
   claude: { title: 'Claude', model: '', baseUrl: 'https://api.anthropic.com/v1', protocol: 'messages' },
   gemini: { title: 'Gemini', model: '', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', protocol: 'chat' },
   ollama: { title: 'Ollama', model: '', baseUrl: 'http://127.0.0.1:11434/v1', protocol: 'chat', keyOptional: true },
-  kimi: { title: 'Kimi', model: '', baseUrl: 'https://api.moonshot.cn/v1', protocol: 'chat' },
+  kimi: { title: 'Kimi 开放平台', model: '', baseUrl: 'https://api.moonshot.cn/v1', protocol: 'chat' },
   glm: { title: 'GLM', model: '', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', protocol: 'chat' },
   custom: { title: '自定义', model: '', baseUrl: '', protocol: 'chat' },
 };
@@ -34,7 +34,7 @@ function normalizeProfile(provider, profile = {}) {
   if (!preset) throw Error('请选择支持的模型服务预设。');
   const protocol = profile.protocol ?? preset.protocol;
   if (!Object.hasOwn(routes, protocol)) throw Error('模型服务协议无效。');
-  const base = profile.baseUrl?.trim() || (!profile.baseUrl && preset.baseUrl);
+  const base = profile.baseUrl?.trim() || preset.baseUrl;
   let endpoint, baseUrl;
   if (typeof profile.endpoint === 'string' && profile.endpoint.trim() && !profile.baseUrl) {
     endpoint = absoluteUrl(profile.endpoint.trim());
@@ -66,19 +66,41 @@ function headers(profile) {
 function safeCode(value, key) {
   return typeof value === 'string' && /^[a-z][a-z0-9_]{0,60}$/i.test(value) && !(key && value.includes(key)) ? `（${value}）` : '';
 }
-async function checkHttp(response, profile) {
+function serviceAddress(value, key) {
+  const url = new URL(value);
+  if (!key) return url.origin + url.pathname;
+  const marker = '[已隐藏凭据]';
+  const origin = url.origin.replaceAll(key, marker);
+  const route = url.pathname.replaceAll(key, marker);
+  try {
+    // Keep the exact printable route unless its encoded form contains the key.
+    if (!decodeURIComponent(route).includes(key)) return origin + route;
+  } catch { /* A malformed escape cannot be checked safely for credentials. */ }
+  return origin + '/' + marker;
+}
+function operationLabel(profile, operation, url) {
+  return `${profile.title} · ${operation}（${serviceAddress(url, profile.key)}）`;
+}
+async function checkHttp(response, profile, label) {
   if (response.ok) return;
   const body = await response.json().catch(() => undefined);
-  throw Error(`${profile.title} 返回 HTTP ${response.status}${safeCode(body?.error?.code ?? body?.error?.type, profile.key)}。`);
+  const hints = {
+    400: '请核对模型名称和接口协议。',
+    401: '请核对密钥是否属于这个服务地址。',
+    403: '请核对密钥的权限和模型使用资格。',
+    404: '请核对服务地址、接口协议和模型名称。',
+    429: '请检查服务配额或稍后重试。',
+  };
+  throw Error(`${label}返回 HTTP ${response.status}${safeCode(body?.error?.code ?? body?.error?.type, profile.key)}。${hints[response.status] ?? '请检查服务状态后重试。'}`);
 }
-async function fetchSafe(url, options, profile, fetchImpl) {
+async function fetchSafe(url, options, profile, label, fetchImpl) {
   options.signal?.throwIfAborted();
   try { return await fetchImpl(url, { ...options, redirect: 'error' }); }
   catch (error) {
     options.signal?.throwIfAborted();
     // Native fetch exceptions and response messages can echo headers/URLs. Keep
     // only the operation's public category; no raw cause or credential is logged.
-    throw Error(`${profile.title} 连接失败${safeCode(error?.code, profile.key)}。`);
+    throw Error(`${label}连接失败${safeCode(error?.code, profile.key)}。请检查网络和服务地址。`);
   }
 }
 
@@ -367,33 +389,38 @@ function requestBody(profile, history, tools, instructions) {
     ...(profile.stream && (profile.provider === 'deepseek' || profile.modelCapabilities.streamUsage === true) ? { stream_options: { include_usage: true } } : {}) };
 }
 
-async function requestModel(provider, settings, history, tools, signal, fetchImpl = fetch, instructions = '', onDelta) {
+async function requestModel(provider, settings, history, tools, signal, fetchImpl = fetch, instructions = '', onDelta, stage = '请求模型回复') {
   const profile = normalizeProfile(provider, settings);
+  const label = operationLabel(profile, stage, profile.endpoint);
   if (!profile.model) throw Error('请填写模型名称。');
-  if (!profile.key && !profile.keyOptional) throw Error('请先配置 API 密钥。');
+  if (!profile.key && !profile.keyOptional) throw Error(`${label}需要此服务的 API 密钥。`);
   const response = await fetchSafe(profile.endpoint, { method: 'POST', signal, headers: headers(profile),
-    body: JSON.stringify(requestBody(profile, history, tools, instructions)) }, profile, fetchImpl);
-  await checkHttp(response, profile); signal?.throwIfAborted();
+    body: JSON.stringify(requestBody(profile, history, tools, instructions)) }, profile, label, fetchImpl);
+  await checkHttp(response, profile, label); signal?.throwIfAborted();
   if (/text\/event-stream/i.test(response.headers?.get?.('content-type') ?? '')) {
     const accumulator = streamAccumulator(profile, onDelta);
     try {
       for await (const frame of readSse(response.body, signal)) { accumulator.accept(frame); if (accumulator.terminal) break; }
     } catch (error) {
-      const partial = accumulator.finish(`${profile.title} 数据流中断或格式不完整，未派发工具。`);
+      const partial = accumulator.finish('数据流中断或格式不完整，未派发工具。');
       if (signal?.aborted) { const aborted = Error('助手请求已取消。'); aborted.name = 'AbortError'; aborted.partial = partial; throw aborted; }
-      return partial;
+      return { ...partial, warning: `${label}：${partial.warning}请检查服务状态后重试。` };
     }
-    return accumulator.finish();
+    const result = accumulator.finish();
+    return result.warning ? { ...result, warning: `${label}：${result.warning}` } : result;
   }
   // The existing QA/native JSON fixtures and servers that ignore stream=true
   // keep their original response.json path. There is no automatic second POST.
   let payload;
-  try { payload = await response.json(); } catch { signal?.throwIfAborted(); throw Error(`${profile.title} 返回的 JSON 无法读取。`); }
+  try { payload = await response.json(); } catch { signal?.throwIfAborted(); throw Error(`${label}的 JSON 响应无法读取。请核对接口协议。`); }
   signal?.throwIfAborted();
-  const result = profile.protocol === 'responses' ? responsesResult(profile, payload) : profile.protocol === 'messages'
-    ? messagesResult(profile, payload) : chatResult(profile, payload);
+  let result;
+  try {
+    result = profile.protocol === 'responses' ? responsesResult(profile, payload) : profile.protocol === 'messages'
+      ? messagesResult(profile, payload) : chatResult(profile, payload);
+  } catch { throw Error(`${label}的响应格式不完整。请核对接口协议和模型名称。`); }
   for (const reasoning of result.reasoning) onDelta?.({ type: 'reasoning-delta', text: reasoning.text, reasoningKind: reasoning.kind });
-  return result;
+  return result.warning ? { ...result, warning: `${label}：${result.warning}` } : result;
 }
 
 function publicCapabilityMetadata(value, key) {
@@ -419,16 +446,18 @@ function listedModelCapabilities(capabilities) {
 
 async function listProviderModels(provider, settings, signal, fetchImpl = fetch) {
   const profile = normalizeProfile(provider, settings);
-  if (!profile.key && !profile.keyOptional) throw Error('请先配置 API 密钥。');
   const endpoint = new URL(profile.endpoint);
   endpoint.pathname = endpoint.pathname.replace(/\/(?:chat\/completions|responses|messages)\/?$/, '/models');
+  const address = serviceAddress(endpoint, profile.key);
+  const label = operationLabel(profile, '获取模型列表', endpoint);
+  if (!profile.key && !profile.keyOptional) throw Error(`${label}需要此服务的 API 密钥。`);
   const models = new Map(), cursors = new Set();
   while (true) {
-    const response = await fetchSafe(endpoint.href, { method: 'GET', signal, headers: headers(profile) }, profile, fetchImpl);
-    await checkHttp(response, profile);
-    let payload; try { payload = await response.json(); } catch { signal?.throwIfAborted(); throw Error(`${profile.title} 模型列表 JSON 无法读取。`); }
+    const response = await fetchSafe(endpoint.href, { method: 'GET', signal, headers: headers(profile) }, profile, label, fetchImpl);
+    await checkHttp(response, profile, label); signal?.throwIfAborted();
+    let payload; try { payload = await response.json(); } catch { signal?.throwIfAborted(); throw Error(`${label}的 JSON 响应无法读取。模型名称可手动填写。`); }
     signal?.throwIfAborted();
-    if (!Array.isArray(payload.data)) throw Error(`${profile.title} 模型列表格式不完整。模型名称仍可手动填写。`);
+    if (!Array.isArray(payload?.data)) throw Error(`${label}的响应格式不完整。模型名称可手动填写。`);
     for (const model of payload.data) {
       if (typeof model.id !== 'string' || !model.id || profile.key && model.id.includes(profile.key)) continue;
       const name = typeof model.display_name === 'string' && !(profile.key && model.display_name.includes(profile.key)) ? model.display_name : model.id;
@@ -441,11 +470,11 @@ async function listProviderModels(provider, settings, signal, fetchImpl = fetch)
       models.set(model.id, { ...models.get(model.id), id: model.id, name,
         ...(actual !== undefined ? { capabilities: actual } : {}), ...(modelCapabilities ? { modelCapabilities } : {}) });
     }
-    if (profile.protocol !== 'messages' || payload.has_more !== true) return { provider, protocol: profile.protocol, models: [...models.values()], complete: true };
+    if (profile.protocol !== 'messages' || payload.has_more !== true) return { provider, protocol: profile.protocol, address, models: [...models.values()], complete: true };
     const cursor = payload.last_id;
-    if (typeof cursor !== 'string' || !cursor || cursors.has(cursor)) return { provider, protocol: profile.protocol, models: [...models.values()], complete: false, warning: '模型列表分页游标未前进，已保留读取到的模型。' };
+    if (typeof cursor !== 'string' || !cursor || cursors.has(cursor)) return { provider, protocol: profile.protocol, address, models: [...models.values()], complete: false, warning: '模型列表分页游标未前进，已保留读取到的模型。' };
     cursors.add(cursor); endpoint.searchParams.set('after_id', cursor);
   }
 }
 
-module.exports = { providers, normalizeProfile, requestModel, listProviderModels, readSse, userMessage };
+module.exports = { providers, normalizeProfile, serviceAddress, requestModel, listProviderModels, readSse, userMessage };

@@ -6,7 +6,10 @@ const { performance } = require('node:perf_hooks');
 const { isDeepStrictEqual, TextDecoder } = require('node:util');
 const { assert, within } = require('./security.cjs');
 const { checkDirectory, directoryIdentity } = require('./portable-storage.cjs');
+const { createPesRecoveryStore, readPesTerminalFramePage } = require('./pes-recovery-store.cjs');
 const { pythonEnvironment } = require('./pes-runtime.cjs');
+const { sharedConformerDiagnosticCode } = require('./conformer-batch-adapter.cjs');
+const { candidateStageKey } = require('./candidate-pool-admission.cjs');
 const { SCHEMA, validateStart, validateIdentity, validateEvent, validateFrame, requiresResidentLibrary, usesFixedCellTblite } = require('./pes-security.cjs');
 
 // This grace period is only for an already-requested stop. A running
@@ -14,9 +17,8 @@ const { SCHEMA, validateStart, validateIdentity, validateEvent, validateFrame, r
 const STOP_GRACE_MS = 2000;
 const RESIDENT_SCHEMA = 'es-pes-resident/v1';
 const candidateFailureCodes = new Set(['PES_XTB_SCC', 'PES_XTB_GEOMETRY', 'PES_XTB_EVALUATION',
-  'PES_OPT_LINE_SEARCH', 'PES_OPT_COORDINATE']);
+  'XTB_PERIODIC_NONFINITE_RESULT', 'PES_OPT_LINE_SEARCH', 'PES_OPT_COORDINATE']);
 const DEFAULT_PREPARATION = { operation: 'opt', algorithm: 'lbfgs', method: 'gfn2' };
-const OPTIMIZER_IMPORTS = new Map([['fire2', 'fire2'], ['sella-xyz', 'sella'], ['sella-ric', 'sella']]);
 const residentProfile = request => ({
   operation: request.operation, algorithm: request.algorithm,
   parameters: { executionProfile: request.parameters?.executionProfile },
@@ -79,12 +81,14 @@ function ndjson(accept) {
 
 function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime,
   jobRoot, resultRoot = `${jobRoot}-records`, resolveResources, admit, admitCandidate, sendToWindow,
-  pagedTerminalFrames = false, registerBinaryAsset, fs = require('node:fs/promises') }) {
+  pagedTerminalFrames = false, registerBinaryAsset, releaseBinaryAsset, fs = require('node:fs/promises') }) {
   assert(path.isAbsolute(jobRoot) && typeof admit === 'function', 'Trusted PES job root and shared admission required');
   assert(path.isAbsolute(resultRoot) && !within(jobRoot, resultRoot), 'PES records need a separate owned result root');
   const sessions = new Map(), retained = new Map(), closedOwners = new Set(), residentWorkers = new Set();
-  const preparingOwners = new Map(), terminalFrames = new Map();
-  let disposed = false, rootIdentity, resultRootIdentity;
+  const preparingOwners = new Map(), terminalFrames = new Map(), candidateStages = new Map();
+  const recovery = createPesRecoveryStore({ root: resultRoot, io: fs });
+  const recoveryClaims = new Map(), openingRecoveries = new Set();
+  let disposed = false, rootIdentity, resultRootIdentity, baseWorker;
   const sessionKey = (owner, identity) => JSON.stringify([owner, identity.groupId, identity.taskId, identity.runId]);
 
   function registerDisplayFrames(session, frames, aliases) {
@@ -170,10 +174,26 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
     worker.killTimer.unref?.();
   }
 
-  function trimIdleWorkers(keep) {
-    for (const worker of residentWorkers) {
-      if (worker !== keep && !worker.claimed && !worker.session) shutdownWorker(worker);
-    }
+  function releaseCandidateStage(stage) {
+    if (stage.cleanup) return stage.cleanup;
+    stage.closing = true;
+    const workers = [...residentWorkers].filter(worker => worker.stage === stage);
+    const active = [...sessions.values()].filter(session => session.batch?.stage === stage);
+    for (const worker of workers) if (!worker.reserved && !worker.session) shutdownWorker(worker);
+    stage.cleanup = Promise.all([...workers.map(worker => worker.closed), ...active.map(session => session.finished)]).finally(() => {
+      if (candidateStages.get(stage.key) === stage) candidateStages.delete(stage.key);
+    });
+    stage.cleanup.catch(() => {});
+    return stage.cleanup;
+  }
+
+  function holdCandidateWorkers(owner, identity) {
+    const key = candidateStageKey(owner, identity);
+    assert(!disposed && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner) && !candidateStages.has(key),
+      'PES candidate workers already owned or unavailable');
+    const stage = { key, owner, closing: false };
+    candidateStages.set(key, stage);
+    return () => releaseCandidateStage(stage);
   }
 
   function residentPacket(worker, packet) {
@@ -190,16 +210,6 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
       void finish(session, null, null, true);
       return;
     }
-    if (packet.event === 'optimizer-prepared') {
-      const optimizer = worker.optimizers.get(packet.optimizer);
-      assert(optimizer && !optimizer.settled && !worker.pending?.initial
-        && typeof packet.ready === 'boolean' && (packet.ready || typeof packet.detail === 'string'),
-      'Invalid PES optimizer preparation response');
-      optimizer.settled = true;
-      if (packet.ready) optimizer.resolve();
-      else optimizer.reject(new Error(packet.detail));
-      return;
-    }
     const pending = worker.pending;
     assert(!session && pending, 'Unexpected PES resident control response');
     assert((pending.initial ? ['ready'] : ['prepared', 'prepare-failed']).includes(packet.event), 'Invalid PES resident control response');
@@ -214,28 +224,27 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
   function residentFailure(worker, error) {
     worker.failure ??= error;
     worker.pending?.reject(error);
-    for (const optimizer of worker.optimizers.values()) optimizer.reject(error);
     if (worker.session) rejectOutput(worker.session, error);
     else shutdownWorker(worker);
   }
 
-  function acquireWorker(resolved, profile, maySpawn) {
+  function availableWorker(resolved, profile, stage) {
     const identity = workerIdentity(resolved), key = residentProfileKey(profile);
     const matches = [...residentWorkers].filter(worker => worker.identity === identity && !worker.closing && !worker.failure
-      && !worker.claimed && !worker.session);
-    const idle = matches.find(worker => worker.profileKeys.has(key)) ?? matches[0];
-    if (idle) return idle;
-    if (!maySpawn || !spawnResident || disposed) return undefined;
-    const worker = { identity, claimed: false, session: null, pending: null, profileKeys: new Set(),
-      optimizers: new Map(), stderr: '' };
-    if (resolved.libxtbRoot) {
-      for (const name of new Set(OPTIMIZER_IMPORTS.values())) {
-        const optimizer = {};
-        optimizer.ready = new Promise((resolve, reject) => Object.assign(optimizer, { resolve, reject }));
-        optimizer.ready.catch(() => {});
-        worker.optimizers.set(name, optimizer);
-      }
-    }
+      && !worker.reserved && !worker.session && (worker === baseWorker || (stage && worker.stage === stage)));
+    return matches.find(worker => !worker.preparing && worker.profileKeys.has(key))
+      ?? matches.find(worker => !worker.preparing)
+      ?? matches.find(worker => worker.preparingKey === key);
+  }
+
+  function startWorker(resolved, profile, stage) {
+    if (!spawnResident || disposed || stage?.closing) return undefined;
+    const identity = workerIdentity(resolved), key = residentProfileKey(profile);
+    if (baseWorker && baseWorker.identity !== identity && !baseWorker.reserved && !baseWorker.session) shutdownWorker(baseWorker);
+    const base = !baseWorker || baseWorker.closing;
+    const worker = { identity, reserved: false, session: null, pending: null, profileKeys: new Set(),
+      stage: base ? undefined : stage, stderr: '' };
+    if (base) baseWorker = worker;
     worker.closed = new Promise(resolve => { worker.resolveClosed = resolve; });
     residentWorkers.add(worker);
     worker.launch = (async () => {
@@ -265,10 +274,10 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
         child.once('close', (code, signal) => {
           clearTimeout(worker.killTimer);
           residentWorkers.delete(worker);
+        if (baseWorker === worker) baseWorker = undefined;
           worker.closing = true;
           const error = worker.failure ?? new Error(worker.stderr || `PES resident worker closed (${code}, ${signal})`);
           worker.pending?.reject(error);
-          for (const optimizer of worker.optimizers.values()) optimizer.reject(error);
           if (worker.session) {
             if (worker.reader.incomplete()) worker.session.failure ??= new Error('Incomplete PES worker packet');
             void finish(worker.session, code, signal);
@@ -282,7 +291,11 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
         await prepared;
       } catch (error) {
         if (worker.child) residentFailure(worker, error);
-        else { residentWorkers.delete(worker); worker.resolveClosed(); }
+        else {
+          residentWorkers.delete(worker);
+          if (baseWorker === worker) baseWorker = undefined;
+          worker.resolveClosed();
+        }
         throw error;
       }
     })();
@@ -308,25 +321,20 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
   }
 
   function queuePreparation(worker, profile) {
-    const previous = worker.prepared;
-    const preparing = (previous ? previous.catch(() => {}) : worker.launch).then(() => readyWorker(worker, profile));
-    worker.claimed = worker.preparing = true;
+    const key = residentProfileKey(profile);
+    if (worker.preparingKey === key) return worker.prepared;
+    assert(!worker.prepared, 'PES worker is preparing another profile');
+    const preparing = readyWorker(worker, profile);
+    worker.preparing = true;
+    worker.preparingKey = key;
     worker.prepared = preparing;
     void preparing.finally(() => {
       if (worker.prepared !== preparing) return;
       worker.preparing = false;
+      worker.preparingKey = undefined;
       worker.prepared = null;
-      if (!worker.reserved) worker.claimed = false;
     }).catch(() => {});
     return preparing;
-  }
-
-  function prepareOnWorker(worker, profile) {
-    const optimizer = profile.operation === 'opt' && worker.optimizers.get(OPTIMIZER_IMPORTS.get(profile.algorithm));
-    // Ordinary optional imports already have a preparation on this worker.
-    // Waiting on that dependency leaves the command queue available.
-    return optimizer ? worker.launch.then(() => worker.profileKeys.has(residentProfileKey(profile))
-      ? undefined : optimizer.ready) : queuePreparation(worker, profile);
   }
 
   async function prepareRequest(request, signal) {
@@ -338,12 +346,11 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
     if (resident && !resolved.libxtbRoot || fixedCellTblite && !resolved.tblite) {
       return { state: 'deferred' };
     }
-    const worker = acquireWorker(resolved, profile, residentWorkers.size === 0)
-      ?? [...residentWorkers].find(candidate => candidate.identity === workerIdentity(resolved)
-        && candidate.preparing && !candidate.reserved && !candidate.failure && !candidate.closing);
+    const worker = availableWorker(resolved, profile)
+      ?? ((!baseWorker || baseWorker.closing) ? startWorker(resolved, profile) : undefined);
     if (!worker) return { state: 'deferred' };
     const provider = Promise.resolve().then(() => fixedCellTblite ? resolved.tblite : resolveXtbRuntime(request, signal));
-    const [local, backend] = await Promise.allSettled([prepareOnWorker(worker, profile), provider]);
+    const [local, backend] = await Promise.allSettled([queuePreparation(worker, profile), provider]);
     if (signal?.aborted || disposed || local.status !== 'fulfilled' || backend.status !== 'fulfilled' || !backend.value) {
       return { state: 'deferred' };
     }
@@ -427,6 +434,7 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
     if (active) { active.releaseRecordsRequested = true; return; }
     const assets = retained.get(key);
     if (!assets) return;
+    if (assets.recoveryId) { retained.delete(key); return; }
     if (assets.releasing) return assets.releasing;
     assets.releasing = (async () => {
       await Promise.allSettled([...assets.readers]);
@@ -483,7 +491,11 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
   function closeResult(session, code, signal) {
     const terminal = session.terminal;
     const cause = terminal?.result?.error;
-    const knownCandidateCause = session.batch && terminal?.status === 'failed' && candidateFailureCodes.has(cause?.code)
+    const sharedCode = session.batch ? sharedConformerDiagnosticCode(cause?.code, cause?.message,
+      terminal?.error?.code, terminal?.error?.detail, terminal?.error?.message,
+      session.failure?.code, errorDetail(session.failure), session.stderr,
+      typeof code === 'number' && (code >>> 0) === 0xC0000135 ? '0xC0000135' : undefined) : undefined;
+    const knownCandidateCause = session.batch && !sharedCode && terminal?.status === 'failed' && candidateFailureCodes.has(cause?.code)
       && typeof cause.message === 'string' && cause.message.length > 0;
     const leaseSettled = session.launch?.resident ? session.workerReleased : !signal && (code === 0 || code === 1);
     if (!session.failure && !session.reader?.incomplete() && terminal
@@ -492,7 +504,10 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
       // If the worker completed while a stop crossed its final packet, its
       // result retains the actual scientific terminal state.
       return { status: terminal.status, ...(terminal.result === undefined ? {} : { result: terminal.result }),
-        ...(terminal.error === undefined ? {} : { error: terminal.error }),
+        ...(sharedCode && terminal.status === 'failed' ? {
+          error: { message: terminal.error?.message ?? cause?.message ?? 'PES 共用求值环境出现故障。',
+            detail: [terminal.error?.detail, session.stderr].filter(Boolean).join('\n'), code: sharedCode },
+        } : terminal.error === undefined ? {} : { error: terminal.error }),
         ...(knownCandidateCause ? { candidateFailure: cause } : {}) };
     }
     const status = !session.failure && session.userStop ? 'stopped' : 'failed';
@@ -511,17 +526,20 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
     // Only a validated E/G boundary from the active xTB lease qualifies a bare exit 1.
     const xTBBackend = session.launch?.libxtbRoot ? 'libxtb' : usesFixedCellTblite(session.request) ? 'tblite' : undefined;
     const nativeExitOne = code === 1 && !signal && xTBBackend && session.evaluationBackend === xTBBackend;
-    const candidateFailure = session.batch && !session.failure && !session.userStop && !terminal
+    const candidateFailure = session.batch && !sharedCode && !session.failure && !session.userStop && !terminal
       && session.launch?.resident && session.evaluationBackend && (protectionFault || nativeExitOne)
       ? { code: 'PES_CANDIDATE_NATIVE_EXIT', message: `本构象求值进程异常退出。 ${detail}` } : undefined;
     return { status, ...(result ? { result } : {}), ...(status === 'failed' ? {
-      error: { message, ...(detail ? { detail } : {}) },
+      error: { message, ...(detail ? { detail } : {}), ...(sharedCode ? { code: sharedCode } : {}) },
     } : {}), ...(candidateFailure ? { candidateFailure } : {}) };
   }
 
+  function needsDiagnosticRecovery(session, outcome) {
+    return session.workspace && (outcome.status !== 'completed' || session.ownerClosed
+      || session.batch && (outcome.result?.status !== 'completed' || session.batchRecovery));
+  }
+
   async function preserveFailure(session, outcome, code, signal) {
-    if (!session.workspace || outcome.status === 'completed' && !session.ownerClosed
-      && (!session.batch||outcome.result?.status==='completed'&&!session.batchRecovery)) return;
     const { directory, identity } = session.workspace;
     await checkDirectory(directory, identity, fs);
     const write = (name, value) => fs.writeFile(path.join(directory, name), JSON.stringify(value) + '\n', { flag: 'wx' });
@@ -545,6 +563,20 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
     clearTimeout(session.killTimer);
     await session.output;
     let outcome = closeResult(session, code, signal);
+    let attemptedDiagnostics = false;
+    async function saveDiagnostics() {
+      if (attemptedDiagnostics || !needsDiagnosticRecovery(session, outcome)) return;
+      attemptedDiagnostics = true;
+      try {
+        await preserveFailure(session, outcome, code, signal);
+      } catch (error) {
+        const warning = `PES 恢复资料保存失败：${errorDetail(error)}`;
+        outcome.diagnosticWarning = { code: 'PES_DIAGNOSTIC_SAVE_FAILED', message: warning };
+        if (outcome.error && !session.batch) outcome.error = { ...outcome.error, detail: [outcome.error.detail, warning].filter(Boolean).join('\n') };
+        if (outcome.result) outcome.result = { ...outcome.result, provenance: { ...outcome.result.provenance, recoveryWarning: warning } };
+      }
+    }
+    await saveDiagnostics();
     if(session.batch){
       try {
         await session.batch.onTerminal({ ...outcome, nativeStarted:!!session.child,
@@ -554,19 +586,14 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
         session.failure??=error;
       }
     }
-    try {
-      await preserveFailure(session, outcome, code, signal);
-    } catch (error) {
-      const warning = `PES 恢复资料保存失败：${errorDetail(error)}`;
-      if (outcome.error) outcome.error = { ...outcome.error, detail: [outcome.error.detail, warning].filter(Boolean).join('\n') };
-      if (outcome.result) outcome.result = { ...outcome.result, provenance: { ...outcome.result.provenance, recoveryWarning: warning } };
-    }
+    await saveDiagnostics();
     let terminalRecord, numericAssets;
     const identity = session.request.runIdentity;
     const standaloneOpt = session.request.operation === 'opt'
       && identity.groupId === `model-${identity.runId}` && identity.taskId === identity.runId;
+    const durable = outcome.status === 'completed' && session.request.operation !== 'opt';
     if (pagedTerminalFrames && !session.batch && !standaloneOpt && outcome.result
-      && (outcome.result.frames.length > 1 || session.numericFiles)) {
+      && (durable || outcome.result.frames.length > 1 || session.numericFiles)) {
       try {
         let numericMarker = false;
         if (session.numericFiles) {
@@ -579,21 +606,18 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
             numericMarker = true;
           } catch (error) { if (error.code !== 'EEXIST') throw error; }
         }
-        terminalRecord = await persistTerminalFrames(session, outcome);
+        terminalRecord = await persistTerminalFrames(session, outcome, durable);
         terminalRecord.numericMarker = numericMarker;
         terminalRecord.runIdentity = identity;
         terminalRecord.keepNumericalRecovery = !!session.numericFiles
           && (outcome.status !== 'completed' || outcome.result.status !== 'completed' || !!outcome.error);
+        if (terminalRecord.recoveryError) outcome.result = { ...outcome.result, provenance: { ...outcome.result.provenance,
+          terminalRecoveryWarning: errorDetail(terminalRecord.recoveryError) } };
         if (session.numericFiles) {
-          if (!session.ownerClosed) {
-            numericAssets = {};
-            for (const [kind, file] of session.numericFiles) {
-              const descriptor = await registerBinaryAsset(session.owner, file.target, { sha256: file.sha256 });
-              assert(descriptor && typeof descriptor.id === 'string' && descriptor.bytesLength === file.bytes,
-                'PES binary terminal registration changed its receipt');
-              numericAssets[kind] = { ...descriptor, shape: file.shape, sha256: file.sha256 };
-            }
-          }
+          const files = terminalRecord.recoveryId ? new Map([...session.numericFiles].map(([kind, file]) => [
+            kind, { ...file, target: path.join(terminalRecord.directory, file.name) },
+          ])) : session.numericFiles;
+          if (!session.ownerClosed) numericAssets = await registerTerminalNumerics(session.owner, files);
         }
       }
       catch (error) {
@@ -606,6 +630,12 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
           terminalRecoveryWarning: errorDetail(error) } };
       }
     }
+    const worker = session.residentWorker;
+    if (worker && (disposed || worker.failure || (session.child && (session.failure || !session.terminal))
+      || (worker !== baseWorker && (!worker.stage || worker.stage.closing)))) {
+      shutdownWorker(worker);
+      await worker.closed;
+    }
     try {
       await session.release?.();
     } catch (error) {
@@ -613,13 +643,18 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
       session.failure ??= error;
       outcome = closeResult(session, code, signal);
     } finally {
+      if (terminalRecord?.recoveryId && terminalRecord.numericalFiles && !terminalRecord.keepNumericalRecovery) {
+        try { await releaseTerminalScratchNumerics(terminalRecord); }
+        catch (error) {
+          if (outcome.result) outcome.result = { ...outcome.result, provenance: { ...outcome.result.provenance,
+            releaseWarning: errorDetail(error) } };
+        }
+      }
       sessions.delete(session.key);
-      const worker = session.residentWorker;
       if (worker) {
         worker.reserved = false;
-        worker.claimed = worker.preparing;
-        if (disposed || session.child && (session.failure || !session.terminal)) shutdownWorker(worker);
-        else if (!worker.claimed && !worker.closing) trimIdleWorkers(worker);
+        // A stage can close while the resource-release callback is settling.
+        if (worker !== baseWorker && worker.stage?.closing) shutdownWorker(worker);
       }
       if (session.releaseRecordsRequested) {
         try { await releasePathRecords(session.owner, session.request.runIdentity); }
@@ -725,7 +760,8 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
   async function startOwned(owner, raw, beforeStart, batch) {
     assert(!disposed && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner), 'PES owner is unavailable');
     const request = validateStart(raw), key = sessionKey(owner, request.runIdentity);
-    assert(request.parameters.batchFinalOnly===undefined,'PES batch output policy is reserved for the trusted conformer host');
+    assert(request.parameters.batchFinalOnly === undefined && request.parameters.xtbBatchParallelism === undefined,
+      'PES internal run settings are reserved for the trusted host');
     if(batch)request.parameters.batchFinalOnly=true;
     assert(!sessions.has(key) && !retained.has(key) && !terminalFrames.has(key), 'PES run identity is already active or owned');
     const session = { owner, key, request, batch, abort: new AbortController(), nextWorkerEvent: 0, nextEvent: 0,
@@ -757,6 +793,11 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
       request.memoryBudgetBytes = actual.memoryBudgetBytes;
       if (signal.aborted) throw new Error('PES start stopped');
       noteOptimizationTiming(session, { phase: 'runtime-resolution' });
+      const pathSlots = request.operation === 'path' && ['ci-neb', 'fsm'].includes(request.algorithm)
+        ? actual.xtbBatchParallelism : undefined;
+      assert(pathSlots === undefined || Number.isSafeInteger(pathSlots) && pathSlots > 0, 'Invalid trusted xTB path parallelism');
+      const workerRequest = pathSlots === undefined ? request
+        : { ...request, parameters: { ...request.parameters, xtbBatchParallelism: pathSlots } };
       const worker = await abortable(resolveRuntime(request), signal);
       assert(worker && path.isAbsolute(worker.executable) && path.isAbsolute(worker.cwd)
         && Array.isArray(worker.args) && worker.args.every(arg => typeof arg === 'string') && worker.args.includes('--pes-worker'), 'Trusted PES worker runtime required');
@@ -787,26 +828,24 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
       if (signal.aborted) throw new Error('PES start stopped');
       if (spawnResident && (resident || tblite)) {
         const profile = residentProfile(request);
-        const previousLane = acquireWorker(worker, profile, false) ?? [...residentWorkers].find(candidate => candidate.identity === workerIdentity(worker)
-          && !candidate.closing && !candidate.failure && candidate.preparing && !candidate.reserved);
-        const lane = previousLane ?? acquireWorker(worker, profile, true);
+        const stage = batch?.stage;
+        assert(!stage?.closing, 'PES candidate stage is closing');
+        const previousLane = availableWorker(worker, profile, stage);
+        const lane = previousLane ?? startWorker(worker, profile, stage);
         assert(lane, 'PES resident worker unavailable');
         noteOptimizationTiming(session, { phase: 'worker-readiness', workerMode: !previousLane ? 'resident-new'
           : lane.profileKeys.has(residentProfileKey(profile)) && !lane.preparing ? 'resident-ready' : 'resident-preparing' });
         session.residentWorker = lane;
-        lane.claimed = lane.reserved = true;
-        // A previously dispatched explicit prepare still owns its response.
-        // Eager imports only publish independent optimizer-ready messages.
-        if (lane.prepared) await abortable(lane.prepared.catch(() => {}), signal);
-        await abortable(prepareOnWorker(lane, profile), signal);
+        lane.reserved = true;
+        await abortable(queuePreparation(lane, profile), signal);
         assert(!lane.closing && !lane.session && !lane.failure, 'PES resident worker no longer owns a free lease');
         beforeStart();
         if (signal.aborted) throw new Error('PES start stopped');
         lane.session = session;
         session.child = lane.child;
         session.launch.resident = true;
-        lane.child.stdin.write(declareResident('run', { payload: { request, runtime, workspace: owned.directory } }));
-        send(session, 'started');
+        lane.child.stdin.write(declareResident('run', { payload: { request: workerRequest, runtime, workspace: owned.directory } }));
+        send(session, 'started', { resourceGrant: actual });
         noteOptimizationTiming(session, { phase: 'worker-dispatched' });
         return;
       }
@@ -831,8 +870,8 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
       child.stdin.on('error', error => { if (!session.userStop && !session.terminal) rejectOutput(session, error); });
       child.once('error', error => rejectOutput(session, error));
       child.once('close', (code, signal) => { void finish(session, code, signal); });
-      child.stdin.write(JSON.stringify({ request, runtime, workspace: owned.directory }) + '\n');
-      send(session, 'started');
+      child.stdin.write(JSON.stringify({ request: workerRequest, runtime, workspace: owned.directory }) + '\n');
+      send(session, 'started', { resourceGrant: actual });
       noteOptimizationTiming(session, { phase: 'worker-dispatched' });
     } catch (error) {
       if (!session.userStop) session.failure ??= error;
@@ -848,7 +887,8 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
   async function prepare(owner, raw, beforeStart = () => {}) {
     assert(!disposed && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner), 'PES owner is unavailable');
     const request = validateStart(raw);
-    assert(request.parameters.batchFinalOnly === undefined, 'PES batch output policy is reserved for the trusted conformer host');
+    assert(request.parameters.batchFinalOnly === undefined && request.parameters.xtbBatchParallelism === undefined,
+      'PES internal run settings are reserved for the trusted host');
     beforeStart();
     const sameProfile = JSON.stringify([residentProfile(request), request.method, request.parameters.device,
       request.structure.cell?.pbc, request.uhf]);
@@ -872,7 +912,8 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
       &&raw.method===admissionRequest.method&&raw.sourceDocumentId===admissionRequest.stamp?.documentId
       &&admissionRequest.optimizationPool&&typeof admitCandidate==='function'
       &&typeof onTerminal==='function','Dedicated conformer candidate admission required');
-    const starting=startOwned(owner,raw,beforeStart,{admissionRequest,onTerminal,capturedRuntime});
+    const stage = candidateStages.get(candidateStageKey(owner, { ...admissionRequest.runIdentity, stageId: admissionRequest.optimizationPool.stageId }));
+    const starting=startOwned(owner,raw,beforeStart,{admissionRequest,onTerminal,capturedRuntime,stage});
     const session=sessions.get(sessionKey(owner,raw.runIdentity));
     return Promise.all([starting, session?.finished]).then(result => {
       if (session?.releaseFailure) throw session.releaseFailure;
@@ -927,7 +968,7 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
     return records;
   }
 
-  async function persistTerminalFrames(session, outcome) {
+  async function persistTerminalFrames(session, outcome, durable) {
     const frames = outcome.result.frames;
     // Unit hosts built without a real disk implement only the lightweight
     // read/write facade. A real desktop always provides ordinary fs.open.
@@ -958,6 +999,15 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
       await output.sync();
     } finally { await output.close(); }
     await checkDirectory(directory, identity, fs);
+    const record = { owner: session.owner, directory, identity, rows, bytes: offset, reads: new Set(),
+      numericalFiles: session.numericFiles, workspace: session.workspace };
+    if (durable) {
+      try {
+        record.recoveryId = await recovery.persist(record, session.request, outcome, session.assets);
+        if (session.assets) session.assets.recoveryId = record.recoveryId;
+      } catch (error) { record.recoveryError = error; }
+      return record;
+    }
     const manifest = path.join(directory, 'terminal.json');
     const write = await fs.open(manifest, 'wx');
     try {
@@ -972,47 +1022,13 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
         request: session.request, status: outcome.status, result: metadata, error: outcome.error, rows, numerical }) + '\n');
       await write.sync();
     } finally { await write.close(); }
-    return { owner: session.owner, directory, identity, rows, bytes: offset, reads: new Set(), numericalFiles: session.numericFiles, workspace: session.workspace };
+    return record;
   }
 
   async function readTerminalFrames(owner, { runIdentity, offset, limit }) {
     const record = terminalFrames.get(sessionKey(owner, validateIdentity(runIdentity)));
-    assert(record?.owner === owner && !closedOwners.has(owner), 'PES terminal frames are not owned or available');
-    const count = record.rows?.length ?? record.frames.length;
-    assert(!record.releasing && Number.isSafeInteger(offset) && offset >= 0 && offset <= count &&
-      Number.isSafeInteger(limit) && limit > 0, 'Invalid PES terminal frame page');
-    const reading = (async () => {
-      const frames = [];
-      let size = 0;
-      if (record.rows) await checkDirectory(record.directory, record.identity, fs);
-      const handle = record.rows ? await fs.open(path.join(record.directory, 'frames.jsonl'), 'r') : null;
-      try {
-        if (handle) {
-          const stat = await handle.stat();
-          assert(stat.isFile() && stat.nlink === 1 && stat.size === record.bytes, 'PES terminal frame record changed');
-        }
-        for (let index = offset; index < Math.min(count, offset + Math.min(limit, 64)); index++) {
-          const row = record.rows?.[index], bytes = row?.length ?? record.frames[index].positions.length * 56 + 256;
-          if (frames.length && size + bytes > 8 * 1024 ** 2) break;
-          if (!row) frames.push(record.frames[index]);
-          else {
-            const data = Buffer.allocUnsafe(row.length);
-            let read = 0;
-            while (read < data.length) {
-              const { bytesRead } = await handle.read(data, read, data.length - read, row.offset + read);
-              assert(bytesRead > 0, 'PES terminal frame record truncated');
-              read += bytesRead;
-            }
-            assert(createHash('sha256').update(data).digest('hex') === row.sha256, 'PES terminal frame checksum changed');
-            const frame = JSON.parse(data.toString('utf8'));
-            assert(frame.id === row.id, 'PES terminal frame identity changed');
-            frames.push(frame);
-          }
-          size += bytes;
-        }
-      } finally { await handle?.close(); }
-      return { frames, offset, total: count, done: offset + frames.length === count };
-    })();
+    assert(record?.owner === owner && !record.releasing && !closedOwners.has(owner), 'PES terminal frames are not owned or available');
+    const reading = readPesTerminalFramePage(record, { offset, limit }, fs);
     record.reads?.add(reading);
     try { return await reading; } finally { record.reads?.delete(reading); }
   }
@@ -1023,26 +1039,11 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
     if (record.releasing) return record.releasing;
     record.releasing = (async () => {
       await Promise.allSettled([...(record.reads ?? [])]);
-      if (record.keepNumericalRecovery) {
+      if (record.keepNumericalRecovery || record.recoveryId || record.recoveryError) {
         terminalFrames.delete(key);
         return true;
       }
-      if (record.numericalFiles) {
-        const { directory, identity } = record.workspace;
-        await checkDirectory(directory, identity, fs);
-        for (const file of record.numericalFiles.values()) {
-          const current = await fs.lstat(file.target);
-          assert(current.isFile() && !current.isSymbolicLink() && current.nlink === 1 && current.size === file.bytes
-            && current.dev === file.device && current.ino === file.inode, 'PES numerical recovery file changed');
-          await fs.unlink(file.target);
-        }
-        if (record.numericMarker) {
-          const marker = path.join(directory, '.retain-recovery.json');
-          const raw = JSON.parse(await fs.readFile(marker, 'utf8'));
-          assert(raw.reason === 'pes-terminal-binary' && isDeepStrictEqual(raw.runIdentity, record.runIdentity), 'PES recovery marker changed');
-          await fs.unlink(marker);
-        }
-      }
+      if (record.numericalFiles) await releaseTerminalScratchNumerics(record);
       if (record.directory) {
         await checkDirectory(record.directory, record.identity, fs);
         for (const fixed of ['frames.jsonl', 'terminal.json']) {
@@ -1058,15 +1059,98 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
     try { return await record.releasing; } finally { record.releasing = undefined; }
   }
 
+  async function releaseTerminalScratchNumerics(record) {
+    const { directory, identity } = record.workspace;
+    await checkDirectory(directory, identity, fs);
+    for (const file of record.numericalFiles.values()) {
+      const current = await fs.lstat(file.target);
+      assert(current.isFile() && !current.isSymbolicLink() && current.nlink === 1 && current.size === file.bytes
+        && current.dev === file.device && current.ino === file.inode, 'PES numerical recovery file changed');
+      await fs.unlink(file.target);
+    }
+    if (record.numericMarker) {
+      const marker = path.join(directory, '.retain-recovery.json');
+      const raw = JSON.parse(await fs.readFile(marker, 'utf8'));
+      assert(raw.reason === 'pes-terminal-binary' && isDeepStrictEqual(raw.runIdentity, record.runIdentity), 'PES recovery marker changed');
+      await fs.unlink(marker);
+    }
+  }
+
+  async function registerTerminalNumerics(owner, files, issues) {
+    const assets = {};
+    for (const [kind, file] of files) {
+      try {
+        const descriptor = await registerBinaryAsset(owner, file.target, { sha256: file.sha256 });
+        assert(descriptor && typeof descriptor.id === 'string' && descriptor.bytesLength === file.bytes,
+          'PES binary terminal registration changed its receipt');
+        assets[kind] = { ...descriptor, shape: file.shape, sha256: file.sha256 };
+      } catch (error) {
+        if (issues) issues.push({ kind, message: errorDetail(error) });
+        else {
+          await Promise.allSettled(Object.values(assets).map(asset => releaseBinaryAsset?.(owner, asset.id)));
+          throw error;
+        }
+      }
+    }
+    return Object.keys(assets).length ? assets : undefined;
+  }
+
+  async function claimPesRecovery(owner, id) {
+    assert(!disposed && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner), 'PES recovery owner is unavailable');
+    const claimKey = JSON.stringify([owner, id]);
+    assert(!recoveryClaims.has(claimKey) && !openingRecoveries.has(claimKey), 'PES 恢复结果已在此窗口打开。');
+    openingRecoveries.add(claimKey);
+    let numerics;
+    try {
+      const restored = await recovery.open(id), identity = restored.request.runIdentity;
+      const key = sessionKey(owner, identity);
+      const available = () => assert(!closedOwners.has(owner) && !disposed &&
+        !sessions.has(key) && !terminalFrames.has(key) && !retained.has(key), 'PES 结果已在此窗口使用。');
+      available();
+      numerics = await registerTerminalNumerics(owner, restored.numericalFiles, restored.issues);
+      if (restored.paths) {
+        resultRootIdentity ??= await directoryIdentity(resultRoot, fs);
+        await checkDirectory(resultRoot, resultRootIdentity, fs);
+      }
+      available();
+      const record = { ...restored, owner, recoveryId: id, reads: new Set() };
+      const paths = restored.paths && { ...restored.paths, owner, key, request: restored.request, recoveryId: id, readers: new Set() };
+      terminalFrames.set(key, record);
+      if (paths) retained.set(key, paths);
+      recoveryClaims.set(claimKey, { key, record, paths, numerics, owner });
+      const result = restored.issues.length ? { ...restored.result, provenance: { ...restored.result.provenance,
+        terminalRecoveryWarning: restored.issues.map(({ kind, message }) => `${kind}: ${message}`).join('\n'),
+      } } : restored.result;
+      return { id, request: restored.request, terminal: { schema: SCHEMA, runIdentity: identity, seq: 1, event: 'terminal',
+        workerSettled: true, status: restored.status, result, error: restored.error,
+        resultFrameIds: restored.rows.map(row => row.id), resultNumericAssets: numerics } };
+    } catch (error) {
+      await Promise.allSettled(Object.values(numerics ?? {}).map(asset => releaseBinaryAsset?.(owner, asset.id)));
+      throw error;
+    } finally { openingRecoveries.delete(claimKey); }
+  }
+
+  async function closePesRecovery(owner, id) {
+    const claimKey = JSON.stringify([owner, id]), claim = recoveryClaims.get(claimKey);
+    if (!claim) return;
+    recoveryClaims.delete(claimKey);
+    if (terminalFrames.get(claim.key) === claim.record) terminalFrames.delete(claim.key);
+    if (retained.get(claim.key) === claim.paths) retained.delete(claim.key);
+    await Promise.allSettled([...claim.record.reads, ...claim.paths?.readers ?? [],
+      ...Object.values(claim.numerics ?? {}).map(asset => releaseBinaryAsset?.(owner, asset.id))]);
+  }
+
   function closeOwner(owner) {
     closedOwners.add(owner);
     for (const [key, record] of terminalFrames) if (record.owner === owner) terminalFrames.delete(key);
+    for (const [key, claim] of recoveryClaims) if (claim.owner === owner) recoveryClaims.delete(key);
     preparingOwners.get(owner)?.abort.abort();
     for (const session of sessions.values()) {
       if (session.owner !== owner) continue;
       session.ownerClosed = session.userStop = true;
       requestStop(session);
     }
+    for (const stage of candidateStages.values()) if (stage.owner === owner) void releaseCandidateStage(stage);
     for (const [key, assets] of retained) {
       if (assets.owner === owner && !sessions.has(key)) retained.delete(key);
     }
@@ -1075,18 +1159,23 @@ function createPesHost({ spawn, spawnResident, resolveRuntime, resolveXtbRuntime
   function dispose() {
     disposed = true;
     terminalFrames.clear();
+    recoveryClaims.clear();
     for (const preparation of preparingOwners.values()) preparation.abort.abort();
     for (const session of sessions.values()) closeOwner(session.owner);
+    for (const stage of candidateStages.values()) void releaseCandidateStage(stage);
     for (const worker of residentWorkers) if (!worker.session) shutdownWorker(worker);
   }
 
   async function settle(owner) {
     await Promise.all([...sessions.values()].filter(session => owner === undefined || session.owner === owner)
       .map(session => session.finished));
+    await Promise.all([...candidateStages.values()].filter(stage => owner === undefined || stage.owner === owner)
+      .map(stage => stage.cleanup));
     if (disposed && owner === undefined) await Promise.all([...residentWorkers].map(worker => worker.closed));
   }
 
-  return { start, startCandidate, prepare, prewarm, stop, closeOwner, dispose, settle,
+  return { start, startCandidate, holdCandidateWorkers, prepare, prewarm, stop, closeOwner, dispose, settle,
+    listPesRecovery: recovery.list, claimPesRecovery, closePesRecovery,
     readPathRecord, releasePathRecords, readTerminalFrames, releaseTerminalFrames, authorizeEmpiricalDisplay, activeCount: () => sessions.size,
     workerCount: () => [...residentWorkers].filter(worker => worker.child).length };
 }

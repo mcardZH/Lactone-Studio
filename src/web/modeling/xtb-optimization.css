@@ -5,63 +5,66 @@
   container: xtb-optimization / inline-size;
   margin-top: 6px;
   box-sizing: border-box;
-  padding: 7px 8px;
-  border: 1px solid #c9dcd2;
-  border-radius: 8px;
-  background: #f6fbf8ed;
-  box-shadow: 0 2px 8px #244f4218;
-  color: #294443;
-  font: var(--ui-small-size, 13px)/1.4 "Segoe UI", "Microsoft YaHei", sans-serif;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-surface-border);
+  border-radius: var(--ui-surface-radius);
+  background: var(--ui-surface-bg);
+  box-shadow: var(--ui-card-shadow);
+  color: var(--ui-control-ink);
+  font: var(--ui-small-size, 13px)/1.4 var(--ui-font-family);
 }
 .xtb-optimization-panel .optimization-panel-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;min-width:0}
-.xtb-optimization-panel .optimization-panel-header>strong{font-size:12px}
+.xtb-optimization-panel .optimization-panel-header>strong{font-size:12px;color:var(--ui-section-ink)}
 .xtb-run-settings-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%, 8rem),1fr)); gap:4px 8px; margin-top:4px; }
 .xtb-run-settings-fields.optimization-limit-row {grid-template-columns:repeat(auto-fit,minmax(min(100%, 7rem),1fr));}
 .net-device-warning { color:#775b16; background:#fff6da; border-color:#e2cb82; }
 :is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields)>label{display:flex;flex-direction:column;align-items:stretch;min-width:0;gap:2px}
-:is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields)>label>span{font-size:var(--ui-small-size,12px)}
-:is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields) :is(select,input[type=number]){width:100%;min-width:0;padding-inline:3px}
-.xtb-electronic-fields :is(select,input[type=number]) { min-height:26px; box-sizing:border-box; border:1px solid #c4d7cb; border-radius:5px; background:#fff; color:inherit; font:inherit; }
-.xtb-optimization-panel .optimization-stop:not(:disabled){color:#923c35;border-color:#c89c96}
+:is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields)>label>span{font-size:var(--ui-small-size,12px);color:var(--ui-label-ink)}
+:is(.xtb-optimization-panel .optimization-primary-row,.xtb-electronic-fields,.xtb-run-settings-fields) :is(select,input[type=number]){width:100%;min-width:0;padding-inline:4px}
+.xtb-electronic-fields :is(select,input[type=number]) { min-height:26px; box-sizing:border-box; border:1px solid var(--ui-control-border); border-radius:var(--ui-control-radius); background:var(--ui-control-bg); color:inherit; font:inherit; }
+.xtb-optimization-panel .optimization-stop:not(:disabled){color:#9e342c;border-color:#d8a39d;background:#fff6f5}
+.xtb-optimization-panel .optimization-stop:hover:not(:disabled){background:#fdebe9;border-color:#c27870}
 .xtb-optimization-panel label { display: inline-flex; align-items: center; gap: 4px; margin: 0; white-space: nowrap; }
 .xtb-optimization-panel :is(select, input[type=number], button) {
   min-height: 26px;
   box-sizing: border-box;
-  padding: 2px 5px;
-  border: 1px solid #c4d7cb;
-  border-radius: 5px;
-  background: #fff;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
   color: inherit;
   font: inherit;
+  transition: var(--ui-transition);
 }
 .xtb-optimization-panel input[type=number] { width: 55px; }
 .xtb-optimization-panel select { width: 102px; }
 .xtb-optimization-panel .xtb-optimization-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; }
-.xtb-optimization-panel .xtb-optimization-buttons { display: inline-flex; align-items: stretch; flex: 0 0 auto; gap: 3px; }
-.xtb-optimization-panel .xtb-optimization-buttons > button { min-width: 34px; min-height: 27px; padding: 2px 4px; font-size: 12px; font-weight: 600; }
-.xtb-optimization-panel .xtb-optimization-buttons > button:last-child:not(:disabled) { color: #923c35; border-color: #c89c96; }
+.xtb-optimization-panel .xtb-optimization-buttons { display: inline-flex; align-items: stretch; flex: 0 0 auto; gap: 4px; }
+.xtb-optimization-panel .xtb-optimization-buttons > button { min-width: 34px; min-height: 27px; padding: 2px 6px; font-size: 12px; font-weight: 600; }
+.xtb-optimization-panel .xtb-optimization-buttons > button:last-child:not(:disabled) { color: #9e342c; border-color: #d8a39d; background: #fff6f5; }
 .xtb-optimization-panel button { cursor: pointer; }
-.xtb-optimization-panel :disabled { opacity: .55; cursor: default; }
-.xtb-optimization-panel input[type=checkbox] { width: 14px; height: 14px; min-height: 0; padding: 0; margin: 0; accent-color: #548f74; }
-.xtb-optimization-panel :focus-visible { outline: 2px solid #569b80; outline-offset: 1px; }
+.xtb-optimization-panel :disabled { opacity: 1; color: var(--ui-action-disabled-ink); background: var(--ui-action-disabled-bg); border-color: var(--ui-action-disabled-border); cursor: default; }
+.xtb-optimization-panel input[type=checkbox] { width: 14px; height: 14px; min-height: 0; padding: 0; margin: 0; accent-color: var(--ui-control-accent); }
+.xtb-optimization-panel :focus-visible { outline: 2px solid var(--ui-control-focus); outline-offset: 1px; }
 .xtb-optimization-panel :is(.xtb-optimization-status, .xtb-optimization-error) { max-width: 360px; margin: 5px 0 0; overflow-wrap: anywhere; }
 .xtb-optimization-panel .xtb-optimization-actions :is(.xtb-optimization-status, .xtb-optimization-error) { flex: 1 1 120px; min-width: 0; margin: 0; }
-.xtb-optimization-panel .xtb-optimization-status { color: #526961; }
+.xtb-optimization-panel .xtb-optimization-status { color: var(--ui-note-ink); }
 .xtb-optimization-panel .xtb-optimization-error { color: #9d332d; }
-.xtb-optimization-panel .xtb-constraint-results { margin-top: 5px; border-top: 1px solid #d7e5dc; padding-top: 4px; }
+.xtb-optimization-panel .xtb-constraint-results { margin-top: 5px; border-top: 1px solid var(--ui-surface-border); padding-top: 4px; }
 .xtb-optimization-panel .xtb-constraint-results > summary { cursor: pointer; color: #6e5c32; }
 .xtb-optimization-panel .xtb-constraint-table-scroll { max-height: 150px; max-width: 430px; overflow: auto; margin-top: 4px; }
 .xtb-optimization-panel .xtb-constraint-results table { border-collapse: collapse; font: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.xtb-optimization-panel .xtb-constraint-results :is(th, td) { padding: 2px 5px; border-bottom: 1px solid #e1eae4; text-align: right; }
+.xtb-optimization-panel .xtb-constraint-results :is(th, td) { padding: 2px 5px; border-bottom: 1px solid var(--ui-table-line); text-align: right; }
 .xtb-optimization-panel .xtb-constraint-results :is(th, td):nth-child(-n+2) { text-align: left; }
 .xtb-optimization-panel .xtb-constraint-results th { font-weight: 600; }
 .model-bond-perception-controls { position: relative; display: flex; width: 100%; min-width: 0; }
 .model-bond-perception-controls > button { min-height: 32px; font-size: calc(12px * var(--ui-font-scale, 1)); line-height: 1.2; }
 .model-bond-perception-controls > button:first-child { flex: 1; min-width: 0; padding-left: 2px; padding-right: 2px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .model-bond-perception-controls > .model-bond-perception-menu-toggle { flex: 0 0 18px; min-width: 0; width: 18px; padding: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-.model-bond-perception-menu { position: absolute; top: calc(100% + 3px); right: 0; z-index: 30; display: grid; min-width: 154px; padding: 4px; gap: 3px; background: #fff; border: 1px solid #b5cec5; border-radius: 6px; box-shadow: 0 3px 12px #244f4222; }
-.model-bond-perception-menu button { text-align: left; white-space: nowrap; }
-.model-bond-perception-menu button[aria-checked=true] { background: #e1f1e9; }
+.model-bond-perception-menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; display: grid; min-width: 158px; padding: 5px; gap: 3px; background: var(--ui-popover-bg, var(--ui-control-bg)); backdrop-filter: var(--ui-popover-blur, none); border: 1px solid var(--ui-surface-border); border-radius: var(--ui-subcard-radius); box-shadow: var(--ui-popover-shadow); }
+.model-bond-perception-menu button { text-align: left; white-space: nowrap; border-color: transparent; background: transparent; }
+.model-bond-perception-menu button:hover:not(:disabled) { background: var(--ui-control-hover-bg); }
+.model-bond-perception-menu button[aria-checked=true] { background: var(--ui-control-selected-bg); color: var(--ui-control-selected-ink); font-weight: 600; }
 .model-bond-perception-notice { margin: 4px; padding: 7px; border: 1px solid #d9bd81; border-radius: 6px; background: #fff9ee; font-size: 12px; }
 .model-bond-perception-notice summary { cursor: pointer; color: #805820; }
 .model-bond-perception-notice p { margin: 6px 0; line-height: 1.5; }
@@ -82,8 +85,20 @@
   font:400 var(--ui-control-font)/var(--ui-control-line) var(--ui-font-family);
   container:model-simulation / inline-size;
 }
-.model-simulation-card,.model-simulation-card.xtb-optimization-panel { box-shadow:var(--ui-card-stroke-inset); }
+.model-simulation-card,.model-simulation-card.xtb-optimization-panel { box-shadow:var(--ui-card-shadow); }
 .model-simulation-card.xtb-optimization-panel { margin:0; }
+.model-simulation-card.xtb-optimization-panel .model-simulation-actions > button:first-child:not(.optimization-stop):not(:disabled) {
+  background:var(--ui-action-primary-bg); border-color:var(--ui-action-primary-bg); color:#fff; font-weight:600;
+}
+.model-simulation-card.xtb-optimization-panel .model-simulation-actions > button:first-child:not(.optimization-stop):hover:not(:disabled) {
+  background:var(--ui-action-primary-hover); border-color:var(--ui-action-primary-hover);
+}
+.model-simulation-card.dynamics-panel .model-simulation-actions > button:last-child:not(:disabled) {
+  color:#9e342c; border-color:#d8a39d; background:#fff6f5;
+}
+.model-simulation-card.dynamics-panel .model-simulation-actions > button:last-child:hover:not(:disabled) {
+  background:#fdebe9; border-color:#c27870;
+}
 .model-simulation-card .model-simulation-heading {
   display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
   gap:4px; min-width:0; margin:0 0 4px;

@@ -1,5 +1,6 @@
 import { captureAnalysisProjectState, restoreAnalysisProjectState, type AnalysisProjectState } from '../../projects/analysis-state';
 import type { ProjectUiStore } from '../../projects/ui-state';
+import { projectAssetSha256, type ProjectAssetRange } from '../../projects/desktop-bridge';
 import type { PostprocessCacheManifest, TaskSystemBridge } from '../application-contracts';
 import { VibronicSha256 } from '../../core/gaussian-vibronic/sha256-stream';
 import type { ManagedPostprocessSourceSet, PostprocessTaskAssociation } from './postprocess-managed-source';
@@ -13,15 +14,49 @@ function taskUiValues(store: ProjectUiStore | undefined, documentId: string): Re
 }
 export async function saveTaskPostprocessCache(bridge: TaskSystemBridge, association: PostprocessTaskAssociation, source: ManagedPostprocessSourceSet, options: { uiStore?: ProjectUiStore; guard?(): void; onProgress?(value: { phase: string; completed: number; total: number }): void } = {}) {
  sameSource(association, source); options.guard?.();
- const data = new Map<string, { bytes: Uint8Array; role: 'derived-cache' | 'state-index'; name: string }>();
- const writer = { async write(category: string, name: string, value: Uint8Array | string) { options.guard?.(); const bytes = typeof value === 'string' ? utf8.encode(value) : value, assetId = sha(bytes); if (category === 'sources') { if (!source.files.some(file => file.revision === assetId && file.byteSize === bytes.byteLength)) throw Error('缓存包含尚未归档的新原始Cube，请先保存新来源。'); return { assetId }; } if (!data.has(assetId)) data.set(assetId, { bytes: bytes.slice(), role: name.endsWith('.json') ? 'state-index' : 'derived-cache', name }); return { assetId }; } };
+ const data = new Map<string, { byteSize: number; role: 'derived-cache' | 'state-index'; name: string; checkIdentity: boolean; readRange: ProjectAssetRange['readRange'] }>();
+ const add = (category: string, name: string, asset: ProjectAssetRange, checkIdentity: boolean) => {
+  options.guard?.();
+  const { sha256: assetId, bytes: byteSize, readRange } = asset;
+  if (!/^[a-f0-9]{64}$/.test(assetId) || !Number.isSafeInteger(byteSize) || byteSize < 0) throw Error('后处理缓存资产身份不完整。');
+  if (category === 'sources') {
+   if (!source.files.some(file => file.revision === assetId && file.byteSize === byteSize)) throw Error('缓存包含尚未归档的新原始Cube，请先保存新来源。');
+   return { assetId };
+  }
+  if (!data.has(assetId)) data.set(assetId, { byteSize, role: name.endsWith('.json') ? 'state-index' : 'derived-cache', name, checkIdentity, readRange });
+  return { assetId };
+ };
+ const writer = {
+  async write(category: string, name: string, value: Uint8Array | string) {
+   const bytes = typeof value === 'string' ? utf8.encode(value) : value;
+   return add(category, name, { bytes: bytes.byteLength, sha256: await projectAssetSha256(bytes), async readRange(offset, length) { return bytes.subarray(offset, offset + length); } }, false);
+  },
+  async writeRange(category: string, name: string, asset: ProjectAssetRange) { return add(category, name, asset, true); },
+ };
  const state = await captureAnalysisProjectState(writer, { scope: source.scope }); options.guard?.();
  const ui = taskUiValues(options.uiStore, association.documentId);
  if (Object.keys(ui).length) { const value = await writer.write('results', 'task-ui.json', utf8.encode(JSON.stringify({ documentId: association.documentId, values: ui }))); state.entries.push({ key: 'task-ui:' + JSON.stringify([source.scope.documentId]), ...value, assetReferences: [value.assetId] }); }
- const cacheId = 'cache-' + crypto.randomUUID(), manifest: Omit<PostprocessCacheManifest, 'savedAt' | 'byteSize' | 'state'> = { schema: 1, capabilities: [TASK_POSTPROCESS_CACHE_CAPABILITY], requiredCapabilities: [TASK_POSTPROCESS_CACHE_CAPABILITY], cacheId, taskId: association.taskId, sourceSetId: association.sourceSetId, sourceVersion: association.sourceVersion, documentId: source.scope.documentId, modelDocumentId: association.documentId, sourceBindings: source.files.map(file => ({ sourceId: file.sourceId, sourceRevision: file.revision, role: file.role })), entries: state.entries.map(entry => ({ ...entry, assetReferences: entry.assetReferences ?? [entry.assetId], parametersIdentity: sha(data.get(entry.assetId)!.bytes) })), assets: [...data].map(([assetId, item]) => ({ assetId, fileId: assetId, role: item.role, byteSize: item.bytes.byteLength })) };
- const begun = await bridge.request('postprocess-cache.begin', { requestId: crypto.randomUUID(), taskId: association.taskId, sourceSetId: association.sourceSetId, sourceVersion: association.sourceVersion, manifest, files: [...data].map(([fileId, item]) => ({ fileId, role: item.role, name: item.name, byteSize: item.bytes.byteLength })) });
- let completed = 0; const total = [...data.values()].reduce((sum, item) => sum + item.bytes.byteLength, 0);
- try { for (const [fileId, item] of data) for (let offset = 0; offset < item.bytes.byteLength; offset += 1024 ** 2) { options.guard?.(); const bytes = item.bytes.subarray(offset, Math.min(item.bytes.byteLength, offset + 1024 ** 2)); const receipt = await bridge.request('postprocess-cache.append', { uploadId: begun.uploadId, fileId, offset, bytes }); if (receipt.written !== bytes.byteLength) throw Error('后处理缓存写入不完整。'); completed += bytes.byteLength; options.onProgress?.({ phase: '保存后处理缓存', completed, total }); } options.guard?.();options.onProgress?.({phase:'提交缓存',completed:0,total:0});return await bridge.request('postprocess-cache.commit', { uploadId: begun.uploadId }); }
+ const cacheId = 'cache-' + crypto.randomUUID(), manifest: Omit<PostprocessCacheManifest, 'savedAt' | 'byteSize' | 'state'> = { schema: 1, capabilities: [TASK_POSTPROCESS_CACHE_CAPABILITY], requiredCapabilities: [TASK_POSTPROCESS_CACHE_CAPABILITY], cacheId, taskId: association.taskId, sourceSetId: association.sourceSetId, sourceVersion: association.sourceVersion, documentId: source.scope.documentId, modelDocumentId: association.documentId, sourceBindings: source.files.map(file => ({ sourceId: file.sourceId, sourceRevision: file.revision, role: file.role })), entries: state.entries.map(entry => ({ ...entry, assetReferences: entry.assetReferences ?? [entry.assetId], parametersIdentity: entry.assetId })), assets: [...data].map(([assetId, item]) => ({ assetId, fileId: assetId, role: item.role, byteSize: item.byteSize })) };
+ const begun = await bridge.request('postprocess-cache.begin', { requestId: crypto.randomUUID(), taskId: association.taskId, sourceSetId: association.sourceSetId, sourceVersion: association.sourceVersion, manifest, files: [...data].map(([fileId, item]) => ({ fileId, role: item.role, name: item.name, byteSize: item.byteSize })) });
+ let completed = 0; const total = [...data.values()].reduce((sum, item) => sum + item.byteSize, 0);
+ try {
+  for (const [fileId, item] of data) {
+   const hash = item.checkIdentity ? new VibronicSha256() : undefined;
+   for (let offset = 0; offset < item.byteSize; offset += 1024 ** 2) {
+    options.guard?.();
+    const length = Math.min(item.byteSize - offset, 1024 ** 2), range = await item.readRange(offset, length);
+    options.guard?.();
+    if (range.byteLength !== length) throw Error('后处理缓存资产读取不完整。');
+    const bytes = range.byteOffset === 0 && range.byteLength === range.buffer.byteLength && range.buffer instanceof ArrayBuffer ? range : range.slice();
+    hash?.update(bytes);
+    const receipt = await bridge.request('postprocess-cache.append', { uploadId: begun.uploadId, fileId, offset, bytes });
+    if (receipt.written !== length) throw Error('后处理缓存写入不完整。');
+    completed += length; options.onProgress?.({ phase: '保存后处理缓存', completed, total });
+   }
+   if (hash && hash.digest() !== fileId) throw Error('后处理缓存资产内容已变化。');
+  }
+  options.guard?.();options.onProgress?.({phase:'提交缓存',completed:0,total:0});return await bridge.request('postprocess-cache.commit', { uploadId: begun.uploadId });
+ }
  catch (error) { await bridge.request('postprocess-cache.abort', { uploadId: begun.uploadId }).catch(() => {}); throw error; }
 }
 export async function restoreTaskPostprocessCache(bridge: TaskSystemBridge, association: PostprocessTaskAssociation, source: ManagedPostprocessSourceSet, options: { uiStore?: ProjectUiStore; guard?(): void; onWarning?(message: string): void } = {}): Promise<{ restored: boolean; release(): Promise<void> }> {

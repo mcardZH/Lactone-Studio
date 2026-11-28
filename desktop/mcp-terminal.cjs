@@ -279,7 +279,7 @@ function projectDirectory(projectIndexPath) {
   return homedir();
 }
 
-function createTerminalHost({ userDataPath, resolvePython = resolvePythonExecutable, resourcesPath = process.resourcesPath }) {
+function createTerminalHost({ userDataPath, resolvePython = resolvePythonExecutable, resourcesPath = process.resourcesPath, trackWorker }) {
   const sessions = new Map();
   const current = (owner, id) => {
     const session = sessions.get(owner);
@@ -357,6 +357,14 @@ function createTerminalHost({ userDataPath, resolvePython = resolvePythonExecuta
           ?? (!exit && code ? `终端进程异常退出（${code}）。` : undefined);
         if (!session.retired) publish({ type: 'exit', id: session.id, exitCode: exit?.exitCode, signal: exit?.signal ?? signal, warning });
       });
+      try { trackWorker?.(worker); }
+      catch (cause) {
+        error = cause.message;
+        // No start message has been sent, so this exact worker has no shell.
+        // A disconnect that arrives before its bootstrap listener can be lost.
+        worker.kill();
+        return;
+      }
       send(session, {
         type: 'start',
         shell,

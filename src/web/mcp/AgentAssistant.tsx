@@ -1,6 +1,7 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from 'react';
-import { Paperclip, Send, Square, X } from 'lucide-react';
+import { Check, Copy, Paperclip, Send, Square, X } from 'lucide-react';
 import fromMarkdown from 'mdast-util-from-markdown';
+import { copyPlainText } from '../clipboard-text';
 import { twoDImageMime } from '../../modeling/two-d/static-image';
 import { decodeStaticImage } from '../../modeling/two-d/static-image-decode';
 import { agentPanelError, type AgentPanelBridge, type AssistantAttachmentPort, type AssistantAttachmentReceipt,
@@ -9,7 +10,7 @@ import { agentPanelError, type AgentPanelBridge, type AssistantAttachmentPort, t
 
 const providerNames: Record<AssistantProvider, string> = {
   deepseek: 'DeepSeek', openai: 'OpenAI', claude: 'Claude', gemini: 'Gemini',
-  ollama: 'Ollama', kimi: 'Kimi', glm: 'GLM', custom: '自定义 (Custom)',
+  ollama: 'Ollama', kimi: 'Kimi 开放平台', glm: 'GLM', custom: '自定义 (Custom)',
 };
 const protocolNames: Record<AssistantProtocol, string> = {
   chat: 'Chat Completions', responses: 'Responses', messages: 'Messages',
@@ -100,6 +101,28 @@ function turnEnd(entries: Entry[], turnId: string) {
   return end;
 }
 
+function CodeBlock({ lang, value }: { lang?: string | null; value: string }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => { if (timer.current !== undefined) clearTimeout(timer.current); }, []);
+  const handleCopy = () => {
+    void copyPlainText(value).then(() => {
+      setCopied(true);
+      if (timer.current !== undefined) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setCopied(false), 1600);
+    }).catch(() => {});
+  };
+  return <div className="es-agent-codeblock">
+    <div className="es-agent-codeblock-header">
+      <span className="es-agent-codeblock-lang">{lang?.trim() || 'text'}</span>
+      <button type="button" className="es-agent-codeblock-copy" aria-label="复制代码" onClick={handleCopy}>
+        {copied ? <><Check size={12} aria-hidden="true" />已复制</> : <><Copy size={12} aria-hidden="true" />复制</>}
+      </button>
+    </div>
+    <pre><code>{value}</code></pre>
+  </div>;
+}
+
 function AnswerMarkdown({ text }: { text: string }) {
   try {
     const tree = fromMarkdown(text);
@@ -122,7 +145,7 @@ function AnswerMarkdown({ text }: { text: string }) {
         case 'strong': return <strong>{children(node.children)}</strong>;
         case 'emphasis': return <em>{children(node.children)}</em>;
         case 'inlineCode': return <code>{node.value}</code>;
-        case 'code': return <pre><code>{node.value}</code></pre>;
+        case 'code': return <CodeBlock lang={node.lang} value={node.value} />;
         case 'list': return node.ordered ? <ol start={node.start ?? undefined}>{children(node.children)}</ol> : <ul>{children(node.children)}</ul>;
         case 'listItem': return <li>{children(node.children)}</li>;
         case 'blockquote': return <blockquote>{children(node.children)}</blockquote>;
@@ -212,6 +235,7 @@ export default function AgentAssistant({
   const [protocol, setProtocol] = useState<AssistantProtocol>('responses');
   const [effortDraft, setEffortDraft] = useState<{ connection: string; value: string }>();
   const [models, setModels] = useState<AssistantModel[]>();
+  const [modelListAddress, setModelListAddress] = useState<string>();
   const [loadingModels, setLoadingModels] = useState(false);
   const modelRequest = useRef(0);
   const [custom, setCustom] = useState('');
@@ -272,6 +296,7 @@ export default function AgentAssistant({
   function clearModelList() {
     ++modelRequest.current;
     setModels(undefined);
+    setModelListAddress(undefined);
     setLoadingModels(false);
   }
 
@@ -468,7 +493,7 @@ export default function AgentAssistant({
   }
 
   function connectionDraft() {
-    return { provider, baseUrl: baseUrl.trim() || undefined, protocol, apiKey: apiKey || undefined };
+    return { provider, baseUrl: baseUrl.trim(), protocol, apiKey: apiKey || undefined };
   }
 
   async function fetchModels() {
@@ -480,6 +505,7 @@ export default function AgentAssistant({
       const result = await bridge.assistantModels(connectionDraft());
       if (live.current && request === modelRequest.current) {
         setModels(result.models);
+        setModelListAddress(result.address);
         if (result.warning) setNotice(result.warning);
       }
     } catch (cause) {
@@ -731,6 +757,7 @@ export default function AgentAssistant({
             获取模型列表
           </button>
           {loadingModels && <small role="status">正在获取模型…</small>}
+          {modelListAddress && <small>模型列表 {modelListAddress}</small>}
           {models && (models.length > 0 ? <label className="es-agent-inline">从列表选择<select aria-label="从列表选择" value={models.some(item => item.id === model) ? model : ''}
             disabled={pending || busy || loadingModels} onChange={event => setModel(event.target.value)}>
             <option value="" disabled>选择…</option>
@@ -744,6 +771,7 @@ export default function AgentAssistant({
           <summary>高级设置</summary>
           <div className="es-agent-tools">
             <label className="es-agent-inline">Base URL<input inputMode="url" value={baseUrl} spellCheck={false}
+              placeholder={editedSettings?.defaultBaseUrl || undefined}
               disabled={pending || busy} onChange={event => { setBaseUrl(event.target.value); clearModelList(); }} /></label>
             <label className="es-agent-inline">接口协议<select value={protocol} disabled={pending || busy} onChange={event => {
               setProtocol(event.target.value as AssistantProtocol);
@@ -752,7 +780,10 @@ export default function AgentAssistant({
               {Object.entries(protocolNames).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select></label>
           </div>
+          {editedSettings?.defaultBaseUrl && <small>留空使用服务的默认地址。</small>}
+          {editedSettings?.address && <small>已保存的对话地址 {editedSettings.address}</small>}
         </details>
+        {provider === 'kimi' && <small>Kimi 开放平台使用平台 API 密钥。Kimi Code 会员密钥请在「自定义」中按 Kimi Code 提供的服务地址和协议设置。图像和工具能力以实际接口为准。</small>}
         <div className="es-agent-tools">
           <button type="submit" disabled={pending || busy || !model.trim()}>应用</button>
           {(editedSettings?.hasKey || editedSettings?.remembered) && <button type="button" disabled={pending || busy} onClick={() => void saveSettings(true)}>移除密钥</button>}

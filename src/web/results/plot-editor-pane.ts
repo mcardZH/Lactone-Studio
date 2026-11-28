@@ -1,6 +1,6 @@
 import {EV_NM} from '../../results/spectroscopy';
 import {displayPlotValue, inheritedPlotFont, plotCoordinateRange, plotPointKey, sourcePlotValue, type PlotAxis,
-  type PlotAxisEdits, type PlotAxisTransforms, type PlotGuide, type PlotNote, type PlotPaneEdits, type PlotPointStyle, type PlotSeriesStyle,type PlotStyle} from '../../results/scientific-plot-editing';
+  type PlotAxisEdits, type PlotAxisTransforms, type PlotGuide, type PlotNote, type PlotPaneEdits, type PlotPointStyle, type PlotPosition, type PlotSeriesStyle,type PlotStyle} from '../../results/scientific-plot-editing';
 import type {ScientificPlotPoint, ScientificPlotSeries, ScientificPlotViewport} from '../../results/scientific-plot';
 import {resolvePlotSeriesStyle} from './ScientificPlotDrawing';
 import type {PlotEditorContext, PlotTarget} from './ScientificPlotEditor';
@@ -40,15 +40,26 @@ export function setPlotPointStyle(context:PlotEditorContext,id:string,patch:Part
 
 const pointStyleAvailable=(context:PlotEditorContext,series:ScientificPlotSeries)=>!series.pointLabels&&!context.spectrum&&series.kind!=='histogram';
 
+function removablePlotTextIds(context:PlotEditorContext,textIds:readonly string[]) {
+  return textIds.filter(id=>{
+    if(id==='ticks'||id==='annotation'&&!context.canAnnotate||context.pane.text?.[id]?.hidden)return false;
+    if(id.startsWith('guide:'))return context.guides.some(guide=>guide.id===id.slice(6)&&!!guide.label);
+    return true;
+  });
+}
+
 export function plotPartCapabilities(context:PlotEditorContext,scatterPointCount?:number):PlotPartCapabilities {
   const series=context.series.map(item=>({id:item.id,label:item.label,pointCount:scatterPointCount??item.points.length,
     lineStyle:context.scatterOpacity===undefined,pointStyle:pointStyleAvailable(context,item)}));
   const guideIds=context.guides.map(guide=>guide.id);
-  const editOperations:PlotEdit['operation'][]=['text','font','axis-range','axis-step','axes-style','legend','add-guide','undo','redo'];
-  if(guideIds.length)editOperations.push('remove-guide');
+  const editOperations:PlotEdit['operation'][]=['text','font','insert-text','edit-text','move-figure','axis-range','axis-step','axes-style','legend','add-guide','undo','redo'];
+  if(guideIds.length)editOperations.push('edit-guide','remove-guide');
+  const textIds=[...new Set(['ticks',...Object.keys(context.textDefaults),...Object.keys(context.pane.text??{})])];
+  const removableTextIds=removablePlotTextIds(context,textIds);
+  if(removableTextIds.length)editOperations.push('remove-text');
   if(series.some(item=>item.lineStyle))editOperations.push('series-style');
   if(series.some(item=>item.pointStyle))editOperations.push('point-style');
-  return {series,guideIds,editOperations,textIds:[...new Set(['ticks',...Object.keys(context.textDefaults),...Object.keys(context.pane.text??{})])]};
+  return {series,guideIds,editOperations,textIds,removableTextIds};
 }
 
 export function setPlotCanvas(context:PlotEditorContext,patch:Partial<PlotStyle['canvas']>,group?:string) {
@@ -68,11 +79,31 @@ export function plotCanvasConfiguration(context:PlotEditorContext,assertCurrent:
     }};
 }
 
+function insertPlotText(context:Pick<PlotEditorContext,'editText'|'pane'|'style'|'guides'>,text:string,position?:PlotPosition) {
+  const id=`note:${crypto.randomUUID()}`;
+  context.editText(id,{content:text,font:inheritedPlotFont(context.pane,context.style,context.guides),...(position?{position}:{})});
+  return id;
+}
+
 export function editCurrentPlot(change:PlotEdit,context:PlotEditorContext,history:{undo():void;redo():void},scatterPointCount?:number) {
   switch(change.operation){
     case 'undo':history.undo();break;
     case 'redo':history.redo();break;
     case 'text':context.editText(change.role,{content:change.text,hidden:false});break;
+    case 'insert-text':insertPlotText(context,change.text,change.position);break;
+    case 'edit-text':{
+      const {textId,text,position}=change;
+      if(textId==='ticks'||text!==undefined&&['legend','annotation'].includes(textId))
+        throw new Error('当前文字对象不支持此内容或位置编辑。');
+      context.editText(textId,{...(text!==undefined?{content:text}:{}),...(position!==undefined?{position:position??undefined}:{})});
+      break;
+    }
+    case 'remove-text':{
+      const known=Object.hasOwn(context.pane.text??{},change.textId)||Object.hasOwn(context.textDefaults,change.textId);
+      if(!known||!removablePlotTextIds(context,[change.textId]).length)throw new Error('请选择当前图面可移除的文字。');
+      context.removeText(change.textId);break;
+    }
+    case 'move-figure':context.edit({position:change.position??undefined});break;
     case 'legend':context.edit({showLegend:change.visible});break;
     case 'axis-range':{
       const {axis}=change;
@@ -118,12 +149,24 @@ export function editCurrentPlot(change:PlotEdit,context:PlotEditorContext,histor
     case 'add-guide':{
       const value=context.sourceValue(change.axis,change.value);
       if(!Number.isFinite(value))throw new Error('参考线坐标无法映射到当前数据单位。');
-      context.writeGuide({id:crypto.randomUUID(),axis:change.axis,value,...(change.label===undefined?{}:{label:{content:change.label}})});
+      context.writeGuide({id:crypto.randomUUID(),axis:change.axis,value,...(change.label===undefined?{}:{label:{content:change.label}}),
+        ...(change.stroke?{stroke:change.stroke}:{})});
       break;
     }
     case 'remove-guide':{
       if(!context.guides.some(guide=>guide.id===change.guideId))throw new Error('当前绘图坐标下没有这条参考线。');
       context.removeGuide(change.guideId);
+      break;
+    }
+    case 'edit-guide':{
+      const guide=context.guides.find(item=>item.id===change.guideId);
+      if(!guide)throw new Error('当前绘图坐标下没有这条参考线。');
+      const {value,label,...stroke}=change.patch;
+      const coordinate=value===undefined?guide.value:context.sourceValue(guide.axis,value);
+      if(!Number.isFinite(coordinate))throw new Error('参考线坐标无法映射到当前数据单位。');
+      context.writeGuide({...guide,value:coordinate,...(value!==undefined?{followsZero:false}:{}),
+        ...(label!==undefined?{label:label===null?undefined:{...guide.label,content:label}}:{}),
+        ...(Object.keys(stroke).length?{stroke:{...guide.stroke,...stroke}}:{})});
       break;
     }
   }
@@ -196,8 +239,7 @@ export function plotEditorPane({pane, style, range, axisKey, mapping, titles, se
     },
     editText,
     insertText() {
-      const id = `note:${crypto.randomUUID()}`;
-      editText(id, {content: 'Text', font: inheritedPlotFont(pane, style, guides)});
+      const id=insertPlotText({editText,pane,style,guides},'Text');
       onTarget({kind: 'text', id});
     },
     removeText(id) {

@@ -33,8 +33,8 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
     if (value.validDomain?.mask?.encoding === 'base64') { value.validDomain.maskBase64 = value.validDomain.mask.data; delete value.validDomain.mask; }
     return domain(value, revision);
   }
-  async function rememberDomain(text, domainText) {
-    const revision = hash(Buffer.from(text, 'utf8')), value = domain(typeof domainText === 'string' ? JSON.parse(domainText) : domainText, revision);
+  async function rememberDomainRevision(revision, domainText) {
+    const value = domain(typeof domainText === 'string' ? JSON.parse(domainText) : domainText, revision);
     await fs.mkdir(domainRoot, { recursive: true }); const parent = await directoryIdentity(domainRoot), file = path.join(domainRoot, revision + '.json');
     const old = await knownDomain(revision);
     // A previously restricted content revision is never promoted by a later slot.
@@ -43,6 +43,9 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
     domainEpoch++;
     for (const record of records.values()) if (record.sha256 === revision) record.knownDomain = value;
     return value;
+  }
+  function rememberDomain(text, domainText) {
+    return rememberDomainRevision(hash(Buffer.from(text, 'utf8')), domainText);
   }
   function context(value) { assert(plain(value) && string(value.sourceId, 256) && string(value.sourceRevision, 256) && Number.isSafeInteger(value.generation) && value.generation >= 0 && (value.jobIndex === null || Number.isSafeInteger(value.jobIndex) && value.jobIndex >= 0) && (value.sourceFrameIndex === null || Number.isSafeInteger(value.sourceFrameIndex) && value.sourceFrameIndex >= 0), 'Invalid surface source context'); return structuredClone(value); }
   async function verifyRecord(record,signal){if(!record.streamed)return sameFile(record.path,record,fs,MAX_SOURCE_BYTES);const current=await inspectManagedSource(record.path,{signal});assert(current.identity===record.identity&&current.sha256===record.sha256,'Managed surface source changed');return current;}
@@ -53,6 +56,7 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
         await record.reader.close();
         await record.asset.close();
       } else {
+        await record.reader?.close();
         await checkDirectory(root, rootIdentity); await verifyRecord(record); const stat = await fs.lstat(record.path); assert(stat.nlink === 1, 'Shared surface snapshot retained'); await fs.unlink(record.path);
       }
       records.delete(record.token);
@@ -83,6 +87,51 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
   function describeRecord(record) {
     return { token: record.token, name: record.name, bytes: record.bytesLength, sourceRevision: record.sha256,
       ...(record.knownDomain ? { knownDomain: record.knownDomain } : {}) };
+  }
+  async function registerFile(owner, originalPath, sourceToken) {
+    active(owner);
+    const name = path.basename(originalPath);
+    assert(string(name, 256) && /\.(cube|cub)$/i.test(name) && typeof snapshotSource === 'function', 'Invalid selected Cube source');
+    const task = (async () => {
+      await fs.mkdir(root, { recursive: true });
+      rootIdentity ??= await directoryIdentity(root);
+      await checkDirectory(root, rootIdentity);
+      active(owner);
+      const saved = await snapshotSource(owner, sourceToken, { directory: root, name });
+      assert(path.dirname(saved.path) === root, 'Cube snapshot is outside its owned root');
+      let record, reader;
+      try {
+        const stat = await fs.lstat(saved.path);
+        assert(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && identity(stat) === saved.identity
+          && stat.size === saved.bytes && stat.size > 0, 'Managed Cube snapshot changed or is empty');
+        const sidecar = await currentFile(originalPath + '.sciyue-domain.json', fs, MAX_SOURCE_BYTES);
+        if (sidecar) await rememberDomainRevision(saved.revision, sidecar.bytes.toString('utf8'));
+        const parent = rootIdentity, token = randomUUID(), startingDomainEpoch = domainEpoch;
+        const known = await knownDomain(saved.revision);
+        await checkDirectory(root, parent);
+        assert(identity(await fs.lstat(saved.path)) === saved.identity, 'Cube snapshot changed before registration');
+        reader = await fs.open(saved.path, 'r');
+        assert(identity(await reader.stat()) === saved.identity, 'Cube snapshot changed before opening');
+        active(owner);
+        record = { token, owner, kind: 'cube', streamed: true, name, originalPath, path: saved.path, parent,
+          sha256: saved.revision, bytesLength: saved.bytes, identity: saved.identity, knownDomain: known, refs: new Set(), reader };
+        records.set(token, record);
+        if (startingDomainEpoch !== domainEpoch) record.knownDomain = await knownDomain(saved.revision);
+        active(owner);
+        return describeRecord(record);
+      } catch (error) {
+        if (record) await remove(record);
+        else {
+          await reader?.close();
+          await checkDirectory(root, rootIdentity);
+          const stat = await fs.lstat(saved.path);
+          if (stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && identity(stat) === saved.identity) await fs.unlink(saved.path);
+        }
+        throw error;
+      }
+    })();
+    pending.set(task, owner);
+    try { return await task; } finally { pending.delete(task); }
   }
   async function registerAsset(owner, value, asset) {
     let reader;
@@ -231,6 +280,6 @@ function createSurfaceSourceFiles({ root, domainRoot = path.join(path.dirname(ro
     return { name: record.name, text: checked.bytes.toString('utf8'), ...domain };
   }
   function assertExport(_owner, file) { const target = path.resolve(file).toLowerCase(); for (const record of records.values()) assert(![record.path, ...(record.originalPath ? [record.originalPath, record.originalPath + '.sciyue-domain.json'] : [])].some(source => target === path.resolve(source).toLowerCase()), 'Cannot overwrite a surface source'); }
-  return { register, registerAsset, describe, read, readPage, open, release, closeSession, closeOwner, dispose, assertExport, exportRegistered, rememberDomain, activeCount: () => pending.size, MAX_SOURCE_BYTES };
+  return { register, registerFile, registerAsset, describe, read, readPage, open, release, closeSession, closeOwner, dispose, assertExport, exportRegistered, rememberDomain, activeCount: () => pending.size, MAX_SOURCE_BYTES };
 }
 module.exports = { createSurfaceSourceFiles, MAX_SOURCE_BYTES };

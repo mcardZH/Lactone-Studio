@@ -1,11 +1,13 @@
 'use strict';
 const { createHash, randomBytes, randomUUID } = require('node:crypto');
 const { assert, plain } = require('./security.cjs');
+const { isXtbMethod } = require('./xtb-capabilities.cjs');
 const { createConformerBatchStore } = require('./conformer-batch-store.cjs');
 const { captureScope, createRecoveryAccess } = require('./conformer-recovery-store.cjs');
 const token = value => typeof value === 'string' && /^[A-Za-z0-9_:-]{1,200}$/.test(value);
 const failure = error => ({ code: token(error?.code) ? error.code : 'CONFORMER_BATCH_FAILED', message: String(error?.message ?? error).slice(0, 8192) });
 const recordHash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const canRunMethod = method => method?.backend === 'xtb' && isXtbMethod(method.options?.method);
 
 /** Scheduling only: all scientific validation stays in the trusted existing
  * engine adapters. launch.promise observes actual native close; release runs
@@ -23,14 +25,17 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     return { schema: 1, batchId: b.id, identity: structuredClone(b.request.identity), seq: b.seq, phase: b.phase, total: b.request.total, ...c,
       elapsedMs, etaMs: processed > 0 && b.startedAt !== undefined ? Math.max(0, now() - b.startedAt) / processed * remaining : null,
       ...(['completed', 'stopped', 'error'].includes(b.phase) && b.request.resources ? { requestedResources: structuredClone(b.request.resources) } : {}),
+      ...(b.diagnosticWarning ? { diagnosticWarning: { ...b.diagnosticWarning } } : {}),
       ...(b.error ? { error: { ...b.error } } : {}) };
   }
   function emit(b) { b.seq++; const value = snapshot(b); try { sendToOwner(b.owner, value); } catch { /* Owner shutdown calls closeOwner; event delivery cannot corrupt a commit. */ } return value; }
   function manifest(b) { return { schema: 1, id: b.id, owner: b.owner, request: b.request, received: b.received, sealed: b.sealed,
-    states: b.states, commits: b.commits, inputHashes: b.inputHashes, uncommitted: [...b.uncommitted],
+    states: b.states, commits: b.commits, uncommitted: [...b.uncommitted],
+    ...(b.inputHashesDigest ? { inputHashesDigest: b.inputHashesDigest } : { inputHashes: b.inputHashes }),
     producerEpoch, createdAt: b.createdAt, updatedAt: new Date().toISOString(), ...(b.scope ? { scope: b.scope } : {}),
     ...(b.recoverySource ? { recoverySource: b.recoverySource } : {}),
-    phase: b.phase, seq: b.seq, elapsedMs: b.elapsedMs, error: b.error, runResources: b.runResources }; }
+    phase: b.phase, seq: b.seq, elapsedMs: b.elapsedMs, error: b.error,
+    diagnosticWarning: b.diagnosticWarning, runResources: b.runResources }; }
   const runtimeRequest = b => ({ ...structuredClone(b.request), requestedResources: structuredClone(b.request.resources), resources: structuredClone(b.runResources) });
   const save = b => store.write(b.id, 'manifest.json', manifest(b));
   // Serialize metadata publications while candidate work remains concurrent.
@@ -39,7 +44,7 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     assert(!disposed && !disposing && Number.isSafeInteger(owner) && owner >= 0 && !closedOwners.has(owner) && !closingOwners.has(owner) && plain(request), 'Invalid batch owner/request');
     const identity = request.identity;
     assert(plain(identity) && ['taskId', 'runId', 'stageId'].every(key => token(identity[key])) && Number.isSafeInteger(identity.revision) && identity.revision >= 0, 'Invalid batch identity');
-    assert(Number.isSafeInteger(request.total) && request.total > 0 && request.method?.backend === 'xtb', 'Invalid batch input/method');
+    assert(Number.isSafeInteger(request.total) && request.total > 0 && canRunMethod(request.method), 'Invalid batch input/method');
     assert(request.total <= 0xffffffff, 'Candidate count exceeds the batch index representation');
     assert(Buffer.byteLength(JSON.stringify(request)) <= policy.maxUploadBytes, 'Batch metadata exceeds bound');
     assertCurrent(owner, request);
@@ -52,15 +57,24 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     const b = owned(owner, id);
     return transaction(b, async () => {
       assert(b.phase === 'registering' && offset === b.received && Array.isArray(inputs) && inputs.length > 0 && inputs.length <= policy.maxUploadCount && offset + inputs.length <= b.request.total, 'Invalid contiguous batch upload');
-      assert(inputs.length === 1 || Buffer.byteLength(JSON.stringify(inputs)) <= policy.maxUploadBytes, 'Batch upload must send a large candidate by itself');
       const ids = new Set();
       for (const input of inputs) { assert(plain(input) && token(input.candidateId) && !ids.has(input.candidateId) && !b.ids.has(input.candidateId) && plain(input.source) && Array.isArray(input.source.structure?.atoms) && input.source.structure.atoms.length > 0, 'Invalid or duplicate batch candidate'); ids.add(input.candidateId); }
       assertCurrent(owner, b.request);
-      const hashes = [];
-      for (let index = 0; index < inputs.length; index++) {
-        const input = inputs[index];
-        hashes.push(await store.write(id, `input-${offset + index}.json`, input) ?? recordHash(input));
-      }
+      let packetBytes = 1; // Each record's newline accounts for one comma or the opening bracket.
+      const encoded = inputs.map(input => {
+        const bytes = Buffer.from(JSON.stringify(input) + '\n');
+        packetBytes += bytes.length;
+        assert(inputs.length === 1 || packetBytes <= policy.maxUploadBytes, 'Batch upload must send a large candidate by itself');
+        return bytes;
+      });
+      // The packet owns disjoint atomic files. Wait for every writer before
+      // acknowledging or allowing a retry of this range.
+      let firstWriteFailure;
+      const hashes = await Promise.all(inputs.map(async (input, index) => {
+        try { return await store.write(id, `input-${offset + index}.json`, input, encoded[index]) ?? recordHash(input); }
+        catch (error) { firstWriteFailure ??= { error }; return undefined; }
+      }));
+      if (firstWriteFailure) throw firstWriteFailure.error;
       for (let index = 0; index < hashes.length; index++) b.inputHashes[offset + index] = hashes[index];
       if (offset === 0) {
         const original = inputs[0].originalInput ?? inputs[0].source;
@@ -82,8 +96,12 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     const b = owned(owner, id);
     return transaction(b, async () => {
       assert(b.phase === 'registering' && b.received === b.request.total, 'Batch inputs incomplete');
+      // Publish immutable registration digests once. Each subsequent atomic
+      // checkpoint still proves input identity without rewriting every digest.
+      b.inputHashesDigest = await store.write(id, 'input-hashes.json', b.inputHashes) ?? recordHash(b.inputHashes);
       b.sealed = true; b.phase = 'ready';
-      try { await save(b); } catch (error) { b.sealed = false; b.phase = 'registering'; throw error; }
+      try { await save(b); }
+      catch (error) { b.inputHashesDigest = undefined; b.sealed = false; b.phase = 'registering'; throw error; }
       return emit(b);
     });
   }
@@ -92,25 +110,37 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     if (b.phase === 'running') { b.phase = 'stopping'; b.runtimeAbort?.abort(); emit(b); }
     for (const record of b.active.values()) void Promise.resolve().then(() => record.job?.stop()).catch(error => { b.error ??= failure(error); });
   }
+  function checkpointCandidateLaunch(b, record) {
+    return transaction(b, async () => {
+      if (record.launchRecorded || b.phase !== 'running') return;
+      const covered = [...b.active].filter(([index, candidate]) => b.states[index] === 'running' && !candidate.launchRecorded);
+      await save(b);
+      for (const [, candidate] of covered) candidate.launchRecorded = true;
+    });
+  }
   async function candidate(b, index, record) {
     let job, committed = false, releaseStarted = false;
     try {
-      const input = await store.read(b.id, `input-${index}.json`);
+      const input = await readRegisteredInput(b.id, index, b.inputHashes[index]);
       if (b.phase !== 'running') { b.states[index] = 'pending'; return; }
       assertCurrent(b.owner, b.request);
-      await transaction(b, () => save(b));
+      await checkpointCandidateLaunch(b, record);
       if (b.phase !== 'running') { b.states[index] = 'pending'; return; }
       job = record.job = launchCandidate(b.owner, { batchId: b.id, ...runtimeRequest(b), capturedRuntime:b.capturedRuntime, input, index });
       assert(job && job.promise && typeof job.stop === 'function', 'Invalid native batch adapter');
       if (b.phase !== 'running') void Promise.resolve(job.stop()).catch(error => halt(b, error));
       const outcome = await job.promise;
       assert(outcome && ['succeeded', 'discarded', 'pending'].includes(outcome.status), 'Invalid native candidate outcome');
+      const diagnosticWarning = outcome.diagnosticWarning && { ...outcome.diagnosticWarning, index, candidateId: input.candidateId };
+      b.diagnosticWarning ??= diagnosticWarning;
       if (outcome.status === 'pending' && b.phase === 'running')
         throw Object.assign(Error(outcome.reason?.message ?? 'Native candidate did not start'), { code: outcome.reason?.code, nativeStarted: false });
       if (outcome.status === 'succeeded' || outcome.result)
         assert(outcome.result && Number.isFinite(outcome.result.energyHartree) && Array.isArray(outcome.result.structure?.atoms), 'Native candidate has no accepted canonical result');
       await transaction(b, async () => {
-        const result = { index, candidateId: input.candidateId, status: outcome.status, ...(outcome.result ? { result: outcome.result } : {}), ...(outcome.reason ? { reason: outcome.reason } : {}) };
+        const result = { index, candidateId: input.candidateId, status: outcome.status,
+          ...(outcome.result ? { result: outcome.result } : {}), ...(outcome.reason ? { reason: outcome.reason } : {}),
+          ...(diagnosticWarning ? { diagnosticWarning } : {}) };
         const digest = recordHash(result);
         await store.write(b.id, `result-${index}.json`, result);
         b.states[index] = outcome.status; b.commits[index] = digest;
@@ -128,6 +158,7 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
         // result without a committed manifest must remain available for recovery.
         if (error.nativeStarted !== false) b.uncommitted.add(index);
       }
+      if (error?.diagnosticWarning) b.diagnosticWarning ??= { ...error.diagnosticWarning, index };
       halt(b, error);
       // Keep an uncommitted engine result/its owned files available to recover.
       if(job && !releaseStarted) { releaseStarted = true; await Promise.resolve().then(() => job.release?.({ committed: false, error: failure(error) })).catch(releaseError => { b.error ??= failure(releaseError); }); }
@@ -168,13 +199,13 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
       try { await releaseStage?.(); } catch(error) { b.error ??= failure(error); }
       b.elapsedMs += Math.max(0, now() - b.startedAt); b.startedAt = undefined;
       b.phase = b.error ? 'error' : b.states.includes('pending') ? 'stopped' : 'completed';
-      await transaction(b, () => save(b)).catch(error => { b.error = failure(error); b.phase = 'error'; }); emit(b);
+      await transaction(b, () => save(b)).catch(error => { b.error ??= failure(error); b.phase = 'error'; }); emit(b);
     }
   }
   async function start(owner, id) {
     const b = owned(owner, id);
     return transaction(b, async () => {
-      assert(b.request.method?.backend === 'xtb', 'This historical conformer batch is available for reading only');
+      assert(canRunMethod(b.request.method), 'This historical conformer batch is available for reading only');
       assert(!disposing && !closingOwners.has(owner) && batches.get(id) === b && b.sealed && b.received === b.request.total
         && ['ready', 'stopped', 'error'].includes(b.phase) && !b.runTask && !b.uncommitted.size && !b.states.includes('running'), 'Batch not ready to start; recover the uncommitted terminal first'); assertCurrent(owner, b.request);
       const previous = b.phase, previousError = b.error;
@@ -211,12 +242,13 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
       try {
         assert(!b.uncommitted.has(index) && b.states[index] !== 'running',
           'CONFORMER_BATCH_UNCOMMITTED: ' + (b.error?.message ?? 'Native result was not durably committed'));
-        const input = await store.read(id, `input-${index}.json`);
+        const input = await readRegisteredInput(id, index, b.inputHashes[index]);
         const terminal = b.states[index] === 'pending' ? { index, candidateId: input.candidateId, status: 'pending' } : await store.read(id, `result-${index}.json`);
         assert(terminal.index === index && terminal.candidateId === input.candidateId && terminal.status === b.states[index], 'Canonical result identity/state mismatch');
         if (b.states[index] !== 'pending' && b.commits[index])
           assert(recordHash(terminal) === b.commits[index], 'Canonical result does not match its committed digest');
-        const entry = { ...input, index, status: terminal.status, result: terminal.result, reason: terminal.reason };
+        const entry = { ...input, index, status: terminal.status, result: terminal.result, reason: terminal.reason,
+          diagnosticWarning: terminal.diagnosticWarning };
         const size = Buffer.byteLength(JSON.stringify(entry)) + (entries.length ? 1 : 2);
         if (entries.length && bytes + size > policy.readPageTargetBytes) break;
         entries.push(entry); bytes += size;
@@ -236,7 +268,7 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     const commits = value.commits ?? {}, uncommitted = value.uncommitted ?? [];
     assert(plain(commits) && Object.entries(commits).every(([index, digest]) => /^\d+$/.test(index) && Number(index) < value.received && /^[a-f0-9]{64}$/.test(digest))
       && Array.isArray(uncommitted) && uncommitted.every(index => Number.isSafeInteger(index) && index >= 0 && index < value.received && value.states[index] === 'pending'), 'Invalid batch commit manifest');
-    const b = { ...value, commits, inputHashes: value.inputHashes ?? {}, uncommitted: new Set(uncommitted), sealed: value.sealed ?? (value.phase !== 'registering'), active: new Map(), ids: new Set(), io: Promise.resolve() };
+    const b = { ...value, commits, inputHashes: await registeredInputHashes(id, value) ?? {}, uncommitted: new Set(uncommitted), sealed: value.sealed ?? (value.phase !== 'registering'), active: new Map(), ids: new Set(), io: Promise.resolve() };
     assertCurrent(owner, b.request);
     // A durably closed batch is readable as stored. Leave every original
     // record intact and validate each requested entry at the read boundary.
@@ -248,7 +280,7 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     for (let index = 0; index < value.received; index++) {
       let input, terminal;
       try {
-        input = await store.read(id, `input-${index}.json`);
+        input = await readRegisteredInput(id, index, b.inputHashes[index]);
         assert(token(input.candidateId) && !b.ids.has(input.candidateId), 'Recovery candidate identity mismatch');
         b.ids.add(input.candidateId);
         if (value.states[index] !== 'running' && value.states[index] !== 'pending') continue;
@@ -280,13 +312,27 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
     });
   }
 
-  async function checkedRecoveryInput(id, index, digest) {
+  async function readRegisteredInput(id, index, digest) {
     const input = await store.read(id, `input-${index}.json`);
+    assert(digest === undefined || recordHash(input) === digest, 'Recovered conformer candidate input differs from its registered digest');
+    return input;
+  }
+
+  async function checkedRecoveryInput(id, index, digest) {
+    const input = await readRegisteredInput(id, index, digest);
     assert(plain(input) && token(input.candidateId) && plain(input.source) && Array.isArray(input.source.structure?.atoms)
       && input.source.structure.atoms.length > 0 && plain(input.request), 'Invalid recovered conformer candidate source');
-    const actual = recordHash(input);
-    assert(digest === undefined || actual === digest, 'Recovered conformer candidate input differs from its registered digest');
-    return { input, digest: actual };
+    return { input, digest: digest ?? recordHash(input) };
+  }
+
+  async function registeredInputHashes(id, value) {
+    if (value.inputHashesDigest === undefined) return value.inputHashes;
+    assert(value.sealed === true && value.received === value.request.total && value.inputHashes === undefined
+      && /^[a-f0-9]{64}$/.test(value.inputHashesDigest), 'Invalid conformer batch input registration');
+    const hashes = await store.read(id, 'input-hashes.json');
+    assert(plain(hashes) && recordHash(hashes) === value.inputHashesDigest
+      && Object.keys(hashes).length === value.received, 'Conformer batch input registration differs from its sealed digest');
+    return hashes;
   }
 
   async function checkedRecoveryTerminal(id, index, state, candidateId, digest) {
@@ -325,6 +371,7 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
 
   async function loadRecovery(id) {
     const value = await recoveryManifest(id), request = value.request, identity = request.identity;
+    const inputHashes = await registeredInputHashes(id, value);
     const scope = captureScope(value.scope), slots = [], issues = [];
     const uncommitted = new Set(value.uncommitted ?? []);
     let firstSource, firstIndex, bytesLength = 0;
@@ -332,8 +379,8 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
       const status = value.states[index];
       if (uncommitted.has(index) || !['succeeded', 'discarded'].includes(status)) continue;
       try {
-        const resultHash = value.commits?.[index], inputHash = value.inputHashes?.[index];
-        assert(/^[a-f0-9]{64}$/.test(resultHash ?? '') && (value.inputHashes === undefined || /^[a-f0-9]{64}$/.test(inputHash ?? '')), 'Conformer recovery needs both canonical commit and candidate identity');
+        const resultHash = value.commits?.[index], inputHash = inputHashes?.[index];
+        assert(/^[a-f0-9]{64}$/.test(resultHash ?? '') && (inputHashes === undefined || /^[a-f0-9]{64}$/.test(inputHash ?? '')), 'Conformer recovery needs both canonical commit and candidate identity');
         const { input, digest } = await checkedRecoveryInput(id, index, inputHash);
         const terminal = await checkedRecoveryTerminal(id, index, status, input.candidateId, resultHash);
         firstSource ??= input.originalInput ?? input.source;
@@ -368,7 +415,8 @@ function createConformerOptimizationBatch({ root, store = createConformerBatchSt
         const { input } = await checkedRecoveryInput(descriptor.id, index, inputHash);
         assert(input.candidateId === candidateId, 'Recovered conformer candidate identity changed');
         const terminal = await checkedRecoveryTerminal(descriptor.id, index, status, candidateId, resultHash);
-        records.push({ ...input, index, status, ...(terminal.result ? { result: terminal.result } : {}), ...(terminal.reason ? { reason: terminal.reason } : {}) });
+        records.push({ ...input, index, status, ...(terminal.result ? { result: terminal.result } : {}), ...(terminal.reason ? { reason: terminal.reason } : {}),
+          ...(terminal.diagnosticWarning ? { diagnosticWarning: terminal.diagnosticWarning } : {}) });
         bytes += slot.bytes;
       }
       return records;

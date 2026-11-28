@@ -17,7 +17,7 @@ import type { HirshfeldProjection, HirshfeldFingerprintSnapshot } from './hirshf
 import type { HirshfeldDesktopApi } from './hirshfeld-desktop-controller';
 import { InputSettingsLayout } from '../InputSettingsLayout';
 import { InputSettingsField, InputSettingsRow } from '../InputSettingsFields';
-import type { SurfaceMeshState } from '../modeling/render/surface-layer';
+import {surfaceMeshAppearanceKey,type SurfaceMeshState} from '../modeling/render/surface-layer';
 import type { AnalysisColorbarLayout } from './analysis-colorbar-layout';
 import { isRestoredAnalysisData, useAnalysisProjectSnapshot } from '../../projects/analysis-state';
 import {ResultsMcpAnalysisFamily} from './results-mcp-context';
@@ -86,13 +86,21 @@ export function electronicSurfaceMeshReceipt(projection: SurfaceProjection | nul
   const layer = projection?.surfaceLayer;
   if (!projection?.fields || !layer?.visible || actual.id !== layer.documentId || actual.revision !== layer.geometryRevision || !state.attemptKey
     || layer.pair.shape.id !== state.shapeId || (layer.pair.mapping?.id ?? null) !== state.mappingId
-    || projection.context.sourceId !== state.sourceId || projection.context.sourceRevision !== state.sourceRevision) return null;
-  const receipt = { pairKey: electronicSurfacePairKey(projection.fields), attemptKey: state.attemptKey };
+    || projection.context.sourceId !== state.sourceId || projection.context.sourceRevision !== state.sourceRevision
+    || state.appearanceKey!==surfaceMeshAppearanceKey(layer)) return null;
+  const receipt = { pairKey: electronicSurfacePairKey(projection.fields), attemptKey: state.attemptKey, appearanceKey:state.appearanceKey,colored:false };
   if (state.status === 'failed') return { ...receipt, status: 'failed', error: state.error };
   if (state.status === 'committed' && state.submitted && state.committedKey === state.attemptKey) {
-    return { ...receipt, status: state.vertexCount > 0 && state.triangleCount > 0 ? 'drawn' : 'failed' };
+    return state.vertexCount>0&&state.triangleCount>0?{...receipt,status:'drawn',colored:state.colored}:{...receipt,status:'failed'};
   }
   return { ...receipt, status: 'pending' };
+}
+
+export function electronicSurfaceViewportProjection(projection:SurfaceProjection|null,receipt:ElectronicSurfaceMeshReceipt|null):SurfaceProjection|null {
+  if(!projection?.colorbar)return projection;
+  const layer=projection.surfaceLayer;
+  const drawn=Boolean(layer?.visible&&receipt?.status==='drawn'&&receipt.colored&&receipt.pairKey===electronicSurfacePairKey(layer.pair)&&receipt.appearanceKey===surfaceMeshAppearanceKey(layer));
+  return {...projection,colorbar:drawn?projection.colorbar:null,requestedColorbar:layer?.visible?projection.colorbar:undefined};
 }
 
 /** A UI lifetime shell. Native compute stays exclusively behind explicit ports;
@@ -103,13 +111,19 @@ function ElectronicSurfaceAnalysisInstance(p: SurfaceAnalysisInstanceProps) {
   const latest = useRef({ props: p, key }); latest.current = { props: p, key };
   const displayedProjection = useRef<SurfaceProjection | null>(null);
   const [meshReceipt, setMeshReceipt] = useState<ElectronicSurfaceMeshReceipt | null>(null);
+  const receiptRef=useRef(meshReceipt);receiptRef.current=meshReceipt;
   const meshObserver = useCallback((state: Readonly<SurfaceMeshState>, actual: Pick<ModelDocument, 'id' | 'revision'>) => {
     const props = latest.current.props, projection = displayedProjection.current;
     if (!props.active || props.available === false || !projection || !sameSurfaceContext(projection.context, props.context)) return;
+    if(state.status==='empty'&&actual.id===projection.surfaceLayer?.documentId&&actual.revision===projection.surfaceLayer.geometryRevision){setMeshReceipt(null);return;}
     const receipt = electronicSurfaceMeshReceipt(projection, state, actual);
     if (receipt) setMeshReceipt(previous => previous?.pairKey === receipt.pairKey && previous.attemptKey === receipt.attemptKey &&
-      previous.status === receipt.status && previous.error === receipt.error ? previous : receipt);
+      previous.status === receipt.status && previous.colored===receipt.colored && previous.error === receipt.error ? previous : receipt);
   }, []);
+  useEffect(()=>{
+    const current=displayedProjection.current,props=latest.current.props;
+    if(current?.colorbar&&sameSurfaceContext(current.context,props.context))props.onProjection(electronicSurfaceViewportProjection(current,meshReceipt));
+  },[meshReceipt]);
   useEffect(() => {
     const register = latest.current.props.onElectronicMeshObserverReady;
     register?.(meshObserver);
@@ -180,7 +194,7 @@ function ElectronicSurfaceAnalysisInstance(p: SurfaceAnalysisInstanceProps) {
     const state = latest.current;
     if (state.key !== key) return;
     displayedProjection.current = surfaceInstanceProjection(projection,state.props.context,state.props.document,admitCube);
-    state.props.onProjection(displayedProjection.current);
+    state.props.onProjection(electronicSurfaceViewportProjection(displayedProjection.current,receiptRef.current));
     if (!projection || !sameSurfaceContext(projection.context, state.props.context)) return;
     const query=projection.capabilityRequest;currentCapabilityQuery.current=query??null;
     const queryKey=query?surfaceCapabilityKey(query):'',requestKey = `${key}:${queryKey}:${projection.analysis?.stamp.requestId ?? ''}`;

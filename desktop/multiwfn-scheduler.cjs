@@ -1,17 +1,18 @@
 'use strict';
 const { assert, string } = require('./security.cjs');
-/** Shared host lease, not a scientific scheduler. Active work is never preempted. */
-function createMultiwfnScheduler({ maxPending } = {}) {
-  const queue = [], providers = new Map(), idleWaiters = new Set(); let active = null, disposed = false;
+/** Leases track the lifetime of native operations, including their actual close. */
+function createMultiwfnScheduler({ maxPending, concurrent = false } = {}) {
+  const queue = [], providers = new Map(), idleWaiters = new Set(), active = new Set();
+  let disposed = false;
   const cancelled = () => new Error('MULTIWFN_CANCELLED: 等待中的本机分析已取消');
-  function idle() { if (!active && !queue.length) { for (const resolve of idleWaiters) resolve(); idleWaiters.clear(); } }
+  function idle() { if (!active.size && !queue.length) { for (const resolve of idleWaiters) resolve(); idleWaiters.clear(); } }
   function next() {
-    if (active || disposed) { idle(); return; }
+    if ((!concurrent && active.size) || disposed) { idle(); return; }
     const entry = queue.shift(); if (!entry) { idle(); return; }
-    entry.signal?.removeEventListener('abort', entry.abort); active = entry;
+    entry.signal?.removeEventListener('abort', entry.abort); active.add(entry);
     let released = false;
     function reservedBytes(context = {}) {
-      assert(active === entry && !released && !entry.signal?.aborted, 'Multiwfn lease is not active');
+      assert(active.has(entry) && !released && !entry.signal?.aborted, 'Multiwfn lease is not active');
       let total = 0;
       for (const provider of providers.values()) {
         const bytes = provider(context);
@@ -29,7 +30,7 @@ function createMultiwfnScheduler({ maxPending } = {}) {
         assert(reserved < ceiling, 'MULTIWFN_MEMORY_BUDGET: 实际保留的分析资源达到本次内存预算');
         return { memoryBudgetBytes: ceiling, reservedBytes: reserved, availableBytes: ceiling - reserved };
       },
-      release() { if (released) return; assert(active === entry, 'Multiwfn lease identity changed'); released = true; active = null; next(); },
+      release() { if (released) return; assert(active.delete(entry), 'Multiwfn lease identity changed'); released = true; next(); },
     });
   }
   function acquire({ owner, key, signal } = {}) {
@@ -47,8 +48,12 @@ function createMultiwfnScheduler({ maxPending } = {}) {
     acquire, cancelOwner,
     addReservationProvider(name, provider) { assert(string(name, 128) && typeof provider === 'function' && !providers.has(name), 'Duplicate/invalid native reservation provider'); providers.set(name, provider); },
     dispose() { disposed = true; for (const entry of [...queue]) entry.abort(); idle(); },
-    whenIdle: () => !active && !queue.length ? Promise.resolve() : new Promise(resolve => idleWaiters.add(resolve)),
-    status: () => ({ active: active ? { owner: active.owner, key: active.key } : null, queued: queue.map(({ owner, key }) => ({ owner, key })) }),
+    whenIdle: () => !active.size && !queue.length ? Promise.resolve() : new Promise(resolve => idleWaiters.add(resolve)),
+    status() {
+      const first = active.values().next().value;
+      return { active: first ? { owner: first.owner, key: first.key } : null, queued: queue.map(({ owner, key }) => ({ owner, key })),
+        ...(concurrent ? { running: Array.from(active, ({owner, key}) => ({owner, key})) } : {}) };
+    },
   };
 }
 module.exports = { createMultiwfnScheduler };

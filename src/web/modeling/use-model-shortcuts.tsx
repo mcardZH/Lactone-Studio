@@ -68,8 +68,8 @@ export function HoldKeyCorner({ kind, value, writable, save }: { kind: keyof Mod
   const [text, setText] = useState(value.toUpperCase());
   useEffect(() => { setText(value.toUpperCase()); }, [value]);
   const commit = () => { if (text.toLowerCase() !== value) void save(kind, text).then(accepted=>setText((accepted?.[kind]??value).toUpperCase())); };
-  return <input aria-label={kind === 'select' ? '选择框选快捷键' : '冻结框选快捷键'} title="按住使用；单个英文字母" value={text} disabled={!writable} maxLength={1}
-    style={{ position: 'absolute', right: 2, bottom: 1, width: 18, minWidth: 18, height: 17, padding: 0, margin: 0, fontSize: 10, lineHeight: '15px', textAlign: 'center', border: 0, borderRadius: 2, background: '#ffffffba', color: '#3b6373' }}
+  return <input className="model-hold-key-corner" aria-label={kind === 'select' ? '选择框选快捷键' : '冻结框选快捷键'} title="按住使用；单个英文字母" value={text} disabled={!writable} maxLength={1}
+    style={{ position: 'absolute', right: 2, bottom: 2, width: 17, minWidth: 17, height: 16, padding: 0, margin: 0, fontSize: 10, lineHeight: '14px', textAlign: 'center' }}
     onPointerDown={event => event.stopPropagation()} onChange={event => setText(event.target.value)} onBlur={commit}
     onKeyDown={event => { event.stopPropagation(); if (event.key === 'Enter') { event.preventDefault(); commit(); event.currentTarget.blur(); } }} onKeyUp={event => event.stopPropagation()} />;
 }

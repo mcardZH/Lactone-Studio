@@ -68,6 +68,8 @@ export interface SurfaceProjection {
   fields: SurfaceFieldPair | null; display: SurfaceDisplaySettings;
   region: SurfaceRegionResult | null; surfaceLayer: ViewportSurfaceLayer | null; surfaceExtrema: ViewportSurfaceExtrema | null;
   colorbar: (AnalysisColorbar & { reverse: boolean }) | null;
+  /** Offscreen export can prepare the same requested layer. Its receipt determines whether the ruler is drawn. */
+  requestedColorbar?:AnalysisColorbar;
   capabilityRequest?: SurfaceCapabilityRequest;
 }
 export interface SurfaceRegionSelectionProps {

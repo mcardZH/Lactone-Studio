@@ -4,10 +4,10 @@
 
 > [!IMPORTANT]
 > **非官方修改版声明（Unofficial Modified Version Notice — 遵循 `LICENSE.txt` 第三条）**
-> - **本项目性质**：**Lactone Studio (LS)** 是基于 **Ester Studio (ES) v2.1.3** 源码改造的**非官方修改版（Unofficial Modified Version）**。
-> - **修改者与版本标识**：修改者 [`mcardZH`](https://github.com/mcardZH) · 当前修改版本 `v2.1.3-lactone.1`（基线版本 `v2.1.3`）。
+> - **本项目性质**：**Lactone Studio (LS)** 是基于 **Ester Studio (ES) v2.1.4** 源码改造的**非官方修改版（Unofficial Modified Version）**。
+> - **修改者与版本标识**：修改者 [`mcardZH`](https://github.com/mcardZH) · 当前修改版本 `v2.1.4-lactone.1`（基线版本 `v2.1.4`）。
 > - **对应源码获取地址**：https://github.com/mcardZH/Lactone-Studio
-> - **上游官方项目与原始作者**：上游软件 **Ester Studio (ES)**（历史名称 SY-Studio / SciYue）由原始作者兼著作权人 **Zixuan Zhang**（许可联系渠道：`ddwz@sciyue.cn`）开发并发布于官方仓库 https://github.com/Ahey1/Ester-Studio（基线版本对应发布页：https://github.com/Ahey1/Ester-Studio/releases/tag/v2.1.3）。
+> - **上游官方项目与原始作者**：上游软件 **Ester Studio (ES)**（历史名称 SY-Studio / SciYue）由原始作者兼著作权人 **Zixuan Zhang**（许可联系渠道：`ddwz@sciyue.cn`）开发并发布于官方仓库 https://github.com/Ahey1/Ester-Studio（基线版本对应发布页：https://github.com/Ahey1/Ester-Studio/releases/tag/v2.1.4）。
 > - **官方身份免责声明**：本修改版由社区独立维护，**未获得原始作者审核、科学验证、支持或商业认可**；修改者不代表原始作者或官方发布渠道。使用者须自行核验计算输入、参数、单位与科学结论。
 ---
 

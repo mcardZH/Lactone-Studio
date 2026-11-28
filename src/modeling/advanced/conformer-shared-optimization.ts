@@ -2,16 +2,19 @@ import type { Structure, Vector3 } from '../../core/types';
 import { XTB_METHOD_LABELS, type XtbRequest } from '../xtb/contracts';
 import { isPesNetMethod, PES_CALC_PROFILE, PES_SCHEMA, type PesFfModel, type PesNetMethod, type PesFrame, type PesGeometryLimits, type PesRequest, type PesResult } from '../pes/contracts';
 import { createPesFfModel } from '../pes/ff-model';
-import type { ComputeResourceEvidence } from '../resource-preferences';
+import {isNetGpuBatchLimit,validXtbResourceOverride,type ComputeResourceEvidence,type NetGpuBatchLimit,type XtbResourceOverrides} from '../resource-preferences';
 import { builderCoordinateValue } from '../../core/builder-geometry';
 import { isPeriodic, validatePeriodicEndpointImages } from '../../core/periodic';
 import { NET_METHOD_SCOPE } from '../pes/net-model-settings';
 import { periodicPesOperationAvailable } from '../pes/periodic-capabilities';
+import { supportsXtbOperation } from '../../core/xtb-capabilities';
 import type { AdvancedOptimizationMethod, ConformerOptimizerSettings } from './contracts';
 
 export type ConformerOptimizationRequest = Omit<XtbRequest, 'method'> & {
   method: XtbRequest['method'] | PesNetMethod;
   device?: 'cpu' | 'gpu';
+  netGpuBatchLimit?: NetGpuBatchLimit;
+  resourceOverrides?: XtbResourceOverrides;
   ffModel?: PesFfModel;
 };
 
@@ -22,16 +25,34 @@ const limitValues = (values?: PesGeometryLimits) => values as Record<string, num
 const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
 const equalityTolerance = 1e-7;
 
+export const DEFAULT_CONFORMER_CONVERGENCE = 'medium' as const;
+export const LEGACY_CONFORMER_CONVERGENCE = 'loose' as const;
+
+export function defaultConformerOptimizer(method:string,periodic:boolean,convergencePreset?:ConformerOptimizerSettings['convergencePreset']):ConformerOptimizerSettings['algorithm']{
+  return convergencePreset!=='custom'&&!periodic&&supportsXtbOperation(method,'optimize')?'native-rf':'lbfgs';
+}
+
+export function usesNativeConformerOptimizer(method:AdvancedOptimizationMethod):boolean{
+  return method.backend==='xtb'&&method.optimizer?.algorithm==='native-rf';
+}
+
+export function conformerNativeOptimizationPreset(settings:ConformerOptimizerSettings):NonNullable<XtbRequest['nativeOptimizationPreset']>{
+  if(settings.algorithm!=='native-rf'||!validConformerOptimizer(settings))throw Error('原生 RF 需要受支持的收敛档。');
+  if(settings.convergencePreset==='tight'||settings.convergencePreset==='loose')return settings.convergencePreset;
+  return 'normal';
+}
+
 /** Validate the grant against the requested memory budget, when one was captured. */
-function assertConformerBatchGrant(grant: ComputeResourceEvidence | undefined, memoryBudgetBytes?: number): void {
+function assertConformerBatchGrant(grant: ComputeResourceEvidence | undefined, singleThreaded: boolean, memoryBudgetBytes?: number): void {
   if (!grant && memoryBudgetBytes === undefined) return;
   const positive = (value: unknown) => Number.isSafeInteger(value) && (value as number) > 0;
-  if (!grant || grant.threads !== 1 || !positive(grant.memoryBudgetBytes)
+  if (!grant || !positive(grant.threads) || (singleThreaded && grant.threads !== 1) || !positive(grant.memoryBudgetBytes)
     || !/^[a-f0-9]{64}$/.test(grant.version) || typeof grant.source !== 'string' || !grant.source.trim()
     || grant.memoryEnforced !== false || !positive(grant.configured?.threads) || !positive(grant.configured?.memoryBudgetBytes)
     || !positive(grant.requested?.threads) || !positive(grant.requested?.memoryBudgetBytes)
     || (memoryBudgetBytes !== undefined && (grant.requested.threads !== 1 || grant.requested.memoryBudgetBytes !== memoryBudgetBytes))
-    || (grant.configured.threads !== 1 && !(typeof grant.threadLimitReason === 'string' && grant.threadLimitReason.trim()))
+    || grant.threads > grant.configured.threads
+    || (grant.configured.threads !== grant.threads && !(typeof grant.threadLimitReason === 'string' && grant.threadLimitReason.trim()))
     || !Number.isSafeInteger(grant.reservedBytes) || grant.reservedBytes < 0
     || grant.memoryBudgetBytes + grant.reservedBytes !== grant.configured.memoryBudgetBytes)
     throw new Error('构象优化缺少匹配的受管全局资源回执。');
@@ -45,19 +66,24 @@ export interface ConformerSharedOptimizationEvidence {
   provenance: PesResult['provenance'];
 }
 
-export function normalizeConformerOptimizationMethod(method: AdvancedOptimizationMethod): AdvancedOptimizationMethod {
+export function normalizeConformerOptimizationMethod(method: AdvancedOptimizationMethod,
+  fallback?: ConformerOptimizerSettings, periodic=false): AdvancedOptimizationMethod {
   if (method.backend === 'forcefield') return method;
-  if (method.backend === 'net') return { ...method,
-    optimizer: method.optimizer ?? { algorithm: 'lbfgs', convergencePreset: 'loose' } };
+  fallback??={algorithm:defaultConformerOptimizer(method.options.method,periodic,method.optimizer?.convergencePreset),convergencePreset:DEFAULT_CONFORMER_CONVERGENCE};
+  const optimizer = method.optimizer?.convergencePreset !== undefined ? method.optimizer
+    : { ...fallback, ...method.optimizer, convergencePreset: fallback.convergencePreset };
+  if (method.backend === 'net') return { ...method, optimizer };
   const { optimizationStepPolicy: _legacyPolicy, ...options } = method.options;
   return {
     ...method,
     options: { ...options, maxSteps: options.maxSteps ?? 500 },
-    optimizer: method.optimizer ?? { algorithm: 'lbfgs', convergencePreset: 'loose' },
+    optimizer,
   };
 }
 
 export function validConformerOptimizer(settings: ConformerOptimizerSettings, historical = false): boolean {
+  if(settings.algorithm==='native-rf')
+    return ['loose','medium','tight'].includes(settings.convergencePreset)&&settings.convergenceLimits===undefined;
   const limits = limitValues(settings.convergenceLimits);
   return ['lbfgs', 'precon-exp', 'fire2', 'sella-xyz', 'sella-ric'].includes(settings.algorithm)
     && ['loose', 'medium', 'tight', 'custom'].includes(settings.convergencePreset)
@@ -67,8 +93,9 @@ export function validConformerOptimizer(settings: ConformerOptimizerSettings, hi
 
 /** The persisted candidate carries the ordinary source, electronics and constraints;
  * only the trusted desktop host chooses the actual executable and resource grant. */
-export function conformerOptimizerAvailable(method: ConformerOptimizationRequest['method'], periodic: boolean, algorithm: ConformerOptimizerSettings['algorithm']): boolean {
-  if (isPesNetMethod(method) && (NET_METHOD_SCOPE[method] === 'periodic') !== periodic) return false;
+export function conformerOptimizerAvailable(method: string, periodic: boolean, algorithm: ConformerOptimizerSettings['algorithm']): boolean {
+  if(algorithm==='native-rf')return !periodic&&supportsXtbOperation(method,'optimize');
+  if (isPesNetMethod(method)) return false;
   return periodic ? periodicPesOperationAvailable(method, 'opt', algorithm) : algorithm !== 'precon-exp';
 }
 
@@ -76,10 +103,16 @@ export function conformerCoordinateImages(structure: Structure, row: Pick<Confor
   return row.images ?? (isPeriodic(structure) ? row.atomIds.map(() => [0, 0, 0]) : undefined);
 }
 
-export function conformerPesRequest(input: ConformerOptimizationRequest, settings: ConformerOptimizerSettings, sessionId: string, historical = false): BatchOptRequest {
-  const periodic = isPeriodic(input.structure), net = isPesNetMethod(input.method);
-  if (!validConformerOptimizer(settings, historical) || !conformerOptimizerAvailable(input.method, periodic, settings.algorithm)
+export function conformerPesRequest(input: ConformerOptimizationRequest, settings: ConformerOptimizerSettings, sessionId: string, historical = false, restoring = historical): BatchOptRequest {
+  const method = input.method, periodic = isPeriodic(input.structure), net = isPesNetMethod(method);
+  // Retained NET results use the optimizers supported when the request was recorded.
+  const compatibleNetResult = restoring && net && (NET_METHOD_SCOPE[method] === 'periodic') === periodic
+    && (periodic ? ['lbfgs','fire2'].includes(settings.algorithm) : settings.algorithm !== 'precon-exp');
+  if (settings.algorithm==='native-rf' || !validConformerOptimizer(settings, historical)
+    || (!compatibleNetResult && !conformerOptimizerAvailable(input.method, periodic, settings.algorithm))
     || (net ? input.device !== 'cpu' && input.device !== 'gpu' : input.device !== undefined)
+    || input.netGpuBatchLimit!==undefined&&(!net||input.device!=='gpu'||!isNetGpuBatchLimit(input.netGpuBatchLimit))
+    || input.resourceOverrides!==undefined&&(net||!validXtbResourceOverride(input.resourceOverrides.xtbBatchParallelism))
     || (periodic || net) && input.solvation || input.calculation !== 'optimize' || !input.maxSteps
     || input.solvation && input.solvation.model !== 'alpb' || input.constraints.length && !input.internalConstraintsConfirmed)
     throw Error('构象共用优化的方法、步数、ALPB 或 B/A/D 确认无效。');
@@ -97,10 +130,12 @@ export function conformerPesRequest(input: ConformerOptimizationRequest, setting
     ...(solvation ? { solvation } : {}), ...(input.method === 'gfnff'
       ? { ffModel: input.ffModel ?? createPesFfModel(sessionId, input.structure, input.charge, multiplicity, solvation) } : {}),
     constraints: { frozenAtomIds: input.frozenAtomIds, coordinates: constraints },
+    ...(input.resourceOverrides?.xtbBatchParallelism===undefined?{}:{resourceOverrides:{xtbBatchParallelism:input.resourceOverrides.xtbBatchParallelism}}),
     coordinates: [], threads: 1, ...(input.memoryBudgetBytes === undefined ? {} : { memoryBudgetBytes: input.memoryBudgetBytes }),
     parameters: { calcProfile: PES_CALC_PROFILE, policyVersion: 'v212', maxSteps: input.maxSteps,
       maxStepAngstrom: .1, maxSccIterations: input.maxSccIterations ?? 250, convergencePreset: settings.convergencePreset,
-      ...(settings.convergencePreset === 'custom' ? settings.convergenceLimits : {}), ...(net ? { device: input.device } : {}) },
+      ...(settings.convergencePreset === 'custom' ? settings.convergenceLimits : {}), ...(net ? { device: input.device } : {}),
+      ...(input.netGpuBatchLimit===undefined?{}:{netGpuBatchLimit:input.netGpuBatchLimit}) },
   };
 }
 
@@ -112,7 +147,7 @@ export function acceptConformerPesResult(input: ConformerOptimizationRequest, se
   const limits = limitValues(optimizerLimits);
   const historical = restoring && !limitKeys.every(key => Number.isFinite(limits?.[key]));
   const activeKeys = historical ? historicalLimitKeys : limitKeys;
-  const request = conformerPesRequest(input, settings, sessionId, historical);
+  const request = conformerPesRequest(input, settings, sessionId, historical, restoring);
   const custom = limitValues(settings.convergenceLimits);
   const optimizer = provenance?.optimizer as Record<string, unknown> | undefined;
   const metrics = provenance?.convergence as (PesGeometryLimits & {constraintsSatisfied?: boolean; constraintResiduals?: Record<string, number>}) | undefined;
@@ -130,7 +165,7 @@ export function acceptConformerPesResult(input: ConformerOptimizationRequest, se
     head: provenance?.head, assetId: provenance?.assetId, device: provenance?.device,
     runtime: provenance?.netRuntime && (provenance.netRuntime as Record<string, unknown>).backend } : provenance?.engineIdentity;
   const ffRuntime = provenance?.ffModelRuntime as Record<string, unknown> | undefined;
-  assertConformerBatchGrant(grant, input.memoryBudgetBytes);
+  assertConformerBatchGrant(grant, !net || input.device !== 'cpu', input.memoryBudgetBytes);
   if (!grant || provenance?.sourceDocumentId !== request.sourceDocumentId || provenance.method !== request.method
     || provenance.algorithm !== request.algorithm || provenance.charge !== request.charge || provenance.uhf !== request.uhf
     || provenance.coordinateUnit !== 'angstrom' || provenance.energyUnit !== 'hartree' || provenance.threads !== grant.threads

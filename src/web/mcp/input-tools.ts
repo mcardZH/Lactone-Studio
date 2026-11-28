@@ -6,18 +6,18 @@ import { defaultAdvanced } from '../../core/advanced';
 import { defaultMixedBasis } from '../../core/mixed-basis';
 import { defaultTaskOptions } from '../../core/tasks';
 import { createOrcaCommonSettings, ORCA_VERSIONS, type OrcaSettings } from '../../core/orca';
-import { solventSelectionForModelChange } from '../../core/solvents';
 import { transitionGaussianBasis } from '../../modeling/application/gaussian-basis-transition';
 import { launchSourceFile, type LaunchImportBridge, type LaunchSourceDescriptor } from '../../modeling/platform/launch-import';
 import { orcaAssetUploadKind, readOrcaAsset } from '../orca/OrcaAssets';
 import type { GaussianSettings, TaskId } from '../../core/types';
-import { liveInputFor, type InputDraftConfiguration, type InputDraftView, type InputEndpointBindings, type InputOrcaAssetEdit, type InputScanRow, type LiveInputPort } from './input-drafts';
+import { liveInputFor, type InputDraftConfiguration, type InputDraftView, type InputEndpointBindings, type InputOrcaAssetEdit, type InputScanRow, type InputSettingsPatch, type LiveInputPort } from './input-drafts';
 import { boolean, choice, expectedDraft, frameInputConfigurationSchema, inputConfigurationSchema, inputTool, integer, list, mergeInputPatch, modelRef, numeric, object, positive, readInputConfiguration, solvation, string, type Schema } from './input-arguments';
 import { presentationFields, presentationMode, toolError, type McCall, type McpPresentationMode, type McTool } from './types';
 import { mcpBridge } from './bridge';
 import { jobTools } from './job-tools';
 import { inputSettingsTools } from './input-settings-tools';
 import { canSelectOrcaHessian, gaussianParameterDraftPatch, hessianSelectionError, orcaParameterDraftPatch } from './input-specialized';
+import { inputSolventEdit, inputSolventIssue, inputSolventOptions, prepareInputSolventWrite, readInputSolvent } from './input-solvents';
 import { applyGaussianField, changedGaussianConditions } from '../application/gaussian-input-fields';
 
 export interface InputToolsContext {
@@ -36,8 +36,14 @@ const inputPresentation = { ...string, ...presentationFields.presentation };
 const deliveryFields={fileName:string,destination:string,directory:string,onExists:choice('error','overwrite')};
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 
+function assertDraftVersion(view:InputDraftView, expected:unknown){
+  if(expected!==undefined&&view.draftVersion!==expected)throw toolError('DRAFT_CONFLICT','输入草稿有新变化，请重新读取后重试。',{
+    modelRef:view.documentId,draftVersion:view.draftVersion,recovery:{tool:'input_draft',arguments:{modelRef:view.documentId}}
+  });
+}
+
 type InputOutput={name:string;text:string}|{name:string;file:File};
-type InputSaveReceipt={name:string;status:string;reason?:string;code?:string;data?:unknown;receipt?:unknown};
+type InputSaveReceipt={name:string;status:string;path?:string;bytes?:number;sha256?:string;reason?:string;code?:string;data?:unknown;receipt?:unknown};
 
 function inputSaveFailure(name:string,error:unknown):InputSaveReceipt{
   const detail=error as {code?:string;data?:unknown}|null;
@@ -61,20 +67,39 @@ async function saveFiles(files:InputOutput[],args:Record<string,unknown>,context
         const bytes='text' in file?new TextEncoder().encode(file.text):new Uint8Array(await file.file.arrayBuffer());
         context.signal.throwIfAborted();
         const receipt=await bridge.file({...scope,action:'write',bytes,...(args.destination===undefined?{name:file.name}:{})});
-        const status=(receipt as {status?:string}|null)?.status==='publication_unconfirmed'
-          ?'publication_unconfirmed':'saved';
-        receipts.push({name:file.name,status,receipt});
+        const identity=receipt as {status?:string;path?:string;bytes?:number;sha256?:string}|null;
+        const status=identity?.status==='publication_unconfirmed'?'publication_unconfirmed':'saved';
+        receipts.push({name:file.name,status,path:identity?.path,bytes:identity?.bytes,sha256:identity?.sha256,receipt});
       }catch(error){receipts.push(inputSaveFailure(file.name,error));}
     }
   }catch(error){return files.map(file=>inputSaveFailure(file.name,error));}
   return receipts;
 }
 
-async function saveGenerated(editor:LiveInputPort,view:InputDraftView,args:Record<string,unknown>,context?:McCall){
-  const outputs=[...view.files,...editor.binaryOutputs(view.draftVersion)];
-  const files=args.fileName===undefined?outputs:outputs.filter(file=>file.name===args.fileName);
+async function saveGenerated(editor:LiveInputPort,view:InputDraftView,args:Record<string,unknown>,context?:McCall,includeCompanions=false){
+  const binary=editor.binaryOutputs(view.draftVersion);
+  const outputs=[...view.files,...binary];
+  const selected=args.fileName===undefined?undefined:view.files.find(file=>file.name===args.fileName&&file.role==='input');
+  const files=args.fileName===undefined?outputs:
+    includeCompanions&&selected&&args.destination===undefined
+      ?[selected,...view.files.filter(file=>file.role!=='input'),...binary]
+      :outputs.filter(file=>file.name===args.fileName);
   if(!files.length||args.destination&&files.length!==1)throw Error('请指定当前编辑器中唯一的输出文件。');
   return saveFiles(files,args,context);
+}
+
+function sameDraftContents(before:InputDraftView,after:InputDraftView){
+  if(before.documentId!==after.documentId||before.documentRevision!==after.documentRevision||before.engine!==after.engine||before.stale!==after.stale)return false;
+  return JSON.stringify([before.configuration,before.parameters,before.files,before.editedFiles,before.issues])===
+    JSON.stringify([after.configuration,after.parameters,after.files,after.editedFiles,after.issues]);
+}
+
+function settledDraft<T extends InputDraftView>(editor:LiveInputPort,draft:T):T{
+  const current=editor.read();
+  // Navigation can publish a new input task/version without editing its contents.
+  // Keep the original token when a concurrent write actually changed the snapshot.
+  if(current.draftVersion===draft.draftVersion||!sameDraftContents(draft,current))return draft;
+  return {...draft,draftVersion:current.draftVersion,step:current.step};
 }
 
 function inputFrameRecovery(ctx:InputToolsContext,entry:WorkspaceDocumentEntry){
@@ -98,8 +123,8 @@ function inputCatalogFailure(view:InputDraftView,validation:unknown){
 }
 
 const frameItem = object({frameRef:string, stem:string,
-  electronicState:object({charge:integer,multiplicity:positive,confirmed:boolean},['charge','multiplicity','confirmed'])},['frameRef','stem','electronicState']);
-type FrameItem = {frameRef:string;stem:string;electronicState:{charge:number;multiplicity:number;confirmed:boolean}};
+  electronicState:object({charge:integer,multiplicity:positive,confirmed:boolean},['charge','multiplicity','confirmed'])},['frameRef','stem']);
+type FrameItem = {frameRef:string;stem:string;electronicState?:InputDraftConfiguration['electronicState']};
 const endpointSource=object({modelRef,revision:integer},['modelRef','revision']);
 const endpointBindings=object({reactant:endpointSource,product:endpointSource,tsGuess:endpointSource,confirm:boolean},['reactant','product']);
 const scanRows=list({oneOf:[object({atomIds:list(string),increments:positive,increment:numeric},['atomIds','increments','increment']),
@@ -146,25 +171,25 @@ function patchFrameTemplate(template:AdvancedInputTemplate,configuration:InputDr
     ...(cores===undefined?{}:{cores}),...(memoryGB===undefined?{}:{memoryGB}),
     ...(resourcesConfirmed!==undefined?{resourcesConfirmed}:changing||cores!==undefined||memoryGB!==undefined?{resourcesConfirmed:false}:{})});
   if(template.engine==='gaussian'){
-    const request=template.request,patch=configuration.settings as Partial<GaussianSettings>|undefined;
+    const request=template.request,patch=configuration.settings as InputSettingsPatch<GaussianSettings>|undefined;
     const task=(configuration.task??request.settings.task) as TaskId,changing=task!==request.settings.task;
     let base=changing?defaultSettings(task):request.settings;
     if(patch?.method&&patch.method!==base.method)base={...changedGaussianConditions(base,['method']),...methodDefaults(patch.method,task),
       inheritedRoute:{...base.inheritedRoute,sourceId:undefined,methodKeyword:undefined},inheritanceIssues:base.inheritanceIssues?.filter(issue=>issue.field!=='method')};
     if(patch?.basis!==undefined&&!patch.mixedBasis)base=transitionGaussianBasis(base,{type:'basis',basis:patch.basis});
     const retained=patch?.parameterDrafts?gaussianParameterDraftPatch(base,patch.parameterDrafts):{};
-    const {parameterDrafts:_retained,taskOptions,...explicit}=patch??{};
+    const {parameterDrafts:_retained,taskOptions,solvation,...explicit}=patch??{};
     let settings=base;
     for(const key of Object.keys(retained) as (keyof GaussianSettings)[])settings=applyGaussianField(settings,key,retained[key]);
     for(const key of Object.keys(explicit) as (keyof typeof explicit)[]){
-      if(key==='solvation')continue;
       const defaults={...settings,advanced:settings.advanced??defaultAdvanced(task),mixedBasis:settings.mixedBasis??defaultMixedBasis()};
       const value=mergeInputPatch(defaults,{[key]:explicit[key]})[key];
       settings=applyGaussianField(settings,key,value);
     }
-    if(patch?.solvent!==undefined||patch?.solvation!==undefined||patch?.solventModel!==undefined){
-      const solvation=patch.solvation??(patch.solvent!==undefined?undefined:solventSelectionForModelChange({engine:'gaussian',selection:base.solvation,currentModel:base.solventModel,nextModel:settings.solventModel}));
-      settings=applyGaussianField(settings,'solvation',solvation);
+    const solventEdit=inputSolventEdit('gaussian',base,{...explicit,solvation});
+    if(solventEdit){
+      if(solventEdit.solvent!==undefined)settings=applyGaussianField(settings,'solvent',solventEdit.solvent);
+      settings=applyGaussianField(settings,'solvation',solventEdit.solvation);
     }
     if(taskOptions)settings=applyGaussianField(settings,'taskOptions',mergeInputPatch(settings.taskOptions??defaultTaskOptions(),taskOptions));
     const files=changing?{...defaultFiles(),hessian:task==='ts'||task==='irc'?'calcfc' as const:'none' as const}:request.files??defaultFiles();
@@ -173,10 +198,9 @@ function patchFrameTemplate(template:AdvancedInputTemplate,configuration:InputDr
   }
   const request=template.request,task=(configuration.task??request.settings.task) as OrcaSettings['task'];
   const changing=task!==request.settings.task,base=changing?createOrcaCommonSettings(task,request.structure):request.settings;
-  const patch=configuration.settings as Partial<OrcaSettings>|undefined,retained=patch?.parameterDrafts?orcaParameterDraftPatch(base,patch.parameterDrafts):{};
-  const {parameterDrafts:_retained,...explicit}=patch??{},settings=mergeInputPatch({...base,...retained},explicit);
-  if(patch?.solvent!==undefined||patch?.solvation!==undefined||patch?.solventModel!==undefined)
-    settings.solvation=patch.solvation??(patch.solvent!==undefined?undefined:solventSelectionForModelChange({engine:'orca',version:'common',selection:base.solvation,currentModel:base.solventModel,nextModel:settings.solventModel}));
+  const patch=configuration.settings as InputSettingsPatch<OrcaSettings>|undefined,retained=patch?.parameterDrafts?orcaParameterDraftPatch(base,patch.parameterDrafts):{};
+  const {parameterDrafts:_retained,solvation,...explicit}=patch??{},settings=mergeInputPatch({...base,...retained},explicit);
+  Object.assign(settings,inputSolventEdit('orca',base,{...explicit,solvation}));
   return {engine:template.engine,request:{...request,...resources(changing,1),settings,...(changing?{assets:[]}:{})}};
 }
 
@@ -191,23 +215,35 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
       });
     }
   }
-  async function followDraft<T extends InputDraftView>(draft:T,mode:McpPresentationMode,call?:McCall){
+  async function followDraft<T extends InputDraftView>(editor:LiveInputPort,draft:T,mode:McpPresentationMode,call?:McCall){
     if(mode==='background')return {...draft,presentation:{mode,status:'background'}};
     if(!ctx.presentInput)return draft;
     if(call?.signal.aborted)return {...draft,presentation:{mode,status:'cancelled'}};
-    try{return {...draft,presentation:await ctx.presentInput(draft.documentId,mode,call)};}
-    catch(cause){return {...draft,presentation:{mode,status:'unavailable',message:errorMessage(cause)}};}
+    try{
+      const presentation=await ctx.presentInput(draft.documentId,mode,call);
+      return {...settledDraft(editor,draft),presentation};
+    }catch(cause){return {...draft,presentation:{mode,status:'unavailable',message:errorMessage(cause)}};}
   }
   const jobs=jobTools(ctx);
   const settings=inputSettingsTools();
   const tools=[
-    inputTool('input_draft', 'Read or update the real Gaussian / ORCA input editor. Changes follow the configured input page by default; presentation:background keeps the visible workbench. The returned configuration is an admitted write template; parameters retain the full native facts and are not a write payload (Gaussian cores=0 means unspecified). Send a partial configuration and expectedDraft to change fields; omitted and unchanged fields retain their settings. Confirm q/M together with electronicState.confirmed. Shared freezes use model_constraints. The generator writes its standard title; edit generated titles with input_text.',
+    inputTool('input_draft', 'Read or update the native Gaussian / ORCA input draft. Writes follow the input page by default. To open it while reading, set presentation:follow; background keeps the workbench. Patch configuration with its engine and expectedDraft. Method and basis go in settings; Gaussian excited settings use settings.taskOptions.excited, ORCA uses settings.excited. Find solvent IDs with input_solvents; settings.solvation:null clears only solvation. Use configuration.electronicState to confirm q/M and model_constraints for shared freezes.',
       object({...sourceFields,configuration:inputConfigurationSchema,replaceEdited:replacement,presentation:inputPresentation}), (args,call)=>{
         const editor=port(args);
-        if(args.configuration===undefined)return editor.read();
+        if(args.configuration===undefined){
+          const draft=editor.read();
+          assertDraftVersion(draft,args.expectedDraft);
+          const read={...draft,solvent:readInputSolvent(draft)};
+          return args.presentation===undefined?read:followDraft(editor,read,presentationMode(args),call);
+        }
         if(typeof args.expectedDraft!=='string')throw Error('修改草稿前请读取并传入 expectedDraft。');
         const mode=presentationMode(args);
-        const configuration=readInputConfiguration(args.configuration);
+        let configuration=readInputConfiguration(args.configuration);
+        if(configuration.settings?.solvent!==undefined||configuration.settings?.solvation!==undefined){
+          const current=editor.read();
+          assertDraftVersion(current,args.expectedDraft);
+          configuration=prepareInputSolventWrite(current,configuration);
+        }
         call?.signal.throwIfAborted();
         let draft:InputDraftView;
         try{draft=editor.configure(configuration,args.expectedDraft,args.replaceEdited===true);}
@@ -219,15 +255,19 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
             electronicStateWritable:false,requestedElectronicState:configuration.electronicState,...inputFrameRecovery(ctx,entry)
           });
         }
-        return draft.draftVersion!==args.expectedDraft&&(ctx.presentInput||mode==='background')?followDraft(draft,mode,call):draft;
+        const updated={...draft,solvent:readInputSolvent(draft)};
+        return draft.draftVersion!==args.expectedDraft||args.presentation!==undefined?followDraft(editor,updated,mode,call):updated;
       }),
+    inputTool('input_solvents','Read the current draft solvation and search the native Gaussian or ORCA built-in solvent catalog by name, alias, or exact ID. Use entries[].id in settings.solvation:{mode:builtin,id}, or pass clearConfiguration to input_draft with this draftVersion. Omit query to list the catalog. ORCA defaults to the shared catalog of reviewed profiles.',
+      object({modelRef,engine:choice('gaussian','orca'),solventModel:choice('iefpcm','cpcm','smd'),version:choice('common',...ORCA_VERSIONS),query:string}),
+      args=>inputSolventOptions(port(args).read(),args)),
     inputTool('input_preview', 'Preview the native engine writer and validation without publishing or running. If the requested method/basis combination is outside this editor catalog, preserve the requested theory: write the exact Gaussian/ORCA text to an explicit destination via file_write_text, then use job_preview if execution is requested.',
       object(sourceFields),args=>{
         const editor=port(args),preview=editor.preview(args.expectedDraft as string|undefined);
-        const restriction=inputCatalogFailure(editor.read(),preview);
-        return restriction?{...preview as object,catalogRestriction:restriction}:preview;
+        const view=editor.read(),restriction=inputCatalogFailure(view,preview),solventIssue=inputSolventIssue(view);
+        return restriction||solventIssue?{...preview as object,...(restriction?{catalogRestriction:restriction}:{}),...(solventIssue?{solventIssue}:{})}:preview;
       }),
-    inputTool('input_generate', 'Generate native validated input in the document editor and follow its generated page by default. Set presentation to background to keep the visible workbench. Pass save:true to save to the portable exports folder, or specify an exact destination or directory. Use file_write_text for an exact input outside the editor catalog.',
+    inputTool('input_generate', 'Generate native input and return the current draftVersion. Use directory to save in one call. A selected main fileName in directory or save:true mode includes its native XYZ and retained dependencies; destination saves one exact file. Read delivery for each written path and SHA-256. This tool never submits a job.',
       object({...sourceFields,...deliveryFields,save:boolean,replaceEdited:replacement,presentation:inputPresentation},['expectedDraft']),
       async(args,context)=>{
         if(args.destination!==undefined&&args.directory!==undefined)throw Error('请选择单文件 destination 或 directory。');
@@ -238,24 +278,36 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
         try{draft=await editor.generate(args.expectedDraft as string,args.replaceEdited===true);}
         catch(error){
           const failure=error as {code?:string;data?:unknown};
-          const restriction=failure.code==='INPUT_VALIDATION'?inputCatalogFailure(editor.read(),failure.data):null;
-          if(restriction)throw toolError('INPUT_CATALOG_RESTRICTION',errorMessage(error),restriction);
+          if(failure.code==='INPUT_VALIDATION'){
+            const view=editor.read(),restriction=inputCatalogFailure(view,failure.data),solventIssue=inputSolventIssue(view);
+            if(restriction)throw toolError('INPUT_CATALOG_RESTRICTION',errorMessage(error),{...restriction,...(solventIssue?{solventIssue}:{})});
+            if(solventIssue)throw toolError(failure.code,errorMessage(error),{...failure.data as object,solventIssue});
+          }
           throw error;
         }
-        if(args.save!==true&&args.destination===undefined&&args.directory===undefined)return followDraft(draft,mode,context);
+        const followed=await followDraft(editor,draft,mode,context);
+        if(args.save!==true&&args.destination===undefined&&args.directory===undefined)return followed;
         let delivery:InputSaveReceipt[];
-        try{delivery=await saveGenerated(editor,draft,args,context);}
+        try{delivery=await saveGenerated(editor,followed,args,context,true);}
         catch(error){
-          return followDraft({...draft,deliveryIssue:{status:'failed',message:errorMessage(error),
-            recovery:{tool:'input_save',arguments:{modelRef:draft.documentId,expectedDraft:draft.draftVersion}}}},mode,context);
+          const recovery=(error as {code?:string}).code==='DRAFT_CONFLICT'
+            ?{tool:'input_draft',arguments:{modelRef:draft.documentId}}
+            :{tool:'input_save',arguments:{modelRef:draft.documentId,expectedDraft:followed.draftVersion,...(args.directory===undefined?{}:{directory:args.directory})}};
+          return {...followed,deliveryIssue:{status:'failed',message:errorMessage(error),recovery}};
         }
-        return followDraft({...draft,delivery},mode,context);
+        const delivered=delivery.filter(file=>file.status==='saved').length;
+        const deliveryStatus=delivered===delivery.length?'saved':delivered||delivery.some(file=>file.status==='publication_unconfirmed')?'partial':'failed';
+        return {...settledDraft(editor,followed),deliveryStatus,delivery};
       }),
     inputTool('input_inherit','Apply the native Gaussian or ORCA level inheritance from the selected document’s parsed source. Preserves task, freezes and resource choices.',
       object(sourceFields,['expectedDraft']),args=>port(args).inherit(args.expectedDraft as string)),
-    inputTool('input_bind_endpoints','Bind versioned model snapshots to an ORCA NEB input. Confirm the actual atom order and electronic state using source models in the intended order.',
-      object({...sourceFields,endpoints:endpointBindings},['expectedDraft','endpoints']),
-      args=>port(args).bindEndpoints(args.expectedDraft as string,args.endpoints as InputEndpointBindings)),
+    inputTool('input_bind_endpoints','Bind versioned reactant and product model snapshots to an ORCA NEB input. Confirm q/M separately on each source and use their actual atom order. Follow the configured input page by default.',
+      object({...sourceFields,endpoints:endpointBindings,presentation:inputPresentation},['expectedDraft','endpoints']),
+      (args,call)=>{
+        const editor=port(args);
+        const draft=editor.bindEndpoints(args.expectedDraft as string,args.endpoints as InputEndpointBindings);
+        return followDraft(editor,draft,presentationMode(args),call);
+      }),
     inputTool('input_scan','Read or replace the input editor’s Scan rows by ordered stable atom IDs. Gaussian uses increments and increment in Å or degrees. ORCA uses start, end and total points, or an explicit values list. Existing shared freezes are retained.',
       object({...sourceFields,rows:scanRows}),args=>{
         const editor=port(args);
@@ -263,7 +315,7 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
         if(typeof args.expectedDraft!=='string')throw Error('修改扫描前请读取并传入 expectedDraft。');
         return editor.scan(args.expectedDraft,args.rows as InputScanRow[]);
       }),
-    inputTool('input_assets','Inspect, import, reference, select, unselect, remove or edit evidence for ORCA input dependencies. Use select:false to retain a HESS without selecting it. TS and IRC can select a HESS and explicitly confirm its compatibility against the file.',
+    inputTool('input_assets','Inspect, import, reference, select, unselect, remove or edit evidence for ORCA input dependencies. Use select:false to retain an unselected HESS. For TS/IRC compatibility, use action:evidence with hessian.path.purpose, hessian.path.atomIds in source order and the actual level/solvent evidence.',
       object({...sourceFields,action:choice('read','import','reference','select','remove','clear','evidence'),path:string,kind:assetKind,name:string,
         assetId:string,select:boolean,replace:boolean,...assetEvidence},['action']),async(args,call)=>{
         const editor=port(args),expected=args.expectedDraft as string|undefined;
@@ -273,9 +325,12 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
           if(typeof args.path!=='string'||!args.path)throw Error('导入依赖需提供实际文件路径。');
           const view=editor.read();
           if(view.engine!=='orca')throw Error('此处使用 ORCA 输入文件依赖。');
-          if(view.draftVersion!==expected)throw toolError('DRAFT_CONFLICT','输入草稿有新变化，请重新读取后重试。',{draftVersion:view.draftVersion});
+          assertDraftVersion(view,expected);
+          let imported:Awaited<ReturnType<typeof importOrcaInputAsset>>|undefined;
           try{
-            const edit=await importOrcaInputAsset(args,view,call),result=editor.assets(expected,edit);
+            const edit=await importOrcaInputAsset(args,view,call);
+            imported=edit;
+            const result=editor.assets(expected,edit);
             return edit.asset.kind==='hessian'?{...result as object,imported:{
               assetId:edit.asset.id,name:edit.asset.name,sha256:edit.asset.sha256,retained:true,
               hasFileBytes:edit.file.size>0,selected:edit.select
@@ -283,7 +338,8 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
           }catch(error){
             const issue=error as {code?:string;data?:{canReplace?:boolean}};
             const option=issue.code==='HESSIAN_TASK_UNSUPPORTED'?{select:false}:issue.code==='INPUT_ASSET_NAME_CONFLICT'&&issue.data?.canReplace?{replace:true}:null;
-            if(option)throw toolError(issue.code!,errorMessage(error),{...issue.data,recovery:{
+            if(option)throw toolError(issue.code!,errorMessage(error),{...issue.data,
+              ...(imported&&issue.code==='INPUT_ASSET_NAME_CONFLICT'?{requested:{path:args.path,name:imported.asset.name,sha256:imported.asset.sha256,bytes:imported.file.size}}:{}),recovery:{
               tool:'input_assets',arguments:{...args,modelRef:view.documentId,...option},
               ...(option.replace?{requiresConfirmation:true}:{})
             }});
@@ -306,7 +362,7 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
         }
         const view=editor.read(),file=view.files.find(candidate=>candidate.name===args.fileName);
         if(!file)throw Error('当前输入编辑器没有指定的文件。');
-        if(args.expectedDraft!==undefined&&args.expectedDraft!==view.draftVersion)throw toolError('DRAFT_CONFLICT','输入草稿有新变化，请重新读取后重试。',{draftVersion:view.draftVersion});
+        assertDraftVersion(view,args.expectedDraft);
         return {documentId:view.documentId,draftVersion:view.draftVersion,engine:view.engine,stale:view.stale,edited:view.editedFiles.includes(file.name),file};
       }),
     inputTool('input_save', 'Save a generated input and its retained companions to the portable exports folder or the specified directory. For a single file provide fileName or an exact absolute destination.',
@@ -314,12 +370,12 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
       async (args,context)=>{
         if(args.destination!==undefined&&args.directory!==undefined)throw Error('请选择单文件 destination 或 directory。');
         const editor=port(args),view=editor.read();
-        if(view.draftVersion!==args.expectedDraft)throw toolError('DRAFT_CONFLICT','输入草稿有新变化，请重新读取后重试。',{draftVersion:view.draftVersion});
+        assertDraftVersion(view,args.expectedDraft);
         return {engine:view.engine,draftVersion:view.draftVersion,stale:view.stale,files:await saveGenerated(editor,view,args,context)};
       }),
     inputTool('input_batch',
-      'Generate independent Gaussian / ORCA inputs for ordered frame refs. Read input_draft once and supply its draftVersion as expectedDraft, or use templateModelRef plus templateDraft per row. Each row supplies stem and confirmed q/M; configuration overrides fields on the matching-engine template without editing it. Pass save:true or directory to save each input and its source manifest.',
-      object({...sourceFields,directory:string,save:boolean,onExists:choice('error','overwrite'),frames:list(object({
+      'Generate independent Gaussian / ORCA inputs for ordered frame refs. Read input_draft on a named template once and use its documentId as modelRef and draftVersion as expectedDraft, or specify templateModelRef and templateDraft per row. Each row supplies frameRef, stem and its confirmed electronicState, directly or in configuration. Use configuration for matching-engine overrides without editing the template. Batch outputs are in items[].files, not the live editor. Use directory to save inputs and source manifests, or omit saving to receive their text.',
+      object({...sourceFields,directory:string,save:boolean,onExists:choice('error','overwrite'),presentation:inputPresentation,frames:list(object({
         ...frameItem.properties as Record<string,Schema>,templateModelRef:modelRef,templateDraft:expectedDraft,configuration:frameInputConfigurationSchema
       },frameItem.required as string[]))},['frames']),
       async (args,context)=>{
@@ -342,13 +398,17 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
             if(!selectedTemplate)throw templateError;
             const configuration=item.configuration===undefined?undefined:readInputConfiguration(item.configuration);
             const template=configuration===undefined?selectedTemplate:patchFrameTemplate(selectedTemplate,configuration);
-            const {charge,multiplicity,confirmed}=item.electronicState;
-            if(!confirmed)throw Error('请逐结构确认电荷与多重度，模板确认不能代替本帧确认。');
+            const configuredState=configuration?.electronicState,explicitState=item.electronicState;
+            if(explicitState&&configuredState&&(['charge','multiplicity','confirmed'] as const).some(key=>explicitState[key]!==configuredState[key]))
+              throw Error('此帧的两处电子态设置不一致，请保留一组一致的电荷与多重度。');
+            const electronicState=explicitState??configuredState;
+            if(!electronicState?.confirmed)throw Error('请逐结构确认电荷与多重度，模板确认不能代替本帧确认。');
+            const {charge,multiplicity}=electronicState;
             const source=await ctx.frame(item.frameRef,context?.signal,{charge,multiplicity});
             sourceRef=source.ref;
             const identity=JSON.stringify(sourceRef);
             if(usedFrames.has(identity))throw Error('同一科学帧重复选择。');
-            const plan=prepareAdvancedFrameInputs({template,frames:[{source,stem:item.stem,electronicState:item.electronicState,
+            const plan=prepareAdvancedFrameInputs({template,frames:[{source,stem:item.stem,electronicState,
               outputCheckpointName:configuration?.files?.checkpointName}],manifestStem:item.stem,independentRuntimeNames:true});
             if(!plan.ready)throw Error(plan.errors.join('\n'));
             const evidence={...plan.manifest.frames[0],order:index+1};
@@ -372,9 +432,20 @@ export function inputTools(ctx: InputToolsContext): McTool[] & {dispose():void} 
               failed||unconfirmed?'partial':'generated';
             results.push({order:index+1,sourceRef,engine:template.engine,status,warnings:plan.items[0]?.warnings,evidence,
               effective:plan.items[0]?.effective,files});
-          }catch(error){results.push({order:index+1,frameRef:item.frameRef,sourceRef,status:'failed',reason:errorMessage(error)});}
+          }catch(error){
+            const issue=error as {code?:string;data?:unknown};
+            results.push({order:index+1,frameRef:item.frameRef,sourceRef,status:'failed',reason:errorMessage(error),code:issue.code,data:issue.data});
+          }
         }
-        return {items:results};
+        const result={items:results};
+        if(args.presentation===undefined)return result;
+        const mode=presentationMode(args);
+        if(mode==='background')return {...result,presentation:{mode,status:'background'}};
+        if(!ctx.presentInput||!results.some(item=>item.status==='generated'||item.status==='partial'))return result;
+        try{
+          const model=ctx.entry((args.modelRef as string|undefined)??items[0]?.templateModelRef);
+          return {...result,presentation:await ctx.presentInput(model.id,mode,context)};
+        }catch(cause){return {...result,presentation:{mode,status:'unavailable',message:errorMessage(cause)}};}
       }),
     ...jobs,
     ...settings

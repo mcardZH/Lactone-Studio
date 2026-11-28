@@ -1,7 +1,7 @@
-import type { AnalysisOriginalCubeSource } from '../../projects/analysis-state';
+import { retainAnalysisOriginalCube, retainAnalysisProjectSnapshot, type AnalysisOriginalCubeSource } from '../../projects/analysis-state';
 import { assertResultNotAborted } from '../../results/contracts';
 import type { CubeReadOptions, ParsedMolecularCube } from '../../results/cube-reader';
-import type { SurfaceCubeAssetRegisterRequest, SurfaceCubeReceipt, SurfaceCubeRegisterRequest, SurfaceImportedCube } from '../../results/surface-contracts';
+import type { SurfaceCubeAssetRegisterRequest, SurfaceCubeReceipt, SurfaceCubeRegisterRequest, SurfaceImportedCube, SurfaceScalarField } from '../../results/surface-contracts';
 import { CUBE_PAGE_BYTES, cubeByteStream, readDisplayCube, readDisplayCubeStream } from './cube-display-reader';
 
 export interface CubeAssetDesktop {
@@ -79,6 +79,52 @@ export async function readRegisteredCubeAsset(desktop: CubeAssetDesktop, source:
   if (!read) throw new Error('当前环境缺少 Cube 来源页读取入口。');
   return readDisplayCubeStream({ size: source.bytes, stream: () => cubeByteStream(source.bytes,
     async (offset, length) => new Uint8Array(await read(source.token, offset, length)), signal) }, options, signal);
+}
+
+export async function readImportedCubeAsset(desktop: CubeAssetDesktop, receipt: SurfaceCubeReceipt, signal: AbortSignal) {
+  const options = receipt.knownDomain?.coordinateUnit ? cubeOptions(receipt.knownDomain.coordinateUnit) : {};
+  if ('text' in receipt && typeof receipt.text === 'string') {
+    return readDisplayCube({ text: receipt.text, bytes: receipt.bytes, keepOriginal: true }, signal, options);
+  }
+  return { parsed: await readRegisteredCubeAsset(desktop, receipt, options, signal), originalBytes: undefined };
+}
+
+/** The view and its project record hold independent references to the same
+ * private original. Neither release evicts bytes that the other still uses. */
+export function retainImportedCubeAsset(
+  desktop: CubeAssetDesktop, key: string, receipt: SurfaceCubeReceipt, fieldMetadata: Omit<SurfaceScalarField, 'values'>,
+  originalBytes: Uint8Array | undefined, onError: (error: unknown) => void,
+): (() => Promise<void>) | undefined {
+  const { token, name, sourceRevision, bytes } = receipt;
+  if (originalBytes) {
+    retainAnalysisProjectSnapshot(key, { name, sourceRevision, fieldMetadata, originalBytes });
+    return undefined;
+  }
+  const read = desktop.readRegisteredSurfaceCubePage, close = desktop.releaseSurfaceCube;
+  if (!read || !close) throw new Error('当前环境缺少 Cube 原始来源入口。');
+  let viewOwns = true, projectOwns = true, pending: Promise<void> | undefined;
+  const release = async () => {
+    if (viewOwns || projectOwns) return;
+    pending ??= close(token).then(result => { if (!result.released) throw new Error('Cube 原始来源尚未释放。'); });
+    try { await pending; } catch (error) { pending = undefined; throw error; }
+  };
+  retainAnalysisOriginalCube(key, { name, sourceRevision, fieldMetadata, bytes, async readRange(offset, length) {
+    if (!projectOwns || !Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length < 0 || length > bytes - offset)
+      throw new Error('Cube 原始来源已关闭或读取范围无效。');
+    const readPage = async (position: number, pageSize: number) => {
+      const page = await read(token, position, pageSize);
+      if (page.byteLength !== pageSize) throw new Error('Cube 原始来源分页不完整。');
+      return new Uint8Array(page);
+    };
+    if (length > 0 && length <= CUBE_PAGE_BYTES) return readPage(offset, length);
+    const combined = new Uint8Array(length);
+    for (let position = 0; position < length; position += CUBE_PAGE_BYTES) {
+      const pageSize = Math.min(CUBE_PAGE_BYTES, length - position);
+      combined.set(await readPage(offset + position, pageSize), position);
+    }
+    return combined;
+  } }, () => { projectOwns = false; void release().catch(onError); });
+  return () => { viewOwns = false; return release(); };
 }
 
 interface PackedCubeField {

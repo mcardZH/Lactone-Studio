@@ -30,7 +30,16 @@ def build_extension(config, run):
     source = common.ROOT / SOURCE
     output = common.safe(run, run / DIRECTORY / NAME)
     output.parent.mkdir()
-    command = [str(compiler), '-O3', '-ffp-contract=off', '-shared', '-static-libgcc',
+    path_prefixes = (
+        (common.ROOT, '.'), (sdk, 'python-sdk'), (config['toolchainLockRoot'], 'python-toolchain'),
+        (compiler.parent.parent, 'mingw-toolchain'), (run, 'build'),
+    )
+    path_map = {
+        spelling: relative for folder, relative in path_prefixes
+        for spelling in (str(folder), folder.as_posix())
+    }
+    command = [str(compiler), '-O3', '-ffp-contract=off', '-shared', '-static-libgcc', '-Wl,--strip-all',
+               *(f'-ffile-prefix-map={prefix}={relative}' for prefix, relative in path_map.items()),
                '-I', str(include), str(source), str(python_dll), '-o', str(output)]
     environment = dict(os.environ, TEMP=str(run / 'temp'), TMP=str(run / 'temp'))
     compiler_identity = common.identity(compiler, compiler.parent)
@@ -41,6 +50,9 @@ def build_extension(config, run):
     (output.parent / 'compiler.stdout.log').write_bytes(result.stdout)
     (output.parent / 'compiler.stderr.log').write_bytes(result.stderr)
     common.require(result.returncode == 0 and output.is_file(), 'Finite accelerator compilation failed')
+    binary = output.read_bytes().lower()
+    common.require(all(prefix.lower().encode('utf-8') not in binary for prefix in path_map),
+                   'Finite accelerator contains a machine-local build path')
     common.require(compiler_identity == common.identity(compiler, compiler.parent)
                    and headers == common.inventory(include) and source_identity == common.identity(source)
                    and python_identity == common.identity(python_dll, config['toolchainLockRoot']),

@@ -1,7 +1,9 @@
 import type { ResultConvergence, ResultFrameSummary, TrajectoryResult } from '../../results/contracts';
+import { isXtbMethod } from '../../core/xtb-capabilities';
 import { convertEnergy, type EnergyUnit } from '../../results/energy';
 import { emptyScientificData, type VibrationMode } from '../../results/scientific-contracts';
 import type { PesFrame, PesFrameIndex, PesPathRecord, PesRun, PesScanPoint } from './contracts';
+import { isPesNetMethod } from './contracts';
 import { structureForPesFrame } from './controller';
 import {registerPreparedTrajectoryFrameIdentities} from '../../results/prepared-trajectory';
 import {attachTrajectoryStages} from '../../results/trajectory-stages';
@@ -197,6 +199,15 @@ export function pesPathTrajectory(run:PesRun,record:{id:string;seriesId:string;p
 const pathGroups=new WeakMap<readonly PesFrame[],Map<string,FrameSeries>>();
 const frameSummaries=new WeakMap<PesRun['request'],WeakMap<PesFrame,ResultFrameSummary>>();
 
+function pesTrajectorySource(run: PesRun, id: string, name: string): TrajectoryResult['source'] {
+  const { method, algorithm } = run.request;
+  const device = run.result?.provenance.device;
+  return {
+    id, name, size: 0, software: isXtbMethod(method) && algorithm !== 'workspace-forcefield' ? 'xtb' : 'unknown',
+    nativeJobName: algorithm, nativeMethod: method, ...(typeof device === 'string' ? { nativeDevice: device } : {}),
+  };
+}
+
 function pesResultFrameSummary(run:PesRun, frame:PesFrameIndex, index:number, recordId?:string):ResultFrameSummary {
   const {operation}=run.request;
   const axes=Array.isArray(run.request.parameters.axes)?run.request.parameters.axes:[];
@@ -233,7 +244,7 @@ export function pesRecordedTrajectory(run:PesRun, record:PesPathRecord, first:Pe
   scientific.tasks=operation==='path'?['neb']:['unknown'];
   return attachTrajectoryStages({
     id,label,kind:'trajectory',engine:'structure', role:operation==='path'?'neb-path':'unknown',
-    source:{id,name:label,size:0,nativeJobName:algorithm},jobIndex:0,scientific,
+    source:pesTrajectorySource(run,id,label),jobIndex:0,scientific,
     status:run.status==='completed'&&['completed','converged'].includes(run.result?.status??'')?'completed':'incomplete',
     messages:run.error?[run.error.message]:[],frames:record.frames.map((frame,index)=>pesResultFrameSummary(run,frame,index,record.id)),
     initialStructure:structureForPesFrame(structure,matches(first,record.frames[0])),
@@ -267,7 +278,7 @@ function adaptPesSeries(run:PesRun,group:FrameSeries,pathRecord=false):PesTrajec
   const scientific = emptyScientificData();
   scientific.route = [run.request.method, algorithm, run.request.solvation?.solvent].filter(Boolean).join(' / ');
   scientific.tasks = operation === 'scan' ? ['scan'] : operation === 'path' ? ['neb'] : operation === 'hessian' ? ['freq'] : operation === 'ts' ? ['ts'] : operation==='opt'?['opt']:operation==='irc'?['irc']:['unknown'];
-  const net = ['aimnet2-auto','aimnet2-rxn','orbmol-v2'].includes(run.request.method);
+  const net = isPesNetMethod(run.request.method);
   const vibration = vibrationModes(run, group);
   if (vibration?.modes.length) {
     scientific.vibrations = { sourceId: id, sourceName: group.label, frameIndex: vibration.index, modes: vibration.modes,
@@ -284,7 +295,7 @@ function adaptPesSeries(run:PesRun,group:FrameSeries,pathRecord=false):PesTrajec
     revision:`pes-publication-${++publication}`,baseRevision:incremental?previous!.view.revision:null,incremental,
     result: { id, label: group.label, kind: operation === 'ts'||operation==='opt' ? 'optimization' : 'trajectory', engine: 'structure',
       role: operation === 'scan' ? 'scan-point-set' : operation === 'path' ? 'neb-path' : operation === 'ts' ? 'ts-optimization-trajectory' : operation==='opt'?'optimization-trajectory':operation==='irc'?'irc-full':'unknown',
-      source: { id, name: group.label, size: 0, software: net || operation==='opt'&&algorithm==='workspace-forcefield'?'unknown':'xtb', nativeJobName: algorithm }, jobIndex: 0, status,
+      source: pesTrajectorySource(run, id, group.label), jobIndex: 0, status,
       messages: run.error ? [run.error.message] : [], scientific, frames,
       initialStructure: structureForPesFrame(structure, group.frames[0]),
       async getFrame(index, signal) {

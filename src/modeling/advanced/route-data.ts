@@ -9,10 +9,42 @@ import {validateConformerNativeSolvation} from './conformer-solvation';
 import type { AissRequest, AissCompletionEvent, AissSearchCheckpointEvent, AissAtomMapping } from './docking-contracts';
 
 /** Preserve every scientific payload field, stripping only transport envelope. */
-export function routePayload<T extends object>(value: T): T {
+export function routePayload<T extends object>(value: T, detached = false): T {
   const payload = { ...value } as T & Record<string, unknown>;
   for (const field of ['schema', 'sessionId', 'stamp', 'runIdentity', 'operation', 'method', 'seq', 'event', 'kind', 'effectiveResources']) delete payload[field];
-  return structuredClone(payload);
+  return detached ? payload : structuredClone(payload);
+}
+
+const detachedSamplingPageFrames = new WeakSet<object>();
+const sealedSamplingVectors = new WeakSet<object>();
+
+/** Desktop IPC materializes a private page; only its verified resumed stamp
+ * can transfer nested values. Push events and other bridge implementations
+ * still get independent payloads. */
+export function markDetachedSamplingPageFrame(frame: object): void {
+  detachedSamplingPageFrames.add(frame);
+}
+
+export function retainSamplingPayload(raw: ConformerSamplingFramePayload): ConformerSamplingFramePayload {
+  const detached = detachedSamplingPageFrames.delete(raw);
+  const data = routePayload(raw, detached);
+  // Optional native temperature observations later enrich these two envelopes.
+  if (detached && data.nativeMD) data.nativeMD = { ...data.nativeMD };
+  return data;
+}
+
+/** Positions and velocities are verified and private before certification. */
+export function sealSamplingVectors(data: ConformerSamplingFramePayload): void {
+  for (const vectors of [data.coordinates, data.velocitiesAngstromPerFs]) {
+    if (!vectors || sealedSamplingVectors.has(vectors)) continue;
+    for (const item of vectors) Object.freeze(item);
+    Object.freeze(vectors);
+    sealedSamplingVectors.add(vectors);
+  }
+}
+
+export function isSealedSamplingVectorArray(value: object): boolean {
+  return sealedSamplingVectors.has(value);
 }
 const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 const ordinal = (n: unknown): n is number => Number.isSafeInteger(n) && (n as number) >= 0;

@@ -21,7 +21,6 @@ from native_stdin import control_blocks, replace_native_output_descriptors, rout
 
 SCHEMA = 'es-pes/v1'
 RESIDENT_SCHEMA = 'es-pes-resident/v1'
-ORDINARY_WARM = {'fire2': 'fire2', 'sella-xyz': 'sella', 'sella-ric': 'sella'}
 OPERATIONS = {
     'scan': ('pes_scan_ts', {'slsqp', 'sella-scan', 'lbfgs-scan', 'fire2-scan'}),
     'ts': ('pes_scan_ts', {'prfo', 'rfo', 'qn', 'dimer', 'climb'}),
@@ -200,6 +199,7 @@ class Events:
                 self.emit('evaluation-started', **payload)
         elif kind == 'optimization-timing':
             self.emit(kind, timing=payload)
+
         else:
             raise ValueError(f'Unknown PES progress kind {kind}')
 
@@ -517,6 +517,15 @@ def prepare_profile(profile):
         importlib.import_module('pyGSM.molecule')
 
 
+def solver_threads(request):
+    if request.get('operation') == 'path' and request.get('algorithm') in ('ci-neb', 'fsm') \
+            and request.get('parameters', {}).get('xtbBatchParallelism', 1) > 1:
+        from pes_path_pool import path_lane_count
+        if path_lane_count(request) > 1:
+            return 1
+    return request['threads']
+
+
 def resident_main(fd, pending, envelope):
     with resident_protocol() as protocol:
         return run_resident(fd, pending, envelope, protocol)
@@ -533,8 +542,6 @@ def run_resident(fd, pending, envelope, protocol):
     close_library = lambda: None
     controller = None
     prepared_profiles = set()
-    optional = {}
-    preparation = None
 
     def emit(event, **fields):
         line = json.dumps(dict(schema=RESIDENT_SCHEMA, event=event, **fields),
@@ -546,35 +553,9 @@ def run_resident(fd, pending, envelope, protocol):
         key = (profile['operation'], profile['algorithm'], profile.get('parameters', {}).get('executionProfile'))
         if key in prepared_profiles:
             return
-        dependency = ORDINARY_WARM.get(profile['algorithm']) if profile['operation'] == 'opt' else None
-        warming = optional.get(dependency)
-        if warming is None:
-            prepare_profile(profile)
-            controller = ThreadpoolController()
-        else:
-            warming['done'].wait()
-            if 'error' in warming:
-                raise warming['error']
-            controller = warming['controller']
+        prepare_profile(profile)
+        controller = ThreadpoolController()
         prepared_profiles.add(key)
-
-    def warm_optimizers():
-        for dependency, algorithm in (('fire2', 'fire2'), ('sella', 'sella-xyz')):
-            if control.done.is_set():
-                return
-            state = optional[dependency]
-            try:
-                prepare_profile({'operation': 'opt', 'algorithm': algorithm})
-                state['controller'] = ThreadpoolController()
-            except Exception as error:
-                state['error'] = error
-                traceback.print_exc(file=sys.stderr)
-            finally:
-                state['done'].set()
-            if not control.done.is_set():
-                error = state.get('error')
-                emit('optimizer-prepared', optimizer=dependency, ready=error is None,
-                     **({'detail': str(error)} if error is not None else {}))
 
     try:
         if library is not None:
@@ -583,10 +564,6 @@ def run_resident(fd, pending, envelope, protocol):
             prepare_resident_api(library)
         prepare(envelope['profile'])
         emit('ready')
-        if library is not None:
-            optional.update({name: {'done': threading.Event()} for name in ('fire2', 'sella')})
-            preparation = threading.Thread(target=warm_optimizers, name='pes-optimizer-preparation', daemon=True)
-            preparation.start()
         while not control.done.is_set():
             message = control.commands.get()
             if message is None:
@@ -611,7 +588,7 @@ def run_resident(fd, pending, envelope, protocol):
                     controller = ThreadpoolController()
             os.chdir(workspace)
             try:
-                with controller.limit(limits=request['threads']):
+                with controller.limit(limits=solver_threads(request)):
                     _, reusable = execute_owned(request, runtime, workspace, module, nullcontext(control),
                                                 stop=stop, event_stream=protocol)
             finally:
@@ -628,8 +605,6 @@ def run_resident(fd, pending, envelope, protocol):
         return 0
     finally:
         control.done.set()
-        if preparation is not None:
-            preparation.join()
         close_library()
 
 
@@ -660,7 +635,9 @@ def execute_owned(request, runtime, workspace, module, stop_reader, *, stop=None
                     context_started = time.perf_counter() if observe_opt else None
                     from pes_core import PesCancelled, make_context
                     stopped_type = PesCancelled
-                    ctx = make_context(request, runtime, workspace, cancelled=stop.is_set, emit=events.observe)
+                    threads = solver_threads(request)
+                    lane_request = {**request, 'threads': threads} if threads != request['threads'] else request
+                    ctx = make_context(lane_request, runtime, workspace, cancelled=stop.is_set, emit=events.observe)
                     if observe_opt:
                         events.observe('optimization-timing', dict(phase='worker-context-ready',
                                        contextMs=(time.perf_counter() - context_started) * 1000))

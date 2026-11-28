@@ -8,6 +8,7 @@ import {OptimizationPlot, type OptimizationPlotExtension} from '../results/Optim
 import {PesSelect} from './pes-fields';
 import {pesPathEnergyOverlays, pesPathRecordLabel} from './PesPathHistory';
 import type {TrajectoryEnergyOverlay} from '../../results/trajectory-energy-extension';
+import {ResultsMcpInlinePlotSource} from '../results/results-mcp-context';
 
 export interface PesPathEnergyPlotProps {
   request: PesRun['request'];
@@ -79,9 +80,11 @@ export function PesPathEnergyPlot(p: PesPathEnergyPlotProps) {
   const drawn = useCallback(() => onDraw?.(record.id), [record.id, onDraw]);
   // Use the same saved figure key the trajectory stage used before curves
   // could display independently of the current structure.
-  const plot = <OptimizationPlot result={result} currentIndex={currentIndex} onSelectFrame={selectFrame}
+  const plot = <ResultsMcpInlinePlotSource kind="pes-path-energy" collectionId={record.id} runId={request.runIdentity.runId}>
+    <OptimizationPlot result={result} currentIndex={currentIndex} onSelectFrame={selectFrame}
     currentConvergence={currentIndex === undefined ? undefined : p.currentConvergence}
-    onDraw={drawn} extension={extension} responsive/>;
+    onDraw={drawn} extension={extension} responsive/>
+  </ResultsMcpInlinePlotSource>;
   const project = p.projectUi;
   const analysisSource = JSON.stringify([result.source.id, result.source.id, null, result.jobIndex]);
   return <div data-testid="pes-path-energy-plot" data-record-id={record.id}

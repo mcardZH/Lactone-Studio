@@ -1,12 +1,12 @@
 import { plainPdbAtom, plainPdbStructure } from '../core/parsers';
 import { periodicPdbAtom, periodicPdbHeader, periodicPdbStructure } from '../core/periodic-parsers';
 import { assertResultNotAborted, type ResultFrameSummary, type ResultInputFile, type ResultReadOptions, type TrajectoryResult } from './contracts';
-import { materializePackedTrajectoryFrame, PackedTrajectoryFrames, registerPackedTrajectorySource, type PackedTrajectoryAtom, type PackedTrajectoryFrame } from './packed-trajectory-source';
+import { materializePackedTrajectoryFrame, packedTrajectoryAtomId, PackedTrajectoryFrames, registerPackedTrajectorySource, type PackedTrajectoryAtom, type PackedTrajectoryFrame } from './packed-trajectory-source';
 import { createTrajectoryOperationBatch } from './trajectory-operations';
 import { consumeTrajectoryText, ownTrajectoryText, type TrajectoryTextLine } from './trajectory-text-reader';
 
 interface PdbAtomDescriptor extends PackedTrajectoryAtom { serial: string; alternate: string }
-interface PdbTopology { descriptors: readonly PdbAtomDescriptor[]; atoms: readonly PackedTrajectoryAtom[]; serialsUnique: boolean }
+interface PdbTopology { descriptors: readonly PdbAtomDescriptor[]; atoms: readonly PackedTrajectoryAtom[]; serialsUnique: boolean; serials:readonly string[] }
 
 const atomRecord = /^(?:ATOM  |HETATM)/;
 const cellRecord = /^(?:CRYST1|SCALE[123](?:\s|$))/;
@@ -47,10 +47,6 @@ class ModelCoordinates {
   }
 }
 
-function pdbAtomIds(prefix: string, descriptors?: readonly PdbAtomDescriptor[]): (index: number) => string {
-  return descriptors ? index => prefix + descriptors[index].serial : index => prefix + index;
-}
-
 function modelHeader(global: readonly string[], local: readonly string[]): readonly string[] {
   if (!local.length) return global;
   const localCell = local.some(line => line.startsWith('CRYST1'));
@@ -70,11 +66,12 @@ function packedPdbVariants(file: ResultInputFile, model: ModelCoordinates, recor
       : plainPdbStructure(file.name, modelIndex, alternate, index);
     const selected = alternate ? atoms.filter(atom => !atom.alternate || atom.alternate === alternate) : atoms;
     const original = previous.get(alternate);
-    const topology = original && (original.descriptors === selected || original.descriptors.length === selected.length && original.descriptors.every((atom, i) =>
+    const reuse = original && (original.descriptors === selected || original.descriptors.length === selected.length && original.descriptors.every((atom, i) =>
       atom.element === selected[i].element && atom.sourceIndex === selected[i].sourceIndex && atom.serial === selected[i].serial
-      && atom.alternate === selected[i].alternate)) ? original : { descriptors: selected,
-        atoms: selected.map(({ element, sourceIndex }) => ({ element, sourceIndex })),
-        serialsUnique: new Set(selected.map(atom => atom.serial)).size === selected.length };
+      && atom.alternate === selected[i].alternate));
+    const serials = reuse ? original.serials : selected.map(atom => atom.serial);
+    const topology = reuse ? original : { descriptors: selected, atoms: selected.map(({ element, sourceIndex }) => ({ element, sourceIndex })),
+      serials, serialsUnique: new Set(serials).size === selected.length };
     if (periodic && !topology.serialsUnique) throw new Error('来源含重复原子ID。');
     let coordinates = model.coordinates;
     if (selected.length !== atoms.length) {
@@ -93,8 +90,9 @@ function packedPdbVariants(file: ResultInputFile, model: ModelCoordinates, recor
     previous.set(alternate, topology);
     const { atoms: _atoms, ...header } = structure;
     const prefix = periodic ? structure.id + ':serial:' : (globalThis.crypto?.randomUUID?.() ?? file.id + ':record:' + index) + ':';
+    const atomIds={prefix,...(periodic?{suffixes:topology.serials}:{})};
     return { header: { ...header, id: file.id + ':collection:record:' + index }, topology: topology.atoms,
-      coordinates, atomId: pdbAtomIds(prefix, periodic ? topology.descriptors : undefined) };
+      coordinates, atomIds, atomId: packedTrajectoryAtomId(atomIds) };
   });
 }
 
@@ -171,7 +169,7 @@ export async function readPdbCollection(file: ResultInputFile, options: ResultRe
       },
       async dispose() { disposed = true;await packed.dispose();await close(); },
     };
-    registerPackedTrajectorySource(result, packed.get, {read:packed.read,paged:packed.paged});
+    registerPackedTrajectorySource(result, packed.get, {read:packed.read,paged:packed.paged,canonical:true});
     return [result];
   } catch (error) { await Promise.allSettled([packed.dispose(),close()]);throw error; }
 }

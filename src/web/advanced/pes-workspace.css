@@ -5,7 +5,7 @@
 .pes-algorithm-coordinate-row > .shared-input-field { flex: 0 1 auto; }
 .pes-path-method-facts > output,.pes-method-fact { color: var(--input-color); white-space: normal; }
 .pes-path-method-facts { column-gap: calc(var(--input-gap, 8px) * 2); }
-.pes-progress progress { flex: 1 1 8rem; min-inline-size: 4rem; }
+.pes-progress progress { flex: 1 1 8rem; min-inline-size: 4rem; accent-color: var(--ui-control-accent); }
 .pes-record-interval { flex-basis:100%; inline-size:100%; min-inline-size:0; max-inline-size:100%; }
 .pes-scan-coordinate-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.7fr) auto; gap: var(--input-gap, 8px); align-items: center; }
 .pes-scan-coordinate-grid > .shared-input-field { grid-column: 1; min-inline-size: 0; }
@@ -34,6 +34,18 @@
 .pes-local-failures { position: relative; color: #916d12; }
 .pes-local-failures > summary { display: grid; place-items: center; inline-size: 24px; block-size: 24px; border: 1px solid #bd8b2c; border-radius: 50%; background: #fff3cc; font-weight: 600; cursor: pointer; list-style: none; }
 .pes-local-failures > summary::-webkit-details-marker { display: none; }
-.pes-local-failures > [role=note] { position: absolute; z-index: 50; inset-inline-end: 0; inline-size: min(30rem,70vw); padding: 10px 12px; border: 1px solid var(--input-card-border,#d8e4db); border-radius: 8px; background: #fff; color: var(--input-color,#294454); box-shadow: 0 3px 12px #20334520; }
+.pes-local-failures > [role=note] { position: absolute; z-index: 50; inset-inline-end: 0; inline-size: min(30rem,70vw); padding: 10px 12px; border: 1px solid var(--ui-surface-border); border-radius: var(--ui-subcard-radius); background: var(--ui-popover-bg, var(--ui-surface-bg)); backdrop-filter: var(--ui-popover-blur, none); color: var(--ui-field-ink); box-shadow: var(--ui-popover-shadow); }
 .pes-local-failures > [role=note] p { overflow-wrap: anywhere; }
 .pes-local-failures > [role=note] p + p { margin-block-start: 8px; }
+/* Phase 2: 3-tier PES button hierarchy — keep primary solid fill strictly for compute launch actions */
+.pes-workspace .button.pes-button-tonal:not(:disabled) {
+  background: var(--ui-action-tonal-bg);
+  border-color: var(--ui-action-tonal-border);
+  color: var(--ui-action-tonal-ink);
+  font-weight: 500;
+}
+.pes-workspace .button.pes-button-tonal:hover:not(:disabled) {
+  background: var(--ui-action-tonal-hover);
+  border-color: var(--ui-tool-selected-border);
+  color: var(--ui-control-selected-ink);
+}

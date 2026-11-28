@@ -115,19 +115,20 @@ export function postprocessStructureSourceLabel(document:PostprocessScientificFi
  if(displayed&&job&&displayed.id===job.id&&displayed.source.id===job.source.id&&displayed.frames.length)return '计算输出结构';
  return job?.scientific?.inputGeometry?'输入 / 起始结构':'未输出可用结构';
 }
-export default function PostprocessFileInformation({document,mode='all',onJob}:{document:PostprocessScientificFileDocument;mode?:'summary'|'numbers'|'all';onJob?(id:string):void}){
+export default function PostprocessFileInformation({document,mode='all',onJob,pendingJobId}:{document:PostprocessScientificFileDocument;mode?:'summary'|'numbers'|'all';onJob?(id:string):void;pendingJobId?:string}){
  const [decimals,setDecimals]=useState(2);
  const pathPlots=useMemo(()=>mode==='summary'?[]:(['absolute','relative-to-ts'] as const).flatMap(reference=>{
   const snapshot=createFilePathPlotSnapshot(document,reference);
   return snapshot?[snapshot]:[];
  }),[document,mode]);
  const source=document.output.source,job=postprocessFileJob(source),data=job?.scientific;
- if(!job||!data)return mode==='numbers'?<p className="postprocess-note">选择来源与阶段后查看其已打印数值。</p>:<section className="postprocess-basic" aria-label="文件来源信息"><FileJobChooser document={document} onJob={onJob}/><p className="postprocess-note">此文件包含多个独立作业，请选择来源与阶段。各作业原始信息均已保留。</p></section>;
+ const chooser=<FileJobChooser document={document} onJob={onJob} pendingJobId={pendingJobId}/>;
+ if(!job||!data)return mode==='numbers'?<p className="postprocess-note">选择来源与阶段后查看其已打印数值。</p>:<section className="postprocess-basic" aria-label="文件来源信息">{chooser}<p className="postprocess-note">此文件包含多个独立作业，请选择来源与阶段。各作业原始信息均已保留。</p></section>;
  const fields=[...data.summary,...data.properties],find=(...keys:string[])=>fields.find(field=>keys.includes(field.key));
  const software=job.engine==='gaussian'?'Gaussian':job.engine==='orca'?'ORCA':'生产软件未确认';
  const info=[['软件',data.version&&/^(?:Gaussian|ORCA)\b/i.test(data.version)?data.version:`${software}${data.version?` ${data.version}`:''}`],['作业',job.jobIndex==null?'未关联作业':`job ${job.jobIndex+1}`],['任务',data.tasks.map(task=>task.toUpperCase()).join(' + ')||'未确认'],['方法',find('method')?.value],['基组',find('basis','basis-set')?.value],['电荷 / 多重度',`${jobCharge(job)??'未知'} / ${jobMultiplicity(job)??'未知'}`],['结构来源',postprocessStructureSourceLabel(document)],...(data.pathSummary?.length?[['路径能量',`${data.pathSummary.length}点`]]:[])];
  return <>
-  {mode!=='numbers'&&<section className="postprocess-basic" aria-label="后处理基础信息"><div className="postprocess-section-heading"><strong>基础信息</strong></div><FileJobChooser document={document} onJob={onJob}/><dl className="postprocess-values">{info.map(([label,value])=><div key={String(label)}><dt>{label}</dt><dd>{value??'未输出'}</dd></div>)}</dl><PostprocessScientificStatus data={data}/>{data.inputGeometry&&!document.displayResult&&<p className="postprocess-note">输入 / 起始结构 · {data.inputGeometry.structure.atoms.length} 原子 · 原文第 {data.inputGeometry.sourceLine}–{data.inputGeometry.endSourceLine} 行</p>}</section>}
+  {mode!=='numbers'&&<section className="postprocess-basic" aria-label="后处理基础信息"><div className="postprocess-section-heading"><strong>基础信息</strong></div>{chooser}<dl className="postprocess-values">{info.map(([label,value])=><div key={String(label)}><dt>{label}</dt><dd>{value??'未输出'}</dd></div>)}</dl><PostprocessScientificStatus data={data}/>{data.inputGeometry&&!document.displayResult&&<p className="postprocess-note">输入 / 起始结构 · {data.inputGeometry.structure.atoms.length} 原子 · 原文第 {data.inputGeometry.sourceLine}–{data.inputGeometry.endSourceLine} 行</p>}</section>}
   {mode!=='summary'&&<section className="postprocess-numeric-book" aria-label="文件科学数值">
    {fields.length>0&&<SourceFields fields={fields} fallbackSource={job.source} tableLabel="已打印科学数值" fullPrecision scope={`${document.id}:${job.id}:fields`}/>}
    {pathPlots.map(snapshot=>{
@@ -146,7 +147,7 @@ export default function PostprocessFileInformation({document,mode='all',onJob}:{
   </section>}
  </>;
 }
-export function FileJobChooser({document,onJob}:{document:PostprocessScientificFileDocument;onJob?(id:string):void}){
+export function FileJobChooser({document,onJob,pendingJobId}:{document:PostprocessScientificFileDocument;onJob?(id:string):void;pendingJobId?:string}){
  const source=document.output.source,job=postprocessFileJob(source);
- return source.jobs.length>1?<label className="trajectory-stage-choice">阶段<select aria-label="结果来源与阶段" value={job?.id??''} disabled={!onJob} onChange={event=>onJob?.(event.target.value)}>{!job&&<option value="">选择来源与阶段</option>}{source.jobs.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>:null;
+ return source.jobs.length>1?<><label className="trajectory-stage-choice">阶段<select aria-label="结果来源与阶段" value={pendingJobId??job?.id??''} disabled={!onJob} onChange={event=>onJob?.(event.target.value)}>{!job&&<option value="">选择来源与阶段</option>}{source.jobs.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>{pendingJobId&&<p className="postprocess-note" role="status">等待所选阶段就绪{job?'，当前仍显示原阶段。':'。'}</p>}</>:null;
 }

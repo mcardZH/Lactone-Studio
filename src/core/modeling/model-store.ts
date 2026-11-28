@@ -1,5 +1,5 @@
 import type { Atom, Bond, Structure, Vector3 } from '../types';
-import { elementSymbol } from '../elements';
+import { electronicStateError, elementSymbol, suggestedMultiplicity } from '../elements';
 import { bondEvidenceGeometryKey, clearBondEvidence } from '../bond-semantics';
 import { perceivePeriodicConnections, requireConfirmedPeriodicity } from '../periodic';
 import { createBuilderDraft, validateExplicitBonds, commitBuilderTransaction, executeBuilderCommand, type BuilderAssignments, type BuilderDraft } from '../builder-draft';
@@ -28,6 +28,7 @@ import { bindImportedSourceAtomIds, sourceModelState } from '../../modeling/appl
 import { canonicalFreezeRows, migrateCanonicalFreezes } from '../../modeling/application/canonical-freezes';
 import { applyXtbCoordinates, applyXtbStoppedCoordinates } from '../../modeling/xtb/accept-result';
 import { bondOrderObservation, bondOrderStructureKey } from '../../modeling/bond-orders';
+import { validateOptimizationBondOrderObservation } from './bond-order-evidence';
 import { supportsXtbOperation, XTB_METHOD_LABELS } from '../xtb-capabilities';
 import { reindexStructureAtoms } from './graph-reindex';
 import { mapStructureTransformDocument, mapStructureTransformContext } from './structure-transform-document';
@@ -635,9 +636,10 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     if(!issued||!runtimePreviewSourceCurrent(source,current))throw new Error('旧运行来源、冻结编辑链或已签发范围无效，结果未应用。');
     return issued;
   }
-  function emit(next: ModelDocument): ModelDocument {
+  function emit(next: ModelDocument, replacementBondOrders?: { observation?: BondOrderObservation }): ModelDocument {
     if(next.id===current.id&&next.revision===current.revision)inheritRuntimePreviewLineage(current,next);
-    if (activeBondOrders && bondOrderStructureKey(next.draft.structure) !== bondOrderStructureKey(current.draft.structure)) activeBondOrders = undefined;
+    if (replacementBondOrders) activeBondOrders = replacementBondOrders.observation;
+    else if (activeBondOrders && bondOrderStructureKey(next.draft.structure) !== bondOrderStructureKey(current.draft.structure)) activeBondOrders = undefined;
     if (activeBondOrders) next.bondOrderObservation = activeBondOrders;
     else delete next.bondOrderObservation;
     next.draft.baseStructure = freeze(baseline.structure); next.draft.baseAssignments = freeze(baseline.assignments);
@@ -670,7 +672,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
     // A replay restores the recorded token, never fabricates a new association.
     if (operation === 'edit') delete next.analysisBindingId;
   }
-  function commit(next: ModelDocument, touched: string[] = [], createdFrom: Record<string, string> = {}, prepared?: BuilderDraft, stereochemistry = true, preserveProvenance=false, preservePreparation=false,contextChanges?:Record<string,Context>,mappedContexts=false): ModelDocument {
+  function commit(next: ModelDocument, touched: string[] = [], createdFrom: Record<string, string> = {}, prepared?: BuilderDraft, stereochemistry = true, preserveProvenance=false, preservePreparation=false,contextChanges?:Record<string,Context>,mappedContexts=false, replacementBondOrders?: { observation?: BondOrderObservation }): ModelDocument {
     if (linkedGroup && !linkedBypass) linkedGroup.assertTopology(store, next);
     next.draft.structure.dimension ??= 3;
     const inventoryEdit=electronicInventorySignature(current.draft.structure)!==electronicInventorySignature(next.draft.structure);
@@ -679,10 +681,10 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       next.draft.structure.charge=state.charge;next.draft.structure.multiplicity=state.multiplicity;
       next.electronicStateConfirmed=false;
     }
-    if (!preserveProvenance && bondEvidenceGeometryKey(next.draft.structure) !== bondEvidenceGeometryKey(current.draft.structure)) clearBondEvidence(next.draft.structure);
+    if (!preserveProvenance && !replacementBondOrders?.observation && bondEvidenceGeometryKey(next.draft.structure) !== bondEvidenceGeometryKey(current.draft.structure)) clearBondEvidence(next.draft.structure);
     // A converged no-motion result can still provide a real receipt or a port
     // warning. Publish that metadata without a physical revision or Undo step.
-    if (contentKey(next) === contentKey(current)&&(!contextChanges||json(contextChanges)===json(contexts))) return acceptingRuntime||preservePreparation ? emit(next) : current;
+    if (contentKey(next) === contentKey(current)&&(!contextChanges||json(contextChanges)===json(contexts))) return acceptingRuntime||preservePreparation ? emit(next,replacementBondOrders) : current;
     const revision = current.revision + 1;
     const input = prepared ?? { ...clone(current.draft), assignments: clone(next.draft.assignments) };
     // Every atom in the current realtime document is an authoritative anchor.
@@ -722,7 +724,7 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       contexts[scope]={assignments:projected.assignments,coordinates:context.coordinates.filter(row=>row.atomIds.every(id=>ids.has(id)))};
     }
     stamps.clear();
-    return emit(next);
+    return emit(next,replacementBondOrders);
   }
   function stamp(movableAtomIds = getMovableAtomIds(current, 'all')): DocumentStamp {
     const result = makeDocumentStamp(current, movableAtomIds);
@@ -1412,10 +1414,12 @@ export function createModelStore(initial: Structure | null = null, assignments: 
           structure.bondPerceptionIssues=clone(result.bondPerceptionIssues);
           structure.charge=result.charge;structure.multiplicity=result.multiplicity;
           structure.preparation=clone(result.preparation);
+          const observation=clone(command.bondOrderObservation);
+          if(observation)validateOptimizationBondOrderObservation(observation,structure);
           const previous=current.draft.structure;
           next.draft.structure=refreshBuilderStereoAfterNativeChange(previous,structure,()=>graphFingerprint(previous)!==graphFingerprint(structure));
           next.attachmentPorts=transportLocalAttachmentPorts(next.attachmentPorts??[],previous,structure).ports;
-          return commit(next,structure.atoms.map(atom=>atom.id!),{},undefined,false,false,true);
+          return commit(next,structure.atoms.map(atom=>atom.id!),{},undefined,false,false,true,undefined,false,{observation});
         }
         case 'infer-bonds': {
           if (command.stamp) requireStamp(command.stamp);
@@ -1970,6 +1974,13 @@ export function createModelStore(initial: Structure | null = null, assignments: 
       const remapId = (id: string): string => { const mapped = idMap.get(id); if (!mapped) throw new Error('剪贴板引用了未复制对象。'); return mapped; };
       const initialCount = structure.atoms.length;
       structure.atoms.push(...sourceDraft.structure.atoms.map(atom => ({ ...clone(atom), id: remapId(atom.id!), x: atom.x + offset[0], y: atom.y + offset[1], z: atom.z + offset[2] })));
+      if (!initialCount && structure.atoms.length) {
+        const { charge, multiplicity } = sourceDraft.structure;
+        const validSource = charge !== null && multiplicity !== null && !electronicStateError(structure.atoms, charge, multiplicity);
+        structure.charge = validSource ? charge : 0;
+        structure.multiplicity = validSource ? multiplicity : suggestedMultiplicity(structure.atoms, 0);
+        next.electronicStateConfirmed = false;
+      }
       if(extraction)structure.notes.push(periodicAppendNote(extraction,Object.fromEntries(idMap)));
       structure.bonds = [...(structure.bonds ?? []), ...(sourceDraft.structure.bonds ?? []).map(bond => ({ ...clone(bond), a: bond.a + initialCount, b: bond.b + initialCount }))];
       if(sourceDraft.structure.bondPerceptionIssues?.length)structure.bondPerceptionIssues=[...(structure.bondPerceptionIssues??[]),...sourceDraft.structure.bondPerceptionIssues.map(issue=>({...clone(issue),atomIds:issue.atomIds.map(remapId) as [string,string]}))];

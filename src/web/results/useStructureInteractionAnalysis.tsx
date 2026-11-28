@@ -3,7 +3,8 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode
 import { sha256Utf8 } from '../../core/file-identity';
 import type { ModelDocument, ModelStore } from '../../modeling/contracts';
 import type { SurfaceContext } from '../../results/surface-contracts';
-import { createStructureInteractionContext } from '../../results/interaction-structure-context';
+import { createStructureAnalysisContext, createStructureInteractionContext } from '../../results/interaction-structure-context';
+import { hirshfeldClusterFromStructure } from '../../results/hirshfeld-presentation';
 import type { AnalysisSelectionPort } from '../analysis-selection-intent';
 import type { ModelViewportProps } from '../modeling/ModelViewport';
 import type { InteractionDesktopApi } from './interaction-desktop-bridge';
@@ -20,15 +21,23 @@ import PostprocessDisplayPanel from './PostprocessDisplayPanel';
 import { currentStructureAnalysisUnavailable } from './CurrentStructureAnalysisEntry';
 import {useProjectUiSnapshot} from '../../projects/ui-state';
 import {ResultsMcpPlotScope} from './results-mcp-context';
+import HirshfeldAnalysisInstance from './HirshfeldAnalysisInstance';
+import type {HirshfeldProjection} from './hirshfeld-controls-contracts';
+import type {AnalysisColorbarLayout} from './analysis-colorbar-layout';
 
 export interface StructureInteractionAnalysisOptions {
   document: ModelDocument; active: boolean; desktop?: InteractionDesktopApi | null; store?: ModelStore;
+  requestedPage?:{id:string;kind:'surface'};
   capturePort?: AnalysisSelectionPort;
   onOpenScatter?(snapshot: InteractionScatterSnapshot): string|void;
   onExportImage?(): void | Promise<void>; onError(message: string): void;
 }
 interface Owner {
   id: string; key: string; document: ModelDocument; context: SurfaceContext;
+  interactionAvailable:boolean; hirshfeldAvailable:boolean;
+  hirshfeldObserver?:NonNullable<ModelViewportProps['onSurfaceMeshState']>;
+  hirshfeldColorbar?:(layout:AnalysisColorbarLayout)=>void;
+  publishHirshfeld(value:HirshfeldProjection|null):void;
   draftState: NonNullable<InteractionAnalysisControlsProps['draftState']>; pool: InteractionContextPool;
   port?: InteractionInteractionPort;
   bindInteraction(port:InteractionInteractionPort|null):void;
@@ -67,9 +76,11 @@ export function useStructureInteractionAnalysis(options: StructureInteractionAna
 } {
   const latest = useRef(options); latest.current = options;
   const [panelOpen, setPanelOpen] = useState(true);
+  const [surfaceSelected,setSurfaceSelected]=useState(options.requestedPage?.kind==='surface');
   const analysisActive = options.active && panelOpen;
   const analysisActiveRef = useRef(analysisActive); analysisActiveRef.current = analysisActive;
   const [owners, setOwners] = useState<Owner[]>([]), [projections, setProjections] = useState<Record<string, InteractionViewportProjection | null>>({});
+  const [hirshfelds,setHirshfelds]=useState<Record<string,HirshfeldProjection|null>>({});
   const [scatter, setScatter] = useState<StructureInteractionScatterSnapshot[]>([]);
   const retained = useRef(owners); retained.current = owners;
   const savedCitationOwners=useRef<{id:string;context:SurfaceContext}[]|null>(null);
@@ -77,28 +88,36 @@ export function useStructureInteractionAnalysis(options: StructureInteractionAna
   if(savedCitationOwners.current===null)savedCitationOwners.current=Array.isArray(restoredCitationOwners)?restoredCitationOwners:[];
   useLayoutEffect(() => () => { for (const owner of retained.current) void owner.pool.dispose().catch(error => latest.current.onError(String(error instanceof Error ? error.message : error))); }, []);
   const current = useMemo(() => {
-    try { return { key: structureInteractionGeometryKey(options.document), context: createStructureInteractionContext(options.document), error: '' }; }
-    catch (error) { return { key: '', context: null, error: error instanceof Error ? error.message : String(error) }; }
+    const interactionError=currentStructureAnalysisUnavailable(options.document,'interaction');
+    const hirshfeldError=currentStructureAnalysisUnavailable(options.document,'surface');
+    if(interactionError&&hirshfeldError)return {key:'',context:null,error:options.requestedPage?hirshfeldError:interactionError};
+    try{return {key:structureInteractionGeometryKey(options.document),context:createStructureAnalysisContext(options.document),error:'',interactionError,hirshfeldError};}
+    catch(error){return {key:'',context:null,error:error instanceof Error?error.message:String(error),interactionError,hirshfeldError};}
   }, [options.document.id, options.document.revision, options.document.draft.structure]);
-  const owner = owners.find(value => value.key === current.key) ?? null;
+  const sameOwner=(value:Owner)=>value.key===current.key&&value.interactionAvailable===!current.interactionError&&value.hirshfeldAvailable===!current.hirshfeldError;
+  const owner = current.context ? owners.find(sameOwner) ?? null : null;
   useLayoutEffect(() => {
     if (!options.active || !current.context || !current.key || owner) return;
     const snapshot = structuredClone(options.document), context = current.context, id = 'structure-interaction-' + crypto.randomUUID();
     const created: Owner = { id, key: current.key, document: snapshot, context, draftState: {}, pool: createInteractionContextPool(),
+      interactionAvailable:!current.interactionError,hirshfeldAvailable:!current.hirshfeldError,
       publish(value) { if (!value || !sameSurfaceContext(value.context, context)) return;
         setProjections(previous => previous[id] === value ? previous : { ...previous, [id]: value }); },
+      publishHirshfeld(value){if(value&&!sameSurfaceContext(value.context,context))return;
+        setHirshfelds(previous=>(previous[id]??null)===value?previous:{...previous,[id]:value});},
       bindInteraction(port) { created.port = port ?? undefined; },
       bind(observer) { created.observe = observer ?? undefined; } };
-    setOwners(previous => previous.some(value => value.key === created.key) ? previous : [...previous, created]);
+    setOwners(previous => previous.some(sameOwner) ? previous : [...previous, created]);
   }, [options.active, current.key, current.context, owner, owners.length, options.document]);
   const capture = useAnalysisAtomCapture({ ownerId: owner?.id ?? '', structure: options.document.draft.structure,
     documentId: options.document.id, revision: options.document.revision, sourceId: owner?.context.sourceId ?? '',
     sourceRevision: owner?.context.sourceRevision, frameIndex: 0, activationEpoch: owner?.id ?? '',
-    purpose: 'interaction-fragment', active: analysisActive && !!owner, onError: options.onError });
+    purpose: surfaceSelected?'hirshfeld-target':'interaction-fragment', active: analysisActive && !!owner, onError: options.onError });
   const cached = owner ? projections[owner.id] ?? null : null;
-  const projection = analysisActive ? cached : null;
-  const hasResults = !!cached?.generated || !!cached?.contributions;
-  const clear = useCallback(() => { capture.cancel();savedCitationOwners.current=[]; for (const owner of retained.current) void owner.pool.dispose().catch(error => latest.current.onError(String(error instanceof Error ? error.message : error))); setOwners([]); setProjections({}); }, [capture.cancel]);
+  const projection = analysisActive&&!surfaceSelected ? cached : null;
+  const hirshfeld=owner?hirshfelds[owner.id]??null:null;
+  const hasResults = !!cached?.generated || !!cached?.contributions || !!hirshfeld?.result;
+  const clear = useCallback(() => { capture.cancel();savedCitationOwners.current=[]; for (const owner of retained.current) void owner.pool.dispose().catch(error => latest.current.onError(String(error instanceof Error ? error.message : error))); setOwners([]); setProjections({});setHirshfelds({}); }, [capture.cancel]);
   useLayoutEffect(() => {
     if (!hasResults || !owner || !options.store || options.document.analysisBindingId === owner.id) return;
     if (options.document.analysisBindingId && !options.document.analysisBindingId.startsWith('structure-interaction-')) return;
@@ -110,23 +129,27 @@ export function useStructureInteractionAnalysis(options: StructureInteractionAna
       || structureInteractionGeometryKey(now.document) !== owner.key) return;
     // Display is on the current Undo revision; mesh acceptance belongs to the
     // immutable original source owner and preserves its exact request stamp.
-    owner.observe?.(state, { id: owner.document.id, revision: owner.document.revision });
-  }, [owner]);
+    const observe=surfaceSelected?owner.hirshfeldObserver:owner.observe;
+    observe?.(state, { id: owner.document.id, revision: owner.document.revision });
+  }, [owner,surfaceSelected]);
   const viewport = useMemo<Partial<ModelViewportProps>>(() => analysisActive && owner ? {
-    ...structureInteractionViewport(projection, owner.document, options.document), readOnly: true,
+    ...(surfaceSelected?{surfaceLayer:hirshfeld?.surfaceLayer?{...hirshfeld.surfaceLayer,documentId:options.document.id,geometryRevision:options.document.revision}:undefined,
+      hiddenAtomIds:hirshfeld?.hiddenAtomIds,resultColorbar:hirshfeld?.colorbar??undefined,calculationRanges:hirshfeld?.calculationRanges}
+      :structureInteractionViewport(projection, owner.document, options.document)), readOnly: true,
     analysisAtomCapture: capture.viewportCapture, onSurfaceMeshState: mesh,
-    resultColorbarOwnerKey: JSON.stringify([owner.id, owner.context.sourceId, owner.context.sourceRevision, owner.context.jobIndex, owner.context.sourceFrameIndex, owner.context.generation]),
+    resultColorbarOwnerKey: JSON.stringify([owner.id,surfaceSelected, owner.context.sourceId, owner.context.sourceRevision, owner.context.jobIndex, owner.context.sourceFrameIndex, owner.context.generation]),
     onResultColorbarLayoutChange: layout => {
       const current = latest.current;
-      if (analysisActiveRef.current && structureInteractionGeometryKey(current.document) === owner.key) owner.port?.setColorbarLayout?.(layout);
+      if (!analysisActiveRef.current || structureInteractionGeometryKey(current.document) !== owner.key)return;
+      if(surfaceSelected)owner.hirshfeldColorbar?.(layout);else owner.port?.setColorbarLayout?.(layout);
     },
-  } : {}, [analysisActive, owner, projection, options.document, capture.viewportCapture, mesh]);
+  } : {}, [analysisActive, owner, projection, options.document, capture.viewportCapture, mesh,surfaceSelected,hirshfeld]);
   const content = <>
     {options.active && current.error && <DismissibleNotice role="alert">{current.error}</DismissibleNotice>}
-    {owners.map(value => <div key={value.id} hidden={!options.active || value !== owner}>
+    {owners.filter(value=>value.interactionAvailable).map(value => <div key={value.id} hidden={!options.active || value !== owner}>
       <InteractionAnalysisInstance analysisId={value.id} context={value.context} document={null} structure={value.document.draft.structure}
         draftState={value.draftState} contextPool={value.pool}
-        modelDocument={value.document} wavefunctionAvailable={false} active={analysisActive && value === owner}
+        modelDocument={value.document} wavefunctionAvailable={false} active={analysisActive && !surfaceSelected && value === owner}
         available={value === owner} desktop={options.desktop} capturePort={value === owner ? options.capturePort ?? capture.selectionPort : undefined}
         onProjection={value.publish} onMeshObserverReady={value.bind} onInteractionReady={value.bindInteraction} onOpenScatter={options.onOpenScatter ?? (snapshot => {
           if (!sameSurfaceContext(snapshot.context, value.context)) return;
@@ -140,15 +163,22 @@ export function useStructureInteractionAnalysis(options: StructureInteractionAna
     </div>)}
   </>;
   const controls = <section className="analysis-workspace-host" data-testid="structure-interaction-analysis" data-document-id={options.document.id}>
-    <ResultsMcpPlotScope scope={{id:`structure-interaction:${options.document.id}`,ownerId:options.document.id,inline:true}}><AnalysisWorkspace key={options.document.id} sourceId={options.document.id} mcpKey={options.document.id} mcpRunId={owner?.id} initialPage="interaction" active={options.active}
+    <ResultsMcpPlotScope scope={{id:`structure-interaction:${options.document.id}`,ownerId:options.document.id,inline:true}}><AnalysisWorkspace key={options.document.id} sourceId={options.document.id} mcpKey={options.document.id}
+      mcpRunId={page=>page==='interaction'?owner?.id:undefined} initialPage={options.requestedPage?.kind??(current.interactionError&&!current.hirshfeldError?'surface':'interaction')} requestedPage={options.requestedPage} active={options.active}
       unavailableReason={page => currentStructureAnalysisUnavailable(options.document, page)}
-      onActive={id => setPanelOpen(id !== null)} onActivate={() => {}} onError={options.onError}
+      onActive={(id,page) => {setPanelOpen(id !== null);setSurfaceSelected(page==='surface');}} onActivate={() => {}} onError={options.onError}
       render={(instance, active) => <PostprocessDisplayPanel result={null} structure={options.document.draft.structure}
         currentIndex={0} analysisPage={instance.kind} hideEntries active={active} wavefunctionAvailable={false}
         unavailableReason={page => currentStructureAnalysisUnavailable(options.document, page)}
         atomicDisplay={{property:null,color:false,labels:false}} onAtomicDisplay={() => {}}
         dipoleVisible={false} dipoleAvailable={false} onDipoleVisible={() => {}} onOpenPlot={() => {}}
-        interactionControls={content}/>}/></ResultsMcpPlotScope>
+        interactionControls={instance.kind==='interaction'?content:undefined}
+        surfaceControls={instance.kind==='surface'?owners.filter(value=>value.hirshfeldAvailable).map(value=><div key={value.id} hidden={value!==owner}>
+          <HirshfeldAnalysisInstance analysisId={instance.id+':'+value.id} mcpOwnerId={instance.id} context={value.context} structure={value.document.draft.structure}
+            active={active&&value===owner} available={value===owner} capturePort={value===owner?options.capturePort??capture.selectionPort:undefined}
+            onProjection={value.publishHirshfeld} onMeshObserverReady={observer=>{value.hirshfeldObserver=observer??undefined;}}
+            onColorbarLayoutReady={setter=>{value.hirshfeldColorbar=setter??undefined;}} onExportImage={options.onExportImage} onError={options.onError}/>
+        </div>):undefined}/>}/></ResultsMcpPlotScope>
     {scatter.length > 0 && <InteractionStructureScatterDeck snapshots={scatter} ownerId={options.document.id} active={options.active}
       onClose={id => setScatter(previous => previous.filter(value => value.id !== id))}/>}
   </section>;

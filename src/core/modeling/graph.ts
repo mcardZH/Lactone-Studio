@@ -1,4 +1,4 @@
-import type { Bond, Structure, Vector3 } from '../types';
+import type { Atom, Bond, Structure, Vector3 } from '../types';
 import type { BondRef, DeletedBond, ModelDocument } from '../../modeling/contracts';
 import type { BuilderAssignment } from '../builder-draft';
 import { getInputLayerDraftRole, migrateInputLayerDraft, isInputLayerDraft } from '../input-layer-capability';
@@ -36,16 +36,20 @@ export function referenceKey(reference: Pick<BondRef | DeletedBond, 'atomIds' | 
   return bondKey(reference.atomIds, reference.image);
 }
 
-export function graphFingerprint(structure: Structure): string {
+function fingerprintAtomRows<T extends readonly unknown[]>(atoms:readonly Atom[],row:(atom:Atom)=>T,order?:readonly number[]):T[]{
+  return order?order.map(index=>row(atoms[index])):atoms.map(row).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+}
+
+export function graphFingerprint(structure: Structure, atomOrder?:readonly number[]): string {
   return JSON.stringify({
-    atoms: structure.atoms.map(atom => [atom.id, atom.element, atom.formalCharge ?? 0, atom.aromaticHydrogen ?? false]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+    atoms: fingerprintAtomRows(structure.atoms,atom=>[atom.id,atom.element,atom.formalCharge??0,atom.aromaticHydrogen??false],atomOrder),
     bonds: (structure.bonds ?? []).map(bond => [referenceKey(bondReference(structure, bond)), bond.aromatic || bond.order === 1.5 || bond.order === 4 ? 1.5 : bond.order, bond.kind ?? 'covalent', ...(bond.fractional === true ? ['fractional'] : []), ...(bond.orderKnown===false?['unknown-order']:[])]).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
     cell: structure.cell ?? null, charge: structure.charge, multiplicity: structure.multiplicity,
   });
 }
 
-export function coordinatesFingerprint(structure: Structure): string {
-  return JSON.stringify(structure.atoms.map(atom => [atom.id, atom.x, atom.y, atom.z]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+export function coordinatesFingerprint(structure: Structure, atomOrder?:readonly number[]): string {
+  return JSON.stringify(fingerprintAtomRows(structure.atoms,atom=>[atom.id,atom.x,atom.y,atom.z],atomOrder));
 }
 
 /** Auxiliary relations live outside Structure.bonds and cannot join a

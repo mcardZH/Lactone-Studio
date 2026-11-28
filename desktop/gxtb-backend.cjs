@@ -7,6 +7,7 @@ const {randomUUID} = require('node:crypto');
 const os = require('node:os');
 const {assert, string} = require('./security.cjs');
 const {fileIdentity,digest,assertEngineIdentity} = require('./xtb-runtime-contract.cjs');
+const {configurationError,programPathError,writeConfiguration} = require('./backend-configuration.cjs');
 const DOWNLOAD_URL = 'https://github.com/grimme-lab/g-xtb/releases';
 const KNOWN_EXE = 'c2af5f3db91794cc40b5e38712f28f0d24acb9af040abb0bfb627313e926cff6';
 const isSharedLibraryName = name => /\.(?:dll|dylib)$/i.test(name) || /\.so(?:\.\d+)*$/i.test(name);
@@ -36,8 +37,33 @@ function createGxtbBackendStore(root,{spawn=nativeSpawn}={}) {
   const machine=digest([os.hostname(),os.homedir(),process.platform,process.arch]);
   // The 1 MiB probe diagnostic may require sixfold JSON escaping plus path metadata.
   // This bound applies only to the local control record, never scientific results.
-  async function configuration(){try{const stat=await fs.lstat(location);assert(stat.isFile()&&!stat.isSymbolicLink()&&stat.size<=8*1024*1024,'g-xTB 配置文件无效');const value=JSON.parse(await fs.readFile(location,'utf8'));assert(value.schema===1&&(value.path===undefined||string(value.path,4096)),'g-xTB 配置文件无效');return value.machine===machine?value:{schema:1};}catch(error){if(error.code==='ENOENT')return {schema:1};throw error;}}
-  async function selected(executable){assert(string(executable,4096)&&path.isAbsolute(executable),'请选择 g-xTB 程序');const actual=await fs.realpath(executable);const stat=await fs.lstat(actual);assert(stat.isFile(),'所选 g-xTB 程序不可用');if(process.platform!=='win32')assert((stat.mode&0o111)!==0,'所选 g-xTB 程序缺少可执行权限 (chmod +x)');return actual;}
+  async function configuration() {
+    try {
+      const stat = await fs.lstat(location).catch(error => {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      });
+      if (!stat) return { schema: 1 };
+      assert(stat.isFile() && !stat.isSymbolicLink() && stat.size <= 8*1024*1024, 'g-xTB 配置文件无效');
+      const value = JSON.parse(await fs.readFile(location, 'utf8'));
+      assert(value.schema === 1 && (value.path === undefined || string(value.path, 4096)), 'g-xTB 配置文件无效');
+      return value.machine === machine ? value : { schema: 1 };
+    } catch (error) {
+      throw configurationError('GXTB_CONFIGURATION_READ_FAILED', '无法读取已有 g-xTB 配置，已保留原文件。', location, error);
+    }
+  }
+  async function selected(executable) {
+    assert(string(executable, 4096) && path.isAbsolute(executable), '请选择 g-xTB 程序');
+    try {
+      const actual = await fs.realpath(executable);
+      const stat = await fs.lstat(actual);
+      assert(stat.isFile(), '所选 g-xTB 程序不可用');
+      if (process.platform !== 'win32') {
+        assert((stat.mode & 0o111) !== 0, '所选 g-xTB 程序缺少可执行权限 (chmod +x)');
+      }
+      return actual;
+    } catch (error) { throw await programPathError('GXTB', 'g-xTB', executable, error); }
+  }
   async function inventory(executable){const directory=path.dirname(executable),distribution=path.dirname(directory),dataDirectory=path.join(distribution,'share','xtb'),libDirectory=path.join(distribution,'lib');
     const members=[fileIdentity(directory,path.basename(executable))];
     for(const name of (await fs.readdir(directory)).filter(isSharedLibraryName).sort())members.push(fileIdentity(directory,name));
@@ -49,10 +75,24 @@ function createGxtbBackendStore(root,{spawn=nativeSpawn}={}) {
     if(!value.path)return {configured:false,status:'unconfigured'};
     // A completed detection is owned by this selected path. Reading settings
     // does not rerun it or turn an actual failure into an unchecked path.
-    if(['ready','unsupported','detection-failed'].includes(value.detection?.status))return {configured:true,path:value.path,...value.detection};
-    try{const executable=await selected(value.path),files=await inventory(executable);return {configured:true,path:executable,status:'unchecked',...(value.inspection?.executableSha256===files.members[0].sha256&&value.inspection?.runtimeMemberDigest===digest(files.members)&&value.inspection?.parameterDigest===digest(files.parameters)?{status:value.inspection.capable?'ready':'unsupported',hostVersion:value.inspection.hostVersion,gxtbRelease:value.inspection.gxtbRelease,capable:value.inspection.capable,detectionId:value.detection?.detectionId}: {})};}
+    try{const executable=await selected(value.path);if(['ready','unsupported','detection-failed'].includes(value.detection?.status))return {configured:true,path:executable,...value.detection};
+      const files=await inventory(executable);return {configured:true,path:executable,status:'unchecked',...(value.inspection?.executableSha256===files.members[0].sha256&&value.inspection?.runtimeMemberDigest===digest(files.members)&&value.inspection?.parameterDigest===digest(files.parameters)?{status:value.inspection.capable?'ready':'unsupported',hostVersion:value.inspection.hostVersion,gxtbRelease:value.inspection.gxtbRelease,capable:value.inspection.capable,detectionId:value.detection?.detectionId}: {})};}
     catch(error){return {configured:false,path:value.path,status:'program-unavailable',details:String(error.message)};}}
-  function update(fields,expectedPath,expectedEpoch){const task=writing.then(async()=>{const value=await configuration().catch(()=>({schema:1}));if(expectedPath!==undefined&&value.path!==expectedPath||expectedEpoch!==undefined&&expectedEpoch!==detectionEpoch)return info();await fs.mkdir(root,{recursive:true});const temporary=location+'.'+randomUUID()+'.tmp';await fs.writeFile(temporary,JSON.stringify({...value,...fields,machine})+'\n',{encoding:'utf8',flag:'wx'});try{await fs.rename(temporary,location);}catch(error){await fs.unlink(temporary).catch(()=>{});throw error;}return info();});writing=task.catch(()=>{});return task;}
+  function update(fields, expectedPath, expectedEpoch) {
+    const task = writing.then(async () => {
+      const value = await configuration();
+      if (expectedPath !== undefined && value.path !== expectedPath || expectedEpoch !== undefined && expectedEpoch !== detectionEpoch) return info();
+      try {
+        await fs.mkdir(root, { recursive: true });
+        await writeConfiguration(location, { ...value, ...fields, machine });
+      } catch (error) {
+        throw configurationError('GXTB_CONFIGURATION_WRITE_FAILED', '无法保存 g-xTB 配置，已保留原文件。', location, error);
+      }
+      return info();
+    });
+    writing = task.catch(() => {});
+    return task;
+  }
   async function inspect(executable,signal){executable=await selected(executable);const files=await inventory(executable);await fs.mkdir(root,{recursive:true});const workspace=await fs.mkdtemp(path.join(root,'gxtb-inspect-'));let probes;
     try{probes=[];for(const flag of ['--version','--help'])probes.push(await probe(spawn,executable,[flag],files.directory,files.dataDirectory,workspace,signal,files.hasLibDirectory));}
     finally{await fs.rmdir(workspace).catch(()=>{});}
@@ -65,7 +105,7 @@ function createGxtbBackendStore(root,{spawn=nativeSpawn}={}) {
     const release=output.match(/\bg[- ]xtb(?:\s+version|\s+release|\s+v)\s*(\d+\.\d+\.\d+)/i)?.[1]??(files.members[0].sha256===KNOWN_EXE?'2.0.1':null);
     return {executable,files,inspection:{executableSha256:files.members[0].sha256,runtimeMemberDigest:digest(files.members),parameterDigest:digest(files.parameters),capable,hostVersion:host?.[1]??null,hostCommit:host?.[2]??null,gxtbRelease:release},probes};
   }
-  async function detect(){const epoch=++detectionEpoch,value=await configuration();if(!value.path)return info();const detectionId=randomUUID();try{const result=await inspect(value.path),{capable,hostVersion,gxtbRelease}=result.inspection;return update({path:result.executable,inspection:result.inspection,detection:{detectionId,status:capable?'ready':'unsupported',capable,hostVersion,gxtbRelease}},value.path,epoch);}catch(error){return update({inspection:undefined,detection:{status:'detection-failed',detectionId,details:String(error.message)}},value.path,epoch);}}
+  async function detect(){const epoch=++detectionEpoch,value=await configuration();if(!value.path)return info();const detectionId=randomUUID();try{const result=await inspect(value.path),{capable,hostVersion,gxtbRelease}=result.inspection;return update({path:result.executable,inspection:result.inspection,detection:{detectionId,status:capable?'ready':'unsupported',capable,hostVersion,gxtbRelease}},value.path,epoch);}catch(error){if(error.code?.startsWith('GXTB_PROGRAM_'))throw error;return update({inspection:undefined,detection:{status:'detection-failed',detectionId,details:String(error.message)}},value.path,epoch);}}
   async function select(executable){const selectedPath=await selected(executable);detectionEpoch++;return update({path:selectedPath,inspection:undefined,detection:undefined});}
   async function resolve({signal}={}){// Capture configuration before any runtime admission wait at the caller.
     const value=await configuration();assert(value.path,'GXTB_NOT_CONFIGURED: 请先在全局设置中配置 g-xTB 程序（用户自备）');

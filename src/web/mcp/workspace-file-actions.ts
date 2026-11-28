@@ -9,23 +9,42 @@ import { identifyPostprocessSource, postprocessFileJob } from '../../results/pos
 import { postprocessDocumentFileSlots, type PostprocessSlotKey } from '../results/PostprocessSidebar';
 import { isExcitationSlot } from '../results/postprocess-excitation-slots';
 import type { usePostprocessWorkspace } from '../results/usePostprocessWorkspace';
-import { mcpBridge } from './bridge';
-import { toolError, type McCall } from './types';
+import { mcpBridge, presentWorkspaceWindow } from './bridge';
+import { inlineStructureFormats } from './structure-source-tools';
+import { presentationMode, toolError, type McCall, type McpPresentationOrigin } from './types';
 
 export type WorkspaceImportMode = 'auto' | 'analysis' | 'structure';
 export interface WorkspaceImportAgent {
   show: boolean;
   signal: AbortSignal;
-  created(id: string): void;
+  created(id: string, visibleSketch?: boolean): void;
   issues(messages: string[]): void;
+  expectedProjectEpoch?: string;
+  presentation?: Readonly<McpPresentationOrigin>;
+  sourceManifest?: File;
+  sourceNote?: string;
 }
 export interface WorkspaceFileContext {
   importFiles(files: ScientificSourceFile[], mode: WorkspaceImportMode, agent: WorkspaceImportAgent): Promise<void>;
   postprocess(): Pick<ReturnType<typeof usePostprocessWorkspace>, 'read' | 'captureFileDocuments' | 'readExcitationFiles'>;
   modelAttachmentOwners(): readonly ModelAttachmentOwner[];
   attachmentEpoch(): number;
+  presentationOrigin?: () => McpPresentationOrigin;
   captureStructure(target: string | undefined, signal: AbortSignal): Promise<{ document: ModelDocument; source: unknown; assertCurrent?(): void }>;
   chemistry?: ChemistryPort;
+}
+
+export function guardTwoDImport<T>(start: { projectEpoch: number; serial: number; draft: T | null }, current: {
+  projectEpoch: number; serial: number; draft: T | null; visible: boolean;
+}, canPresent: boolean, signal?: AbortSignal): void {
+  signal?.throwIfAborted();
+  if (current.projectEpoch !== start.projectEpoch || current.serial !== start.serial || current.draft !== start.draft) {
+    throw toolError('TWO_D_IMPORT_SUPERSEDED', '二维导入所属项目或草稿已变化，原草稿已保留。');
+  }
+  if (!canPresent && (current.draft || current.visible)) {
+    throw toolError('TWO_D_DRAFT_OCCUPIED', '二维工作台已有草稿，原草稿已保留。需替换时请使用 presentation=follow 并在工作台确认。',
+      { nextAction: 'present-and-confirm-replacement' });
+  }
 }
 
 interface ModelAttachmentOwner {
@@ -85,13 +104,51 @@ function attachedFileJobs(document: PostprocessScientificFileDocument, slots: Re
 
 type SourceReplyItem = { index: number; source: LaunchSourceDescriptor } | { index: number; error: string; code?: string };
 type Opened = { index: number; file: ScientificSourceFile };
-type FileReceipt = { index: number; status: 'opened'; name: string } | { index: number; status: 'failed'; error: string; code?: string };
+type ImportProvenance = { kind: 'inline'; format: string; description?: string } | {
+  kind: 'database'; database: string; recordId: string; url: string; retrievalUrl: string; format: string;
+  recordType?: string; revision?: number; sha256: string; bytes: number; retrievedAt: string;
+};
+type OpenedReceipt = { index: number; status: 'opened'; name: string; provenance?: ImportProvenance };
+type FileReceipt = OpenedReceipt | { index: number; status: 'failed'; error: string; code?: string };
 const formats = getFormatDescriptors({ purpose: 'structure' }).filter(format => format.id !== 'sciyue');
 const humanError = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 function requireText(value: unknown, name: string) {
   if (typeof value !== 'string' || !value.trim()) throw Error(`${name} 需要非空文本。`);
   return value;
+}
+
+function inlineSources(items: unknown[]) {
+  const opened: Opened[] = [], sources: FileReceipt[] = [];
+  items.forEach((item, index) => {
+    if (!item || typeof item !== 'object' || !Object.hasOwn(item, 'text')) return;
+    const { text, format, name: label, source } = item as Record<string, unknown>;
+    try {
+      const content = requireText(text, 'text');
+      if (content.includes('\0')) throw Error('结构正文须为可读文本。');
+      if (typeof format !== 'string' || !inlineStructureFormats.some(value => value === format)) throw Error('请选择 ES 支持的正文结构格式。');
+      const stem = label === undefined ? `structure-${index + 1}` : requireText(label, 'name');
+      if (/[\\/<>:"|?*\x00-\x1f]|[. ]$/.test(stem)) throw Error('name 需要单个文件名或名称，不使用磁盘路径。');
+      const suffix = format === 'poscar' && /\.vasp$/i.test(stem) ? '.vasp' : '.' + format;
+      const name = stem.toLowerCase().endsWith(suffix) ? stem : stem + suffix;
+      const description = source === undefined ? undefined : requireText(source, 'source');
+      const provenance: ImportProvenance = { kind: 'inline', format, ...(description === undefined ? {} : { description }) };
+      opened.push({ index, file: new File([content], name, { type: 'text/plain' }) });
+      sources.push({ index, status: 'opened', name, provenance });
+    } catch (error) {
+      sources.push({ index, status: 'failed', error: humanError(error), code: 'invalid_inline_structure' });
+    }
+  });
+  return { opened, sources };
+}
+
+function provenanceNote(source: ImportProvenance | undefined): string | undefined {
+  if (source?.kind === 'inline') return source.description ? `用户提供的结构来源：${source.description}` : undefined;
+  if (source?.kind === 'database') {
+    const kind = source.recordType === '3d' ? 'PubChem3D 计算构象' : source.recordType === '2d' ? 'PubChem 二维记录'
+      : source.recordType === 'ligand-ideal' ? 'CCD 理想坐标' : source.recordType === 'entry' ? '归档条目坐标' : 'COD 晶体记录';
+    return `${kind} ${source.recordId}${source.revision ? ` 版本 ${source.revision}` : ''} · ${source.retrievalUrl}`;
+  }
 }
 
 async function withSources<T extends object>(call: McCall, consume: (files: Opened[], receipts: FileReceipt[]) => Promise<T>): Promise<T & { cleanupWarnings?: string[] }> {
@@ -163,6 +220,46 @@ async function importGroups(opened: Opened[], mode: WorkspaceImportMode, signal:
 }
 
 export function createWorkspaceFileActions(context: WorkspaceFileContext) {
+  function importOrigin(call: McCall) {
+    return { expectedProjectEpoch: String(context.attachmentEpoch()), presentation: call.presentationOrigin ?? context.presentationOrigin?.() };
+  }
+
+  async function importOpened(opened: Opened[], sources: FileReceipt[], mode: WorkspaceImportMode, args: Record<string, unknown>, call: McCall, origin: ReturnType<typeof importOrigin>) {
+    const presentation = args.presentation === undefined && args.show === false ? 'background' : presentationMode(args);
+    const createdIds: string[] = [];
+    let visibleSketch = false;
+    const errors: { code: string; message: string; data?: unknown }[] = [];
+    const issues = sources.flatMap(row => row.status === 'failed' ? [`文件 ${row.index + 1}：${row.error}`] : []);
+    const provenanced = sources.filter((row): row is OpenedReceipt => row.status === 'opened' && row.provenance !== undefined);
+    const manifest = provenanced.length ? new File([JSON.stringify({ schema: 1, sources: provenanced }, null, 2)], 'ester-studio-import-provenance.json', { type: 'application/json' }) : undefined;
+    for (const files of opened.length ? await importGroups(opened, mode, call.signal) : []) {
+      call.signal.throwIfAborted();
+      if (String(context.attachmentEpoch()) !== origin.expectedProjectEpoch) throw toolError('PROJECT_CHANGED', '导入所属项目已变化。');
+      try {
+        await context.importFiles(files, mode, {
+          ...origin, show: presentation !== 'background', signal: call.signal,
+          created: (id, sketch) => { createdIds.push(id); visibleSketch ||= sketch === true; }, issues: messages => issues.push(...messages),
+          sourceManifest: manifest, sourceNote: opened.length === 1 ? provenanceNote(provenanced[0]?.provenance) : undefined,
+        });
+      } catch (error) {
+        call.signal.throwIfAborted();
+        const message = humanError(error), { code, data } = (error ?? {}) as { code?: string; data?: unknown };
+        issues.push(message);
+        if (typeof code === 'string') errors.push({ code, message, data });
+      }
+    }
+    call.signal.throwIfAborted();
+    if (!createdIds.length && !issues.length) issues.push('导入未创建可用的模型、分析或诊断。');
+    let nativeView;
+    const current = context.presentationOrigin?.();
+    if (presentation === 'foreground' && current?.projectEpoch === origin.expectedProjectEpoch && (visibleSketch || current.activeTarget && createdIds.includes(current.activeTarget))) {
+      try { nativeView = await presentWorkspaceWindow(presentation); }
+      catch (error) { issues.push(humanError(error)); }
+    }
+    return { status: createdIds.length ? issues.length ? 'partial' : 'imported' : 'failed', mode, createdIds, sources, issues,
+      ...(errors.length ? { errors } : {}), ...(nativeView ? { nativeView } : {}) };
+  }
+
   return {
     async importFiles(args: Record<string, unknown>, call: McCall, attach: boolean) {
       if (attach) {
@@ -225,21 +322,44 @@ export function createWorkspaceFileActions(context: WorkspaceFileContext) {
           return { status: 'attached', ...identity, ...(scope === 'scientific-file' ? { sourceId: committedSourceId, selectedJobId: committedSelectedJobId, boundJobIds } : {}), slots, warnings };
         });
       }
-      const mode = actionMode(args.mode);
-      return withSources(call, async (opened, sources) => {
-        const createdIds: string[] = [];
-        const issues = sources.flatMap(row => row.status === 'failed' ? [`文件 ${row.index + 1}：${row.error}`] : []);
-        for (const files of opened.length ? await importGroups(opened, mode, call.signal) : []) {
-          try {
-            await context.importFiles(files, mode, {
-              show: args.show !== false, signal: call.signal, created: id => createdIds.push(id), issues: messages => issues.push(...messages),
-            });
-          } catch (error) { call.signal.throwIfAborted(); issues.push(humanError(error)); }
-        }
+      const origin = importOrigin(call);
+      const items = args.items as unknown[];
+      const inline = inlineSources(items);
+      const mode = inline.sources.length && args.mode === undefined ? 'structure' : actionMode(args.mode);
+      if (inline.sources.length && mode === 'analysis') throw toolError('invalid_import_mode', '结构正文可用 structure 或 auto 导入；分析请指定结果文件。');
+      if (inline.sources.length === items.length) return importOpened(inline.opened, inline.sources, mode, args, call, origin);
+      return withSources(call, (opened, sources) => importOpened([...opened, ...inline.opened].sort((a, b) => a.index - b.index),
+        [...sources, ...inline.sources].sort((a, b) => a.index - b.index), mode, args, call, origin));
+    },
+
+    async structureSource(args: Record<string, unknown>, call: McCall) {
+      const origin = importOrigin(call);
+      call.signal.throwIfAborted();
+      const bridge = mcpBridge();
+      if (!bridge) throw toolError('UNAVAILABLE', '当前窗口没有受管结构库入口。');
+      const response = await bridge.file({ requestId: call.requestId, batchIndex: call.batchIndex, action: 'structure-source' });
+      if (args.action === 'search') {
         call.signal.throwIfAborted();
-        if (!createdIds.length && !issues.length) issues.push('导入未创建可用的模型、分析或诊断。');
-        return { status: createdIds.length ? issues.length ? 'partial' : 'imported' : 'failed', mode, createdIds, sources, issues };
-      });
+        return response;
+      }
+      const { name, bytes, source, original } = response as {
+        name: string; bytes: Uint8Array<ArrayBuffer>; source: Omit<Extract<ImportProvenance, { kind: 'database' }>, 'kind'>;
+        original?: { status: 'written' | 'failed' | 'publication_unconfirmed'; [key: string]: unknown };
+      };
+      try {
+        call.signal.throwIfAborted();
+        const file = new File([bytes], name, { type: 'text/plain' });
+        const provenance: ImportProvenance = { kind: 'database', ...source };
+        const imported = await importOpened([{ index: 0, file }], [{ index: 0, status: 'opened', name, provenance }], 'structure', args, call, origin);
+        if (!original) return imported;
+        const bothComplete = imported.status === 'imported' && original.status === 'written';
+        const bothFailed = imported.status === 'failed' && original.status === 'failed';
+        return { ...imported, status: bothComplete ? 'imported' : bothFailed ? 'failed' : 'partial', importStatus: imported.status, original };
+      } catch (cause) {
+        if (!original) throw cause;
+        const error = cause as { code?: string; data?: unknown };
+        throw toolError(error?.code ?? 'structure_import_interrupted', humanError(cause), { importStatus: 'interrupted', original, cause: error?.data });
+      }
     },
 
     async exportFile(args: Record<string, unknown>, call: McCall) {
@@ -262,7 +382,7 @@ export function createWorkspaceFileActions(context: WorkspaceFileContext) {
       call.signal.throwIfAborted();
       const fileName = automaticFilename(captured.document.draft.structure.name, format === 'poscar' ? 'vasp' : descriptor.extensions[0], { fallback: 'structure' });
       const receipt = await bridge.file({ requestId: call.requestId, batchIndex:call.batchIndex, action: 'write', fileName, bytes: new TextEncoder().encode(text) }) as { status?: string };
-      return { status: receipt.status ?? 'written', format, source: captured.source, losses, receipt };
+      return { status: receipt.status ?? 'written', format, representation: { kind: 'geometry', bondTable: 'omitted' }, source: captured.source, losses, receipt };
     },
   };
 }

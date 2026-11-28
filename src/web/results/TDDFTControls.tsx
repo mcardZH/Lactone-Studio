@@ -6,7 +6,7 @@ import { buildAbsorptionSpectrum, excitedStatesForFrame, MULTIPLICITY_NOTE } fro
 import { InputSettingsCard } from '../InputSettingsFields';
 import { InputSettingsLayout } from '../InputSettingsLayout';
 import SpectroscopyControls, { SpectroscopyTable, type SpectrumBuildOptions } from './SpectroscopyControls';
-import { excitedStateDetails, excitedStateLabel, excitedStateTable, transitionTable } from './spectroscopy-presentation';
+import { excitedStateDetails, excitedStateLabel, excitedStateTable, printedTransitionText, transitionTable } from './spectroscopy-presentation';
 
 export const tddftStateKey=(result:TrajectoryResult,state:ExcitedState)=>JSON.stringify([result.source.id,result.jobIndex,state.frameIndex,state.sourceLine,state.index]);
 function TDDFTControlsInner(p: { result: TrajectoryResult; currentIndex: number;decimals?:number;onDecimalsChange?(value:number):void;selectedStateKey?:string|null;onSelectedState?(state:ExcitedState):void;renderAnalysis?(state:ExcitedState):ReactNode }) {
@@ -36,6 +36,8 @@ function TDDFTControlsInner(p: { result: TrajectoryResult; currentIndex: number;
       <details><summary>来源与组态详情</summary><p className="postprocess-note">{p.result.engine==='orca'?'贡献采用原生组态权重 × 100；没有打印的有符号系数显示为 —。':'受限闭壳层正向激发在占据数可确认时采用 2c² × 100；其余未确认贡献显示为 —。'} 截断列表不重新归一化。</p>
         {state.transitions.map((row,index)=><p className="postprocess-note" key={index}>{row.from} {row.direction??'→'} {row.to} · 系数 {row.amplitude??'—'} · 原生权重 {row.weight??'—'}{row.sourceLine==null?'':` · 源行 ${row.sourceLine}`}</p>)}</details></> : <p className="postprocess-note">此态未输出组态组成。</p>}</InputSettingsCard>
     {states.some(item => item.oscillatorStrength != null && Number.isFinite(item.oscillatorStrength)) ? <SpectroscopyControls kind="uv-vis" title="吸收谱" decimals={decimals} identity={identity} axis={axis} wavelengthAxis fwhmUnit="eV" defaultFwhm={.2} build={build} selectedIndex={states.indexOf(state)} onSelectIndex={index => selectIndex(index, true)}
+      exportRawText={{fileName:'Ester-Studio-printed-transitions.txt',text:()=>printedTransitionText(states,{resultId:p.result.id,source:p.result.source,
+        jobIndex:p.result.jobIndex,frameIndex:p.currentIndex,sourceFrameIndex:p.result.frames[p.currentIndex]?.sourceFrameIndex??p.currentIndex})}}
       sourceIndex={(line, sourceIndex) => {
         const index = states.findIndex(item => item.sourceLine === line && item.index === sourceIndex);
         return index < 0 ? undefined : index;

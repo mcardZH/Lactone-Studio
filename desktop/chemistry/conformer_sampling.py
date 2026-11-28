@@ -209,7 +209,7 @@ def validate_request(raw):
                 and (electrons - (multiplicity-1)) % 2 == 0), 'Source multiplicity/electron parity mismatch')
     else:
         require(integer(request.get('uhf'), 0, 2**53-2), 'Explicit nonnegative integer sampling UHF required')
-        require(False or electrons > 0 and request['uhf'] <= electrons
+        require(electrons > 0 and request['uhf'] <= electrons
                 and (electrons-request['uhf']) % 2 == 0, 'Charge/UHF parity mismatch')
         multiplicity = request['uhf'] + 1
         require('multiplicity' not in structure or integer(structure['multiplicity'], multiplicity, multiplicity),

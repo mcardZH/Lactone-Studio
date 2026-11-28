@@ -55,7 +55,7 @@ export async function captureManagedPostprocessSourceSet(input: { documentId: st
   }
  }
  for (const extra of postprocessSourceExtras(input.document)) { await add(extra.name,'other',extra.sourceId,extra.byteSize,extra.readRange,extra.revision);files.at(-1)!.format=extra.format; }
- for (const { source } of await captureAnalysisOriginalSources(scope)) { const bytes = source.originalBytes; await add(source.name, 'other', source.sourceRevision, bytes.byteLength, async (start, end) => bytes.slice(start, end), source.sourceRevision); files.at(-1)!.format='cube'; }
+ for (const { source } of await captureAnalysisOriginalSources(scope)) { await add(source.name, 'other', source.sourceRevision, source.bytes, (start, end, signal) => { signal?.throwIfAborted(); return source.readRange(start, end - start); }, source.sourceRevision); files.at(-1)!.format='cube'; }
  guard(); if (!files.length) throw Error('当前页没有可取得的原始来源。');
  const sourceVersion = hash(encoder.encode(JSON.stringify(files.map(({ name, role, revision, byteSize }) => [name, role, revision, byteSize]))));
  const sourceSetId = input.sourceSetId ?? 'sources-' + hash(encoder.encode(JSON.stringify([input.documentId, scope.sourceIds]))).slice(0, 32);

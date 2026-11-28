@@ -117,7 +117,9 @@ export function useWorkspaceTools(ports:Ports){
     const list:McTool[]=[];
     const core=new Proxy({} as CoreToolContext,{get:(_,field)=>field==='tools'?()=>list:Reflect.get(live.current.core,field)});
     list.push(...workspaceTools(core),...frameTools(ports.frames),...modelTools(current('model')),
-      ...inputs,...scienceTools(current('science')),...resultTools(current('results')),...vibrationTools(current('results')),...createAuxiliaryTools(current('auxiliary')),createRecommendMethodTool(()=>live.current.core));
+      ...inputs,...scienceTools(current('science')),...resultTools(current('results'),(ref,call)=>core.show({
+        target:{kind:'collection',ref},waitFor:'selected',
+      },call)),...vibrationTools(current('results')),...createAuxiliaryTools(current('auxiliary')),createRecommendMethodTool(()=>live.current.core));
     for(let i=0;i<list.length;i++){
       const tool=list[i];
       list[i]={...tool,call:(args,call)=>{checkToolArguments(tool.argumentValidationSchema??tool.inputSchema,args);return tool.call(args,call);}};

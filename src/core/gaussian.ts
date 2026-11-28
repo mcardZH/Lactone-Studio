@@ -210,7 +210,9 @@ export function validateJob(request: JobRequest): string[] {
   if (files.geometry !== 'allcheck' && !request.electronicStateConfirmed) errors.push('请先确认电荷和自旋多重度。');
   if (files.writeCores && (!Number.isSafeInteger(request.cores) || request.cores < 1)) errors.push('请选择核数，或填写可精确表示的正整数核数。');
   if (files.writeMemory && (!Number.isSafeInteger(request.memoryGB) || request.memoryGB < 1)) errors.push('请选择内存，或填写可精确表示的正整数 GB。');
-  if (request.resourcesConfirmed === false) errors.push('请确认本次输入的核数与内存。');
+  // Input generation needs confirmation only for resource directives it writes.
+  const writesResources = files.writeCores || files.writeMemory || (isXtb(settings.method) && !isZindo(settings));
+  if (writesResources && request.resourcesConfirmed === false) errors.push('请确认本次输入的核数与内存。');
   if (!safeGaussianStem(request.name)) errors.push('任务名只能使用英文字母、数字、点、连字符和下划线，不能含路径、Windows保留设备名或以点结尾。');
   if(isQstTask(settings.task))errors.push('QST2/QST3已撤下新输入生成；历史文件可继续查看。');
   const destination = files.checkpointName.trim() || request.name + '.chk';

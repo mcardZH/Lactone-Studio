@@ -79,7 +79,7 @@ function createFrontendWorkAdmission({ admit, assertCurrent } = {}) {
         } catch (error) {
           if (record.releaseGrant) {
             try { await releaseGrant(record); }
-            catch (releaseError) { if (record.state !== 'cancelled') reject(releaseError); return; }
+            catch (releaseError) { reject(releaseError); throw releaseError; }
           } else remove(record);
           reject(error);
         }
@@ -107,11 +107,17 @@ function createFrontendWorkAdmission({ admit, assertCurrent } = {}) {
     const results = await Promise.allSettled(releases), failed = results.find(result => result.status === 'rejected');
     if (failed) throw failed.reason;
   }
-  async function dispose() {
+  function closeAdmission() {
     disposed = true;
-    const results = await Promise.allSettled([...owners.keys()].map(disposeOwner)), failed = results.find(result => result.status === 'rejected');
+    for (const group of owners.values()) for (const record of group.values()) cancelRecord(record);
+  }
+  async function dispose() {
+    closeAdmission();
+    const pending = [...owners.values()].flatMap(group => [...group.values()].map(record => record.operation));
+    const ownerDrains = [...owners.keys()].map(disposeOwner);
+    const results = await Promise.allSettled([...pending, ...ownerDrains]), failed = results.find(result => result.status === 'rejected');
     if (failed) throw failed.reason;
   }
-  return { acquire, cancel, release, disposeOwner, dispose };
+  return { acquire, cancel, release, closeAdmission, disposeOwner, dispose };
 }
 module.exports = { createFrontendWorkAdmission };

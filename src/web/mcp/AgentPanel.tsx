@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardCopy, ExternalLink, Grip, PanelBottom, PanelRight, TerminalSquare } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardCopy, Download, ExternalLink, Grip, PanelBottom, PanelRight, TerminalSquare } from 'lucide-react';
 import { copyPlainText } from '../clipboard-text';
 import { useWorkbenchFloat } from '../useWorkbenchFloat';
 import AgentAssistant from './AgentAssistant';
@@ -38,6 +38,7 @@ function savedLayout(value?: Partial<Layout>): Layout {
 function Connections({ bridge, state, prompt }: { bridge: ExternalConnectionBridge; state?: ExternalConnectionState; prompt: string }) {
   const [notice, setNotice] = useState('');
   const [showPrompt, setShowPrompt] = useState(false);
+  const [savingSkill, setSavingSkill] = useState(false);
   const promptBox = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (showPrompt) { promptBox.current?.focus(); promptBox.current?.select(); }
@@ -55,10 +56,28 @@ function Connections({ bridge, state, prompt }: { bridge: ExternalConnectionBrid
     }
   }
 
+  async function saveSkill() {
+    if (!bridge.savePublicSkill || savingSkill) return;
+    setSavingSkill(true);
+    setNotice('');
+    try {
+      const result = await bridge.savePublicSkill();
+      if (!result.cancelled) setNotice(`Skill 已保存至 ${result.path}`);
+    } catch (error) {
+      setNotice(agentPanelError(error));
+    } finally {
+      setSavingSkill(false);
+    }
+  }
+
   return <div className="es-agent-connections">
     <div className="es-dock-setup">
       <button type="button" className="es-agent-primary" onClick={() => void copy()}><ClipboardCopy size={15} aria-hidden="true" />复制配置提示词</button>
       <small>粘贴到你的 Agent，填写 ES 位置。首次连接时请在 ES 确认。</small>
+      {bridge.savePublicSkill && <>
+        <button type="button" className="es-dock-skill-save" disabled={savingSkill} onClick={() => void saveSkill()}><Download size={15} aria-hidden="true" />另存 Skill ZIP</button>
+        <small>供外部 Agent 选装。解压后安装整个 ester-studio 文件夹。</small>
+      </>}
       {notice && <span className="es-agent-notice" role="status">{notice}</span>}
       {showPrompt && <div className="es-agent-configuration">
         <textarea aria-label="通用 MCP 配置提示词" readOnly spellCheck={false} rows={5} ref={promptBox} value={prompt} />

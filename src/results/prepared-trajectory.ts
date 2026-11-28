@@ -1,7 +1,7 @@
 import type { Structure } from '../core/types';
 import { assertResultNotAborted, type TrajectoryResult } from './contracts';
 import { markPreparedTrajectoryViewAtoms, trajectoryViewDocument } from './playback';
-import { packedTrajectoryFrame, readPackedTrajectoryFrame, setPackedTrajectoryByteTarget, type PackedTrajectoryFrame } from './packed-trajectory-source';
+import { hasCanonicalPackedTrajectorySource, materializePackedTrajectoryAtoms, materializePackedTrajectoryFrame, packedTrajectoryFrame, readPackedTrajectoryFrame, setPackedTrajectoryByteTarget, type PackedTrajectoryFrame } from './packed-trajectory-source';
 import { prepareFrameRecord, readFrameRecord } from './prepared-frame-record';
 import { trajectoryBinaryAssetPort, TrajectoryPageAsset, type TrajectoryByteRange } from './trajectory-page-assets';
 import { abortableResultRead } from './trajectory-text-reader';
@@ -79,6 +79,16 @@ export function preparedBytes(value: unknown, seen = new Set<object>()): number 
   if (value instanceof ArrayBuffer) return 32 + value.byteLength;
   if (Array.isArray(value)) return 48 + value.length * 8 + value.reduce((sum, entry) => sum + preparedBytes(entry, seen), 0);
   return 64 + Object.entries(value).reduce((sum, [key, entry]) => sum + 16 + key.length * 2 + preparedBytes(entry, seen), 0);
+}
+const packedTopologyBytes=new WeakMap<PackedTrajectoryFrame['topology'],number>();
+function materializedPackedFrameBytes(frame:PackedTrajectoryFrame):number {
+  let topology=packedTopologyBytes.get(frame.topology);
+  if(topology===undefined){topology=preparedBytes(frame.topology);packedTopologyBytes.set(frame.topology,topology);}
+  const count=frame.topology.length;
+  const generatedIdBytes=frame.atomIds?count*(64+2*frame.atomIds.prefix.length)+2*(frame.atomIds.suffixes?.length??count)*12:0;
+  // Three coordinate property slots per atom, plus generated numbering and
+  // the relatively small frame header. This estimate never admits/rejects data.
+  return preparedBytes(frame.header)+topology+count*90+generatedIdBytes;
 }
 function freeze<T>(value: T, seen = new Set<object>()): T {
   if (!value || typeof value !== 'object' || seen.has(value)) return value;
@@ -294,7 +304,7 @@ export class PreparedTrajectorySource {
     const owner = this;
     return Object.freeze({...header,get atoms() {
       if (owner.packedAtoms?.frame !== frame) {
-        owner.packedAtoms = {frame, atoms:freeze(frame.topology.map((atom,i)=>({...atom,...(frame.atomId?{id:frame.atomId(i)}:{}),x:frame.coordinates[i*3],y:frame.coordinates[i*3+1],z:frame.coordinates[i*3+2]})))};
+        owner.packedAtoms = {frame, atoms:materializePackedTrajectoryAtoms(frame,true)};
         markPreparedTrajectoryViewAtoms(owner.packedAtoms.atoms);
       }
       return owner.packedAtoms.atoms;
@@ -357,21 +367,22 @@ export class PreparedTrajectorySource {
     if (!reading) {
       const work = (async () => {
         const trace = { sourceId: this.source.source.id, resultId: this.source.id, sourceFrameIndex: index, workPhase: 'prepared-page' };
-        const bytes = await traceTrajectoryOperation('read', trace, () => page.asset.read(page.range));
-        if (this.closed) throw abortError();
         // The writable preload receipt and raw validation were already checked
         // before this page was published. Reading it does not infer chemistry.
-        const packed = page.sourceCoordinates ? await readPackedTrajectoryFrame(this.source,index) : undefined;
+        const [bytes,packed]=await Promise.all([traceTrajectoryOperation('read',trace,()=>page.asset.read(page.range)),
+          page.sourceCoordinates?readPackedTrajectoryFrame(this.source,index):undefined]);
         if(page.sourceCoordinates&&!packed)throw Error('轨迹准备页缺少已验证的原始坐标。');
         if(this.closed)throw abortError();
-        const original = freeze(readFrameRecord(bytes,index,packed));
+        const restored=readFrameRecord(bytes,index,packed,!!packed);
+        const original=packed?freeze(restored,new Set([restored.raw.atoms])):freeze(restored);
         markPreparedTrajectoryViewAtoms(original.raw.atoms);
         const frame = page.header ? withPreparedHeader(original,page.header.local,page.header.adapter) : original;
         const current = this.entries.get(index);
         if (current) return current;
         if (this.pages.get(index) !== page) throw abortError();
         this.preparer.restorePageProof?.(frame, page.proof);
-        const entry = Object.freeze({ ...frame, bytes: preparedBytes(frame)+192, order: page.order });
+        const ownedEstimate=packed?materializedPackedFrameBytes(packed)+entryBytes(frame)+preparedBytes({raw:geometryFields(frame.raw),display:geometryFields(frame.structure)}):preparedBytes(frame)+192;
+        const entry = Object.freeze({ ...frame, bytes: ownedEstimate, order: page.order });
         this.budget.resize(this.source.source.id, entry.bytes);
         this.retained += entry.bytes; this.peak = Math.max(this.peak,this.retained+this.sharedBytes+this.working);
         if (this.budget === appBudget) retainedMemoryChanged(entry.bytes);
@@ -482,19 +493,24 @@ export class PreparedTrajectorySource {
           reservation = requested;
           // initialStructure may be a collection's reference model, not its
           // first accepted candidate. Every frame uses its indexed geometry.
-          const { raw, projection } = await this.budget.schedule(async () => {
+          const { raw, projection, canonical } = await this.budget.schedule(async () => {
             assertResultNotAborted(job.controller.signal);
             const page = this.pages.get(job.index);
             const existing = this.entries.get(job.index) ?? (page ? await this.openPage(job.index,page,job.controller.signal) : undefined);
             const retained = existing ? undefined : retainedFrames.get(this.source)?.(job.index);
-            const raw = existing?.raw ?? retained ?? await this.source.getFrame(job.index, job.controller.signal);
+            const canonical=!existing&&!retained&&hasCanonicalPackedTrajectorySource(this.source)
+              ?await readPackedTrajectoryFrame(this.source,job.index,job.controller.signal):undefined;
+            const raw = existing?.raw ?? retained ?? (canonical?materializePackedTrajectoryFrame(canonical,true):await this.source.getFrame(job.index, job.controller.signal));
             assertResultNotAborted(job.controller.signal);
-            if (!existing) { trajectoryViewDocument(this.source, raw, job.index); if(!retained)freeze(raw); }
+            if (!existing) {
+              trajectoryViewDocument(this.source,raw,job.index);
+              if(canonical)freeze(raw,new Set([raw.atoms]));else if(!retained)freeze(raw);
+            }
             const projection = await this.preparer.prepareFrame(raw, job.index, job.controller.signal);
-            return { raw, projection };
+            return { raw, projection, canonical };
           });
           assertResultNotAborted(job.controller.signal); if (this.closed) throw abortError();
-          const actualReserve = preparedBytes(raw) * 16 + 4096;
+          const actualReserve = (canonical?materializedPackedFrameBytes(canonical):preparedBytes(raw)) * 16 + 4096;
           if (actualReserve > reservation) { reserve(actualReserve - reservation); reservation = actualReserve; }
           assertResultNotAborted(job.controller.signal); if (this.closed) throw abortError();
           if (!sameGeometry(raw, projection)) throw new Error('预备显示不得改变原帧原子、坐标或电子态。');
@@ -503,12 +519,12 @@ export class PreparedTrajectorySource {
           const rawParts = new Set<object>([raw]);
           for (const value of Object.values(raw)) if (value && typeof value === 'object') rawParts.add(value);
           const structure = projection === raw ? raw : freeze({ ...projection, atoms: raw.atoms }, rawParts);
-          const packed = this.packedGeometry(raw,job.index);
+          const packed = canonical??this.packedGeometry(raw,job.index);
           const displayGraph=packed&&raw!==structure ? this.shareDisplayGraph(structure) : undefined;
           const display=displayGraph ? Object.freeze({...structure,bonds:displayGraph.bonds,
             ...(Object.hasOwn(structure,'bondPerceptionIssues')?{bondPerceptionIssues:displayGraph.issues}:{})}) : structure;
-          const frame = {raw: packed ? this.compactAtoms(raw,packed) : raw,
-            structure: packed ? this.compactAtoms(display,packed) : display, sourceIndex:job.index};
+          const compactRaw=packed?this.compactAtoms(raw,packed):raw;
+          const frame = {raw:compactRaw,structure:display===raw?compactRaw:packed?this.compactAtoms(display,packed):display,sourceIndex:job.index};
           if (packed) this.preparer.onInherited?.(frame,{raw,structure,sourceIndex:job.index});
           const displayGeometry=geometryFields(display);
           if(displayGraph){delete displayGeometry.bonds;delete displayGeometry.bondPerceptionIssues;}

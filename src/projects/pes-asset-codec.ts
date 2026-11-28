@@ -1,4 +1,4 @@
-import { PES_SCHEMA, pesCardParameterDraft, pesSnapshotUsesExecutionProfile, type PesCard, type PesGroup, type PesNode, type PesProjectSnapshot, type PesRun, type PesResult, type PesFrame, type PesPathRecord } from '../modeling/pes/contracts';
+import { PES_SCHEMA, pesCardParameterDraft, persistedPesCard, pesSnapshotUsesExecutionProfile, type PesCard, type PesGroup, type PesNode, type PesProjectSnapshot, type PesRun, type PesResult, type PesFrame, type PesPathRecord } from '../modeling/pes/contracts';
 import { hasSuccessfulWorkbenchResult } from '../modeling/pes/input-state';
 import {PesPathRecordOwner,bindPesPathRecordOwner,pesPathRecordOwner,pesPathRecords,pesPathRecordVersion,validPesPathRecord} from '../modeling/pes/path-records';
 import {sha256Utf8} from '../core/file-identity';
@@ -8,15 +8,21 @@ import {isPesFfModel,pesSnapshotUsesFfModel} from '../modeling/pes/ff-model';
 import type { Structure } from '../core/types';
 import type { ProjectAssetReader, ProjectAssetWriter } from './result-snapshot';
 import {requiresProjectFormat16} from './format16';
+import { numericRowAssetReferences, readNumericRows, writeNumericRows, type NumericRowsAsset } from './numeric-row-assets';
 
-type SavedRun = Omit<PesRun, 'lastSeq' | 'progress' | 'preview' | 'acceptedFrames' | 'status'> & {
+type SavedRun = Omit<PesRun, 'lastSeq' | 'progress' | 'preview' | 'acceptedFrames' | 'status' | 'workerSettled'> & {
   status: 'completed' | 'stopped' | 'failed' | 'interrupted';
+  workerSettled?: boolean;
 };
 type SavedNode = Omit<PesNode, 'followRunId'>;
 type SavedGroup = Omit<PesGroup, 'runs' | 'nodes'> & { nodes: SavedNode[]; runs: Record<string, SavedRun> };
 interface PathCoordinateChunk{assetId:string;start:number;count:number;bytes:number}
 interface PathRecordAsset{groupId:string;runId:string;recordId:string;indexDigest:string;chunks:PathCoordinateChunk[]}
-type SavedPes = { schema: typeof PES_SCHEMA; groups: SavedGroup[];assetVersion?:2;pathAssets?:PathRecordAsset[];assetReferences?:string[] };
+type PesNumericSlot = {kind:'hessian'|'initialHessian'} | {kind:'displacements';modeIndices:number[]};
+type PesNumericSource = PesNumericSlot & {groupId:string;runId:string};
+type PesNumericAsset = PesNumericSource & {asset:NumericRowsAsset};
+type PesNumericDraft = PesNumericSource & {rows:number[][][];columns:number};
+type SavedPes = { schema: typeof PES_SCHEMA; groups: SavedGroup[];assetVersion?:2;pathAssets?:PathRecordAsset[];numericAssets?:PesNumericAsset[];assetReferences?:string[] };
 const persistedPathSources=new WeakMap<PesPathRecordOwner,{assets:PathRecordAsset[];reader:ProjectAssetReader}>();
 const assetName = 'pes-workspace.json';
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -126,7 +132,8 @@ function checkPes(value: unknown): asserts value is SavedPes {
     for (const [runId, run] of Object.entries(group.runs)) {
       if (!run || !['completed', 'stopped', 'failed', 'interrupted'].includes(run.status) ||
           run.request?.schema !== PES_SCHEMA || run.request.runIdentity?.runId !== runId ||
-          run.request.runIdentity.groupId !== group.id) throw invalid();
+          run.request.runIdentity.groupId !== group.id ||
+          run.workerSettled !== undefined && typeof run.workerSettled !== 'boolean') throw invalid();
       checkGeometry(run.source?.structure);
       checkGeometry(run.request.structure);
       if (run.request.ffModel !== undefined && !isPesFfModel(run.request.ffModel)) throw invalid();
@@ -159,6 +166,34 @@ function checkPes(value: unknown): asserts value is SavedPes {
 function savedNodeRun(group: SavedGroup, node: SavedNode, id: string): SavedRun | undefined {
   const run = Object.hasOwn(group.runs, id) ? group.runs[id] : undefined;
   if (run?.nodeId === node.id && run.request.id === id && run.request.runIdentity.taskId === node.id) return run;
+}
+
+function matchesSavedOptTerminal(run: SavedRun): boolean {
+  if (run.request.operation !== 'opt' || !run.result) return false;
+  const last = run.result?.frames.at(-1);
+  const observation = recordValue(run.result?.finalObservation);
+  return last?.seriesId === 'opt' && observation?.id === last.id && observation.seriesId === last.seriesId &&
+    observation.step === last.step && observation.energyHartree === last.energyHartree;
+}
+
+function savedOptRetainsTrajectory(run: SavedRun): boolean {
+  if (run.request.operation !== 'opt') return false;
+  if (run.retainTrajectory === true) return true;
+  // Older indexes omitted the flag and only kept OPT frames for retained runs.
+  return run.status !== 'interrupted' && matchesSavedOptTerminal(run);
+}
+
+function savedWorkerSettled(group: SavedGroup, id: string, run: SavedRun): true | undefined {
+  if (run.status === 'interrupted') return;
+  if (run.workerSettled !== undefined) return run.workerSettled || undefined;
+  // Previously saved OPT records dropped the flag. A closed producer and its
+  // verified terminal observation can be reconstructed from this exact owner.
+  if (run.error || !matchesSavedOptTerminal(run)) return;
+  const resultStatus=run.result!.status;
+  const terminal=run.status==='completed'&&['completed','converged','not-converged','unconverged'].includes(resultStatus) ||
+    run.status==='stopped'&&resultStatus==='stopped';
+  const node=terminal&&group.nodes.find(row=>row.id===run.nodeId&&row.runIds.includes(id));
+  if(node&&savedNodeRun(group,node,id)===run)return true;
 }
 
 /** Older assets did not write the marker. Require evidence that the node
@@ -211,7 +246,7 @@ function savedPesIndex(snapshot: PesProjectSnapshot): SavedPes | undefined {
   if (!snapshot.groups.length) return;
   const groups: SavedGroup[] = snapshot.groups.map(group => ({
     ...group,
-    cards: group.lifecycleVersion === 'v223' ? group.cards.map(pesCardParameterDraft) : group.cards,
+    cards: group.lifecycleVersion === 'v223' ? group.cards.map(card => persistedPesCard(group.id, card)) : group.cards,
     ...(group.cardDrafts ? {cardDrafts:Object.fromEntries(Object.entries(group.cardDrafts).map(([key,card])=>[key,pesCardParameterDraft(card)]))} : {}),
     nodes: group.nodes.map(({ followRunId: _followRunId, ...node }) => node),
     runs: Object.fromEntries(Object.entries(group.runs).map(([id, run]): [string, SavedRun] => {
@@ -223,6 +258,8 @@ function savedPesIndex(snapshot: PesProjectSnapshot): SavedPes | undefined {
         ...(run.pathRecords===undefined?{}:{pathRecords:undefined}),...(run.scanPoints===undefined?{}:{scanPoints:undefined})}:result;
       return [id, { request: run.request, source: run.source, inputSources: run.inputSources,
         nodeId: run.nodeId, status, result:savedResult, error: run.error,
+        ...(status!=='interrupted'&&run.workerSettled!==undefined?{workerSettled:run.workerSettled}:{}),
+        ...(run.request.operation === 'opt' && run.retainTrajectory === true ? { retainTrajectory: true as const } : {}),
         ...(run.supersededByRunId === undefined ? {} : { supersededByRunId: run.supersededByRunId }),
         ...(run.pathRecords===undefined?{}:{pathRecords:run.pathRecords}),...(run.scanPoints===undefined?{}:{scanPoints:run.scanPoints}) }];
     })),
@@ -240,6 +277,82 @@ function stringifyIndex(data: SavedPes): string {
         ![Object.prototype, null].includes(Object.getPrototypeOf(part))) throw invalid();
     return part;
   });
+}
+
+function numericRows(value:unknown, columns:number): number[][] | undefined {
+  if (!Array.isArray(value) || !value.every(row=>Array.isArray(row)&&row.length===columns)) return;
+  return fixedNumericRows.has(value) ? value : value.map(row=>row.slice());
+}
+
+function detachNumericRows(data:SavedPes):PesNumericDraft[] {
+  const drafts:PesNumericDraft[]=[];
+  for (const group of data.groups) for (const [runId,run] of Object.entries(group.runs)) {
+    const identity={groupId:group.id,runId};
+    const withoutMatrix=(value:unknown,kind:'hessian'|'initialHessian')=>{
+      const owner=recordValue(value),matrix=owner?.matrixHartreePerBohr2;
+      if (!Array.isArray(matrix)) return value;
+      const rows=numericRows(matrix,matrix.length);
+      if (!rows) return value;
+      drafts.push({...identity,kind,rows:[rows],columns:matrix.length});
+      return {...owner,matrixHartreePerBohr2:undefined};
+    };
+    const parameters=run.request.parameters;
+    const initialHessian=withoutMatrix(parameters.initialHessian,'initialHessian');
+    if(initialHessian!==parameters.initialHessian)run.request={...run.request,parameters:{...parameters,initialHessian}};
+    const result=run.result;
+    if (!result) continue;
+    const hessian=withoutMatrix(result.hessian,'hessian'),modeRows:number[][][]=[],modeIndices:number[]=[];
+    const frequencies=Array.isArray(result.frequencies)?result.frequencies.map((mode:unknown,index)=>{
+      const owner=recordValue(mode),rows=numericRows(owner?.displacements,3);
+      if (rows?.length!==run.request.structure.atoms.length) return mode;
+      modeRows.push(rows);modeIndices.push(index);
+      return {...owner,displacements:undefined};
+    }):result.frequencies;
+    if (modeRows.length) drafts.push({...identity,kind:'displacements',modeIndices,rows:modeRows,columns:3});
+    run.result={...result,hessian,frequencies};
+  }
+  return drafts;
+}
+
+function numericDestinations(data:SavedPes, format19:boolean) {
+  if (data.numericAssets===undefined) return [];
+  if (!format19) throw Error('势能面数值资产缺少格式 19 写入保护声明，原资产引用已保留。');
+  if (!Array.isArray(data.numericAssets) || !data.numericAssets.length || data.assetVersion!==2) throw invalid();
+  const groups=new Map(data.groups.map(group=>[group.id,group])),used=new Set<string>();
+  return data.numericAssets.map(entry=>{
+    if (!entry || !['hessian','initialHessian','displacements'].includes(entry.kind)) throw invalid();
+    const group=groups.get(entry.groupId);
+    const run=group&&Object.hasOwn(group.runs,entry.runId)?group.runs[entry.runId]:undefined;
+    const identity=JSON.stringify([entry.groupId,entry.runId,entry.kind]);
+    if(!run||used.has(identity))throw invalid();
+    used.add(identity);
+    const ids=numericRowAssetReferences(entry.asset);
+    if (entry.kind==='displacements') {
+      const { modeIndices }=entry, modes=run.result?.frequencies, atoms=run.request.structure.atoms.length;
+      if (!Array.isArray(modes) || !Array.isArray(modeIndices) || !modeIndices.length ||
+          modeIndices.some((index,i)=>!Number.isSafeInteger(index)||index<0||index>=modes.length||i>0&&index<=modeIndices[i-1]) ||
+          entry.asset.rows!==modeIndices.length*atoms || entry.asset.columns!==3) throw invalid();
+      const owners=modeIndices.map(index=>recordValue(modes[index]));
+      if (owners.some(owner=>!owner||Object.hasOwn(owner,'displacements'))) throw invalid();
+      return {entry,ids,put(rows:number[][]){
+        owners.forEach((owner,index)=>{owner!.displacements=rows.slice(index*atoms,(index+1)*atoms);});
+      }};
+    }
+    const owner=recordValue(entry.kind==='initialHessian'?run.request.parameters.initialHessian:run.result?.hessian);
+    if (!owner || Object.hasOwn(owner,'matrixHartreePerBohr2') || entry.asset.rows!==entry.asset.columns) throw invalid();
+    return {entry,ids,put(rows:number[][]){owner.matrixHartreePerBohr2=rows;}};
+  });
+}
+
+function validateAssetReferences(data:SavedPes, references:readonly string[], numericIds:readonly string[]):void {
+  if (data.assetReferences?.length!==references.length || data.assetReferences?.some(id=>!references.includes(id))) {
+    if (data.assetReferences===undefined&&!references.length)return;
+    throw invalid();
+  }
+  if (data.numericAssets) {
+    const used=new Set([...numericIds,...(data.pathAssets??[]).flatMap(asset=>asset.chunks.map(chunk=>chunk.assetId))]);
+    if (used.size!==references.length||references.some(id=>!used.has(id))) throw invalid();
+  }
 }
 
 /** Capture the accepted scientific DTO before the first asynchronous write. */
@@ -288,16 +401,18 @@ async function readPathFrames(reader:ProjectAssetReader,row:PathRecordAsset,reco
   }
   return frames;
 }
-export interface PesAssetCapture{assetId?:string;assetReferences:string[];requiresFormat11:boolean;requiresFormat12:boolean;requiresFormat13?:boolean;requiresFormat15?:boolean;requiresFormat16?:boolean;commit?():void}
+export interface PesAssetCapture{assetId?:string;assetReferences:string[];requiresFormat11:boolean;requiresFormat12:boolean;requiresFormat13?:boolean;requiresFormat15?:boolean;requiresFormat16?:boolean;requiresFormat19?:boolean;commit?():void}
 interface PreparedPesIndex{
   json:string;
   expected:Map<string,PathIndexCheck>;
   pathSources:{owner:PesPathRecordOwner;groupId:string;runId:string;records:readonly PesPathRecord[]}[];
-  formats:Pick<PesAssetCapture,'requiresFormat11'|'requiresFormat12'|'requiresFormat13'|'requiresFormat15'|'requiresFormat16'>;
+  numericDrafts:PesNumericDraft[];
+  formats:Pick<PesAssetCapture,'requiresFormat11'|'requiresFormat12'|'requiresFormat13'|'requiresFormat15'|'requiresFormat16'|'requiresFormat19'>;
 }
 
-export function preparePesIndex(snapshot:PesProjectSnapshot):PreparedPesIndex|null{
+export function preparePesIndex(snapshot:PesProjectSnapshot,options?:{numeric?:boolean}):PreparedPesIndex|null{
   const data=savedPesIndex(snapshot);if(!data)return null;
+  const numericDrafts=options?.numeric?detachNumericRows(data):[];
   const expected=expectedPathIndex(data),pathSources:PreparedPesIndex['pathSources']=[];
   if(expected.size)for(const group of snapshot.groups)for(const[runId,run]of Object.entries(group.runs)){
     const records=pesPathRecords(run);if(!records.length)continue;
@@ -311,15 +426,17 @@ export function preparePesIndex(snapshot:PesProjectSnapshot):PreparedPesIndex|nu
     requiresFormat13:snapshot.groups.some(group=>group.lifecycleVersion==='v223'||Object.values(group.runs).some(run=>run.request.parameters.pathSemantics==='v223')),
     requiresFormat15:pesSnapshotUsesFfModel(snapshot),
     requiresFormat16:requiresProjectFormat16(snapshot),
+    requiresFormat19:numericDrafts.length>0,
   };
-  return{json:stringifyIndex(data),expected,pathSources,formats};
+  return{json:stringifyIndex(data),expected,pathSources,numericDrafts,formats};
 }
 
 /** One complete round is read at a time; the index is committed by the existing
  * project transaction only after every referenced immutable chunk is written. */
 export async function capturePesAsset(snapshot:PesProjectSnapshot,writer:ProjectAssetWriter,reuse:boolean,capture?:PreparedPesIndex|null,reader?:ProjectAssetReader):Promise<PesAssetCapture>{
-  const prepared=capture===undefined?preparePesIndex(snapshot):capture;if(!prepared)return{assetReferences:[],requiresFormat11:false,requiresFormat12:false};
-  if(!prepared.expected.size)return{assetId:await writePesAsset(writer,prepared.json),assetReferences:[],...prepared.formats};
+  const prepared=capture===undefined?preparePesIndex(snapshot,{numeric:!!writer.writeRange}):capture;
+  if(!prepared)return{assetReferences:[],requiresFormat11:false,requiresFormat12:false};
+  if(!prepared.expected.size&&!prepared.numericDrafts.length)return{assetId:await writePesAsset(writer,prepared.json),assetReferences:[],...prepared.formats};
   const pathAssets:PathRecordAsset[]=[],references=new Set<string>();
   for(const {owner,groupId,runId,records} of prepared.pathSources){
     const persisted=persistedPathSources.get(owner);
@@ -344,7 +461,16 @@ export async function capturePesAsset(snapshot:PesProjectSnapshot,writer:Project
       }finally{lease.release();}
     }
   }
-  const appendix={assetVersion:2 as const,pathAssets,assetReferences:[...references]};checkPathAssets(appendix,prepared.expected);
+  const numericAssets:PesNumericAsset[]=[];
+  for(const {rows,columns,...destination} of prepared.numericDrafts){
+    const total=rows.reduce((count,group)=>count+group.length,0);
+    const orderedRows=(function*(){for(const batch of rows)yield* batch;})();
+    const asset=await writeNumericRows(writer,`pes-${destination.kind}.f64`,orderedRows,total,columns);
+    for(const id of numericRowAssetReferences(asset))references.add(id);
+    numericAssets.push({...destination,asset});
+  }
+  const appendix={assetVersion:2 as const,pathAssets,assetReferences:[...references],
+    ...(numericAssets.length?{numericAssets}:{})};checkPathAssets(appendix,prepared.expected);
   const index=prepared.json.slice(0,-1)+','+JSON.stringify(appendix).slice(1);
   return{assetId:await writePesAsset(writer,index),assetReferences:[...references],...prepared.formats,commit:reader?()=>{
     for(const source of prepared.pathSources){const assets=pathAssets.filter(row=>row.groupId===source.groupId&&row.runId===source.runId);
@@ -358,7 +484,7 @@ export async function capturePesAsset(snapshot:PesProjectSnapshot,writer:Project
 export class WorkspacePesAsset {
   private reference: { assetId?: string;assetReferences:string[] };
 
-  constructor(assetId: string, private readonly reader: ProjectAssetReader,assetReferences:readonly string[]=[],private format11=false,private format12=false,private format13=false,private format15=false,private format16=false) {
+  constructor(assetId: string, private readonly reader: ProjectAssetReader,assetReferences:readonly string[]=[],private format11=false,private format12=false,private format13=false,private format15=false,private format16=false,private format19=false) {
     this.reference = { assetId,assetReferences:[...assetReferences] };
   }
 
@@ -369,8 +495,9 @@ export class WorkspacePesAsset {
   get requiresFormat13(){return this.format13;}
   get requiresFormat15(){return this.format15;}
   get requiresFormat16(){return this.format16;}
+  get requiresFormat19(){return this.format19;}
 
-  rebind(assetId?: string,assetReferences:readonly string[]=this.reference.assetReferences,format11=this.format11,format12=this.format12,format13=this.format13,format15=this.format15,format16=this.format16): void { this.reference = { assetId,assetReferences:[...assetReferences] };this.format11=format11;this.format12=format12;this.format13=format13;this.format15=format15;this.format16=format16; }
+  rebind(assetId?: string,assetReferences:readonly string[]=this.reference.assetReferences,format11=this.format11,format12=this.format12,format13=this.format13,format15=this.format15,format16=this.format16,format19=this.format19): void { this.reference = { assetId,assetReferences:[...assetReferences] };this.format11=format11;this.format12=format12;this.format13=format13;this.format15=format15;this.format16=format16;this.format19=format19; }
 
   private async verifiedBytes(assetId: string): Promise<Uint8Array> {
     return verifiedAsset(this.reader,assetId);
@@ -382,8 +509,17 @@ export class WorkspacePesAsset {
     const bytes=await this.verifiedBytes(assetId);
     const protectedData=JSON.parse(decoder.decode(bytes));
     if(requiresProjectFormat16(protectedData)&&!this.format16)throw Error('CALC计算记录缺少格式 16 写入保护声明，原资产引用已保留。');
-    if(assetReferences.length){checkPes(protectedData);checkPathAssets(protectedData,expectedPathIndex(protectedData));if(protectedData.assetReferences?.length!==assetReferences.length||protectedData.assetReferences.some(id=>!assetReferences.includes(id)))throw invalid();}
-    for(const id of assetReferences){const chunk=await this.verifiedBytes(id);if((await writer.write('trajectories',`pes-${id}.json`,chunk)).assetId!==id)throw Error('路径轮另存回执与原始资产不一致。');}
+    const numericIds=new Set<string>();
+    if(assetReferences.length||protectedData?.numericAssets!==undefined){
+      checkPes(protectedData);checkPathAssets(protectedData,expectedPathIndex(protectedData));
+      for(const {ids} of numericDestinations(protectedData,this.format19))for(const id of ids)numericIds.add(id);
+      validateAssetReferences(protectedData,assetReferences,[...numericIds]);
+    }
+    for(const id of assetReferences){
+      const chunk=await this.verifiedBytes(id),numeric=numericIds.has(id);
+      if((await writer.write(numeric?'results':'trajectories',`pes-${id}.${numeric?'f64':'json'}`,chunk)).assetId!==id)
+        throw Error('势能面分块另存回执与原始资产不一致。');
+    }
     const saved = await writePesAsset(writer,bytes);
     if (saved !== assetId) throw Error('势能面项目资产另存回执与来源不一致。');
     return saved;
@@ -401,6 +537,16 @@ export class WorkspacePesAsset {
         if(requiresProjectFormat16(data)&&!this.format16)throw Error('CALC计算记录缺少格式 16 写入保护声明，原资产引用已保留。');
         if (pesSnapshotUsesFfModel(data) && !this.format15) throw Error('固定力场模型缺少格式 15 写入保护声明，原资产引用已保留。');
         checkPathAssets(data,expectedPathIndex(data));
+        if(data.numericAssets!==undefined){
+          const numeric=numericDestinations(data,this.format19);
+          validateAssetReferences(data,reference.assetReferences,numeric.flatMap(destination=>destination.ids));
+          for(const {entry,put}of numeric){
+            const asset=entry.asset;
+            put(await readNumericRows(this.reader,asset,{rows:asset.rows,columns:asset.columns}));
+            if(reference!==this.reference)break;
+          }
+          if(reference!==this.reference)continue;
+        }
         const snapshot:PesProjectSnapshot={
           schema: data.schema,
           groups: data.groups.map(group => {
@@ -409,11 +555,14 @@ export class WorkspacePesAsset {
               ...group,
               runs: Object.fromEntries(Object.entries(group.runs).map(([id, run]) => {
                 const supersededByRunId = retirements.get(id);
+                const workerSettled = savedWorkerSettled(group,id,run);
                 return [id, {
                   request: run.request, source: run.source, nodeId: run.nodeId, status: run.status,
+                  ...(workerSettled===undefined?{}:{workerSettled}),
                   ...(run.inputSources === undefined ? {} : { inputSources: run.inputSources }),
                   ...(run.result === undefined ? {} : { result: run.result }),
                   ...(run.error === undefined ? {} : { error: run.error }),
+                  ...(savedOptRetainsTrajectory(run) ? { retainTrajectory: true as const } : {}),
                   ...(supersededByRunId === undefined ? {} : { supersededByRunId }),
                   ...(run.pathRecords===undefined?{}:{pathRecords:run.pathRecords}),...(run.scanPoints===undefined?{}:{scanPoints:run.scanPoints}),
                   lastSeq: -1,

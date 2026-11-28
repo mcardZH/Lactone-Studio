@@ -65,6 +65,7 @@ export function optimizationActionView(task:AdvancedTaskRecord|undefined,stageId
     retainedStage, blockedByRetainedBatch:Boolean(retainedStage)&&!oldNativeFreezeRejection,
     adoptionErrorKind:retainedStage?retainedStage.adoptionError?.kind??'read' as const:undefined,
     cleanupWarning:latestStage?.batchCleanupWarning,
+    diagnosticWarning:latestStage?.batchProgress?.diagnosticWarning,
     finalClusterCount:latestStage?.status==='completed'&&!ownsBackground?latestStage.clustering?.groups.reduce((count,group)=>count+group.clusters.length,0):undefined,
     equivalence:latestStage?.status==='completed'&&!ownsBackground?latestStage.clustering?.equivalence:undefined,
     partialFrames:stage?.resultFrameIds?.length??0,

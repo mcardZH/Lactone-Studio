@@ -30,10 +30,10 @@ import { initialConformerStageMethod, restoreConformerTaskDraft } from "./confor
 import type { ConformerOptimizationDraft } from "./ConformerOptimizationStages";
 import type { ConformerTorsionDraft } from "./ConformerTorsionControls";
 import {conformerSolvationDraftIssue} from './conformer-solvation-draft';
-import {validConformerOptimizer} from '../../modeling/advanced/conformer-shared-optimization';
+import {DEFAULT_CONFORMER_CONVERGENCE,conformerOptimizerAvailable,defaultConformerOptimizer,validConformerOptimizer} from '../../modeling/advanced/conformer-shared-optimization';
 import {isPesNetMethod} from '../../modeling/pes/contracts';
-import {periodicPesOperationAvailable} from '../../modeling/pes/periodic-capabilities';
 import {conformerAlpbPresets} from '../../modeling/advanced/conformer-solvation';
+import {validXtbResourceOverride} from '../../modeling/resource-preferences';
 
 export type MixedSamplingChoice = "md" | "metadynamics" | "conformer-search";
 export const MIXED_SAMPLING_CHOICES = [
@@ -107,19 +107,22 @@ export function compileConformerStageMethod(draft: ConformerOptimizationDraft["m
 	if (isPesNetMethod(draft.method)) throw Error('此版本提供 xTB 计算，请为此构象优化级选择可用方法。');
 	if (draft.retiredMethod) throw Error("请为此构象优化级重新选择计算级别。");
 	if (!Number.isSafeInteger(threads) || threads < 1) throw Error("线程数须为正整数。");
-	const optimizer={algorithm:draft.optimizer??'lbfgs' as const,convergencePreset:draft.convergencePreset??'loose',
+	const optimizer={algorithm:draft.optimizer??defaultConformerOptimizer(draft.method,periodic,draft.convergencePreset),convergencePreset:draft.convergencePreset??DEFAULT_CONFORMER_CONVERGENCE,
 		...(draft.convergencePreset==='custom'&&draft.convergenceLimits?{convergenceLimits:draft.convergenceLimits}:{})};
 	if(!validConformerOptimizer(optimizer))throw Error('请填写有效的构象优化收敛限度。');
 	const maxSteps=draft.maxSteps??500;
 	if(!Number.isSafeInteger(maxSteps)||maxSteps<1)throw Error('最大优化步数须为正整数。');
-	if(periodic&&!periodicPesOperationAvailable(draft.method,'opt',optimizer.algorithm))throw Error('所选级别与优化算法不适用于固定晶胞。');
+	if(!conformerOptimizerAvailable(draft.method,periodic,optimizer.algorithm))throw Error('所选计算级别或优化算法不适用于当前体系。');
 	const solvationModel=periodic||!conformerAlpbPresets(draft.method).length?'none':draft.solvationModel;
 	const solventIssue=conformerSolvationDraftIssue(draft.method,{...draft,solvationModel});
 	if(solventIssue)throw Error(solventIssue);
 	const maxSccIterations=['gfn1','gfn2','gxtb'].includes(draft.method)?draft.sccIterationLimit:undefined;
 	if(maxSccIterations!==undefined&&(!Number.isSafeInteger(maxSccIterations)||maxSccIterations<1))throw Error('SCC 迭代上限须为正整数。');
+	const xtbBatchParallelism=draft.resourceOverrides?.xtbBatchParallelism;
+	if(!validXtbResourceOverride(xtbBatchParallelism))throw Error('xTB 批量并行数须为正整数。');
 	return { backend: "xtb", options: {
 		method: draft.method, threads, maxSteps,
+		...(xtbBatchParallelism===undefined?{}:{resourceOverrides:{xtbBatchParallelism}}),
 		solvent: solvationModel === "none" ? "none" : draft.solvent,
 		internalConstraintsConfirmed: draft.internalConstraintsConfirmed,
 		...(maxSccIterations!==undefined&&draft.sccIterationLimitExplicit?{maxSccIterations}:{}),

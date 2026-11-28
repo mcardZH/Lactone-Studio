@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Structure } from '../../core/types';
 import type { SurfaceContext } from '../../results/surface-contracts';
 import { sameSurfaceContext } from '../../results/surface-field';
-import { hirshfeldClusterFromStructure, hirshfeldSelection } from '../../results/hirshfeld-presentation';
+import { hirshfeldClusterFromStructure, hirshfeldContactKey, hirshfeldContactLabel, hirshfeldContactOptions, hirshfeldSelection } from '../../results/hirshfeld-presentation';
 import type { AnalysisSelectionPort } from '../analysis-selection-intent';
 import { ANALYSIS_PALETTES } from './analysis-display';
 import { hirshfeldFingerprintSourceKey, initialHirshfeldState, type HirshfeldControlsState, type HirshfeldProjection, type HirshfeldFingerprintSnapshot } from './hirshfeld-controls-contracts';
@@ -23,8 +23,11 @@ import { notifyAnalysisProjectStateChanged, rebindAnalysisContext, useAnalysisPr
 import { exportSavedCube } from './export-saved-cube';
 import {prepareHirshfeldDisplayRanges} from './hirshfeld-range-display';
 import {ResultsMcpPortRegistration} from './results-mcp-context';
-import {patchColorbarLayout,patchMeshFinish,settingArray,settingBool,settingColor,settingColorbarLayout,settingColorRange,settingDecimals,settingEnum,settingMeshFinish,settingText,validateColorRange} from './analysis-mcp-settings';
+import {patchColorbarLayout,patchMeshFinish,settingArray,settingBool,settingColor,settingColorbarLayout,settingColorRange,settingDecimals,settingEnum,settingMeshFinish,settingNumberFormat,settingText,validateColorRange} from './analysis-mcp-settings';
 import {analysisCube,analysisText} from './analysis-mcp-assets';
+import {hirshfeldContactTable} from './hirshfeld-contact-table';
+import {scientificTableText} from './scientific-table';
+import {hirshfeldAppearance} from './surface-appearance';
 import {objectSchema} from '../mcp/types';
 
 export interface HirshfeldAnalysisInstanceProps { analysisId: string; mcpOwnerId?:string; context: SurfaceContext; structure: Structure; active: boolean; available?: boolean;
@@ -177,8 +180,12 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
   }
     void owner.exportField(role).catch(error => latest.current.onError(String(error instanceof Error ? error.message : error))); };
   const analyzeIssue=!p.active||p.available===false?'当前分析尚未激活。':admission.error||resourceReadError||(!desktop||!admission.cluster||!resourceDefaults?'Hirshfeld 来源或本机资源尚未准备完成。':'');
+  const contactOptions=(merged:boolean)=>(current.result?hirshfeldContactOptions(current.result,merged):[]).map(focus=>({
+    key:hirshfeldContactKey(focus.insideElement,focus.outsideElement,merged),label:hirshfeldContactLabel(focus),focus,
+  }));
   const mcpPort=<ResultsMcpPortRegistration kind="runs" id={p.active?p.mcpOwnerId??p.analysisId:null} port={{
-    sourceRevision:JSON.stringify([key,current.targetIds,current.mode,current.spacingBohr,current.showRange,current.decimals,current.merged,current.selectedContact,current.plotDisplay,current.display,current.result?.stamp.requestId]),
+    sourceRevision:JSON.stringify([key,current.targetIds,current.mode,current.spacingBohr,current.showRange,current.decimals,
+      current.merged,current.selectedContact,current.areaView,current.areaSort,current.areaSortDirection,current.contactNumberFormat,current.plotDisplay,current.display,current.result?.stamp.requestId]),
     methods:!analyzeIssue&&current.targetIds.length>0&&current.targetIds.length<p.structure.atoms.length?['hirshfeld-surface']:[],
     plots:():Record<string,{sourceKey:string;open():string|void}>=>{
       if(!p.active||p.available===false||!current.result||!p.onOpenFingerprint)return {};
@@ -192,8 +199,12 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
       if(!p.active||p.available===false||!result)return [];
       return [analysisCube('hirshfeld-weight',result.pair.shape,{stamp:result.stamp,source:result.pair.shape.source,definition:result.definition}),
         analysisCube('hirshfeld-dnorm',result.pair.mapping,{stamp:result.stamp,source:result.pair.mapping.source,definition:result.definition}),
-        ...(result.contacts?[analysisText('hirshfeld-contacts',()=>JSON.stringify({contacts:result.contacts,summary:result.quantitativeSummary,definition:result.definition},null,2),
-          {stamp:result.stamp,source:result.source},'json')]:[])];
+        ...(result.contacts?[
+          analysisText('hirshfeld-contacts',()=>JSON.stringify({contacts:result.contacts,summary:result.quantitativeSummary,definition:result.definition},null,2),
+            {stamp:result.stamp,source:result.source},'json'),
+          analysisText('hirshfeld-contacts-table',()=>scientificTableText(hirshfeldContactTable(current).table),
+            {stamp:result.stamp,source:result.source,merged:current.merged,areaUnit:'angstrom^2',percentageUnit:'%'},'txt'),
+        ]:[])];
     },
     read:()=>({kind:'hirshfeld',targetIds:current.targetIds,mode:current.mode,spacingBohr:current.spacingBohr,busy:runningKey===key,progress,
       error:current.error||analyzeIssue,result:current.result&&{stamp:current.result.stamp,source:current.result.source,contacts:current.result.contacts,vertexCount:current.result.vertices.length}}),
@@ -213,18 +224,37 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
       }},
     presentation:{
       schema:objectSchema({visible:settingBool,showEnvironment:settingBool,opacity:{type:'number',minimum:.05,maximum:1},
-        range:settingColorRange,colors:settingArray(settingColor,2),reverse:settingBool,colorbarLayout:settingColorbarLayout,finish:settingMeshFinish}),
+        range:settingColorRange,colors:settingArray(settingColor,2),reverse:settingBool,colorbarLayout:settingColorbarLayout,finish:settingMeshFinish,
+        appearancePreset:settingEnum(['hirshfeld','gallery-hirshfeld']),
+        merged:settingBool,selectedContactKey:{anyOf:[settingText,{type:'null'}]},areaView:settingEnum(['table','chart','both']),
+        areaSort:settingEnum(['contact','area','percent']),areaSortDirection:settingEnum(['asc','desc']),contactNumberFormat:settingNumberFormat}),
       read:()=>({...current.display,colors:current.display.colors??ANALYSIS_PALETTES['blue-red'],
         colorbarLayout:normalizeAnalysisColorbarLayout(current.display.colorbarLayout),finish:patchMeshFinish(current.display.finish,{}),
+        merged:current.merged,selectedContactKey:current.selectedContact
+          ?hirshfeldContactKey(current.selectedContact.insideElement,current.selectedContact.outsideElement,current.merged):null,
+        contactOptions:contactOptions(current.merged),areaView:current.areaView,areaSort:current.areaSort,
+        areaSortDirection:current.areaSortDirection,contactNumberFormat:current.contactNumberFormat??null,
         effectiveRange:projection?.colorbar?{min:projection.colorbar.min,max:projection.colorbar.max}:null}),
       apply(values){
         if(!p.active||p.available===false)throw new Error('当前 Hirshfeld 显示不可编辑。');
-        const {colorbarLayout,finish,...display}=values as Partial<HirshfeldControlsState['display']>;
+        const {colorbarLayout,finish,appearancePreset,merged,selectedContactKey,areaView,areaSort,areaSortDirection,contactNumberFormat,...display}=values as
+          Partial<HirshfeldControlsState['display']&Pick<HirshfeldControlsState,'merged'|'areaView'|'areaSort'|'areaSortDirection'>>
+          &{selectedContactKey?:string|null;contactNumberFormat?:HirshfeldControlsState['contactNumberFormat']|null};
         validateColorRange(display.range);
-        change({display:{...current.display,...display,
+        const nextMerged=merged??current.merged;
+        const selected=selectedContactKey?contactOptions(nextMerged).find(option=>option.key===selectedContactKey):undefined;
+        if(selectedContactKey&&!selected)throw new Error('请选择当前合并方式下的原生指纹分项。');
+        const base=appearancePreset&&appearancePreset!=='custom'?hirshfeldAppearance(current.display,appearancePreset):current.display;
+        change({
+          merged:nextMerged,
+          ...(selectedContactKey!==undefined||nextMerged!==current.merged?{selectedContact:selected?.focus??null}:{}),
+          ...(areaView!==undefined?{areaView}:{}),...(areaSort!==undefined?{areaSort}:{}),
+          ...(areaSortDirection!==undefined?{areaSortDirection}:{}),
+          ...(contactNumberFormat!==undefined?{contactNumberFormat:contactNumberFormat??undefined}:{}),
+          display:{...base,...display,
           ...((display.colors!==undefined||display.reverse!==undefined)&&{appearancePreset:'custom'}),
-          ...(colorbarLayout!==undefined&&{colorbarLayout:patchColorbarLayout(current.display.colorbarLayout,colorbarLayout)}),
-          ...(finish!==undefined&&{finish:patchMeshFinish(current.display.finish,finish)}),
+          ...(colorbarLayout!==undefined&&{colorbarLayout:patchColorbarLayout(base.colorbarLayout,colorbarLayout)}),
+          ...(finish!==undefined&&{finish:patchMeshFinish(base.finish,finish)}),
         }});
       },
     },
@@ -241,5 +271,6 @@ export default function HirshfeldAnalysisInstance(p: HirshfeldAnalysisInstancePr
   return <>{mcpPort}<HirshfeldAnalysisControls structure={p.structure} context={p.context} state={current} displayRanges={displayRanges} colorbar={projection?.colorbar} disabled={!p.active || p.available === false || !desktop}
     running={runningKey === key} sourceError={admission.error} capturePort={p.capturePort} progress={progress?.identity.sourceFrameIndex === p.context.sourceFrameIndex ? progress : null}
     resourceDefaults={resourceDefaults} resourceError={resourceReadError} sessionInfo={runningKey === key ? openInfo?.key === key ? openInfo.info : null : current.result?.sessionInfo ?? null}
-    onChange={change} onCalculate={() => { void calculate(); }} onStop={stop} onExportCube={exportCube} onExportImage={p.onExportImage} onOpenFingerprint={p.onOpenFingerprint}/></>;
+    onChange={change} onCalculate={() => { void calculate(); }} onStop={stop} onExportCube={exportCube} onExportImage={p.onExportImage} onOpenFingerprint={p.onOpenFingerprint}
+    mcpAnalysisId={p.mcpOwnerId??p.analysisId}/></>;
 }

@@ -46,9 +46,10 @@ def neb_settings(options):
         raise NebInputError('Unsupported CI-NEB execution profile')
     modern = profile == 'pes-v222'
     unified = options.get('policyVersion') == 'v212'
+    # New drafts send L-BFGS explicitly. Missing values on historical
+    # requests retain the optimizer implied by their original profile.
     optimizer = options.get('nebOptimizer', 'fire2' if modern else 'fire')
-    allowed = ('fire2', 'lbfgs') if unified else ('fire', 'fire2', 'lbfgs')
-    if not isinstance(optimizer, str) or optimizer.lower() not in allowed:
+    if not isinstance(optimizer, str) or optimizer.lower() not in ('fire', 'fire2', 'lbfgs'):
         raise NebInputError('Unsupported CI-NEB geometry optimizer')
     if options.get('coordinateSystem', 'xyz') != 'xyz':
         raise NebInputError('CI-NEB requires Cartesian XYZ coordinates')
@@ -101,13 +102,17 @@ class PhysicalNodeCalculator(Calculator):
         self.active_dofs = None
 
     def calculate(self, atoms=None, properties=('energy', 'forces'), system_changes=all_changes):
-        super().calculate(atoms, properties, system_changes)
         # A failed native evaluation cannot re-sign the previous energy with
         # Calculator.calculate()'s newly assigned atoms/positions.
         self.energy_hartree = self.evaluated_positions = self.active_dofs = None
         xyz = atoms.get_positions()
         value = self.ctx.evaluate(xyz, node_id=self.node_id)
-        force = -value['gradientHartreePerBohr'] * EV_PER_ANGSTROM
+        self.accept(atoms, value)
+
+    def accept(self, atoms, value):
+        super().calculate(atoms)
+        xyz = atoms.get_positions()
+        force = -np.asarray(value['gradientHartreePerBohr']) * EV_PER_ANGSTROM
         force, self.active_dofs = self.ctx.constraints.project_vector(xyz, force, return_dof=True)
         self.results = {'energy': value['energyHartree'] * HARTREE_EV,
                         'forces': force}
@@ -161,10 +166,33 @@ class BoundedBand(NEB):
 
     def get_forces(self):
         if self.last_effective is None:
+            self.evaluate_images()
             forces = super().get_forces().reshape(-1, self.natoms, 3)
             self.last_effective = np.concatenate([self.space.project_vector(image.positions, force)
                                                 for image, force in zip(self.images[1:-1], forces)])
         return self.last_effective.copy()
+
+    def evaluate_images(self):
+        context = self.images[0].calc.ctx
+        if not getattr(context, 'supports_evaluation_batch', False):
+            return
+        images = [image for image in self.images if image.calc.evaluated_positions is None
+                  or not np.array_equal(image.positions, image.calc.evaluated_positions)]
+        if not images:
+            return  # Fixed endpoints and a force-only CI reproject are cache hits.
+        results = context.evaluate_many([(image.calc.node_id, image.positions) for image in images])
+        if len(results) != len(images):
+            raise NebInputError('Physical band evaluation did not return every requested bead status')
+        failure = None
+        for image, value in zip(images, results):
+            try:
+                if isinstance(value, Exception):
+                    raise value
+                image.calc.accept(image, value)
+            except Exception as error:
+                failure = failure or error
+        if failure is not None:
+            raise failure
 
     def activate_climbing(self):
         self.climb, self.last_effective, self.step_origin = True, None, None
@@ -258,28 +286,34 @@ def run_ci_neb(reference, symbols, ctx, options, result):
     # Each physical calculator still evaluates the request's fixed cell.
     images = [Atoms(symbols, positions=xyz, pbc=False) for xyz in reference]
     node_ids = [f'ci-neb:bead:{i}' for i in range(len(images))]
-    for image, node_id in zip(images, node_ids):
+    pin_node = getattr(ctx, 'pin_node', None)
+    for index, (image, node_id) in enumerate(zip(images, node_ids)):
+        if pin_node is not None:
+            pin_node(node_id, index)
         image.calc = PhysicalNodeCalculator(ctx, node_id)
     metadata['physicalNodeIds'] = node_ids
     band = BoundedBand(images, ctx.constraints, settings['spring'], settings['step'])
     optimizer, completed = make_optimizer(settings['optimizer'], band), 0
     lbfgs_climbing_bead = None
+
+    def remember_interrupted(step):
+        # E/G proven for these exact coordinates survives a dependent error.
+        partial = {}
+        for i, image in enumerate(images):
+            calculator = image.calc
+            if (calculator.energy_hartree is not None and calculator.evaluated_positions is not None
+                    and np.array_equal(calculator.evaluated_positions, image.positions)):
+                partial[i] = (image.positions.copy(), calculator.energy_hartree, step, {})
+        phase = 'ci-neb-climb' if band.climb else 'ci-neb-ordinary'
+        result.remember_partial(partial, phase + '-interrupted')
+
     try:
         while True:
             ctx.check_cancelled()
             try:
                 statistics, pool, trigger = neb_state(band)
             except Exception:
-                # A dependent band step needs all forces. Keep independently
-                # verified E/G from the interrupted step as a separate snapshot.
-                partial = {}
-                for i, image in enumerate(images):
-                    calculator = image.calc
-                    if (calculator.energy_hartree is not None and calculator.evaluated_positions is not None
-                            and np.array_equal(calculator.evaluated_positions, image.positions)):
-                        partial[i] = (image.positions.copy(), calculator.energy_hartree, completed, {})
-                phase = 'ci-neb-climb' if band.climb else 'ci-neb-ordinary'
-                result.remember_partial(partial, phase + '-interrupted')
+                remember_interrupted(completed)
                 raise
             internal_barrier = bool(band.emax > max(band.energies[0], band.energies[-1]))
             if not band.climb:
@@ -327,14 +361,20 @@ def run_ci_neb(reference, symbols, ctx, options, result):
             ctx.emit('progress', dict(phase=phase, completed=completed))
             ctx.check_cancelled()
             band.begin_step()
-            optimizer.step()
+            try:
+                optimizer.step()
+            except Exception:
+                if not np.array_equal(band.get_positions().reshape(band.step_origin.shape), band.step_origin):
+                    remember_interrupted(completed + 1)
+                raise
             band.finish_step()
             completed += 1
             metadata['climbingIterations' if band.climb else 'ordinaryIterations'] += 1
             metadata['totalIterations'] = completed
     finally:
         optimizer.close()
-        release = getattr(ctx, 'release_node', None)
-        if release is not None:
+        if getattr(ctx, 'release_nodes', None) is not None:
+            ctx.release_nodes(node_ids)
+        elif getattr(ctx, 'release_node', None) is not None:
             for node_id in node_ids:
-                release(node_id)
+                ctx.release_node(node_id)

@@ -2,24 +2,26 @@ import {useEffect,useRef,useState} from 'react';
 import {desktopBridge} from '../../modeling/platform/desktop';
 import {PES_SCHEMA,type PesGeometry,type PesGroup,type PesNode,type PesProjectSnapshot} from '../../modeling/pes/contracts';
 import {PesController} from '../../modeling/pes/controller';
+import {pesEditableElectronicNode,pesElectronicSourceKey} from '../../modeling/pes/input-state';
 import {protectedPesDocument,type WorkspaceDocumentEntry,type WorkspacePesGroup,type WorkspaceRegistry} from '../../modeling/workspace-registry';
 import type {WorkspacePesAsset} from '../../projects/workspace-snapshot';
-import type {SharedModelConstraints} from '../../core/modeling/contracts';
+import type {BondOrderObservation,SharedModelConstraints} from '../../core/modeling/contracts';
+import type {BaseElectronicStateValues} from '../../core/base-electronic-state';
 import type {Structure} from '../../core/types';
 import type {ModelCommand,ModelDocument,ModelSelection} from '../../modeling/contracts';
 import {isFrameBondCommand} from '../../core/modeling/frame-bond-overrides';
+import {electronicInventorySignature} from '../../core/modeling/electronic-state-policy';
 import {modelCoordinateKey} from '../../modeling/constraints';
 import {canonicalFreezeRows} from '../../modeling/application/canonical-freezes';
 import {mergePesConstraintEdit,projectPesConstraintDefinitions} from '../../modeling/pes/request';
 import type {WorkspaceCommand} from '../../modeling/workspace-contracts';
 import {frameBondTargetCurrent,type WorkspaceViewportEvent,type WorkspaceViewportState} from './workspace-viewport';
-import {readWorkspaceOptimizationPreferences} from './tool-session';
 import {createChemistryPort} from '../../modeling/chemistry';
-import {rebuildOrdinaryOptimizationBonds} from './pes-ordinary-optimization';
+import {prepareOrdinaryOptimizationBonds} from './pes-ordinary-optimization';
 
 type SavedPesDocuments=Record<string,WorkspacePesGroup&{documentId:string}>;
 type PesDocumentRemoval=Pick<WorkspacePesGroup,'groupId'>&{nodeId?:string};
-type PendingPes={asset:WorkspacePesAsset;read():Promise<PesProjectSnapshot|undefined>;pending?:Promise<void>};
+type PendingPes={asset:WorkspacePesAsset;read():Promise<PesProjectSnapshot|undefined>;pending?:Promise<void>;beforeImport?(snapshot?:PesProjectSnapshot):void};
 const empty=():PesProjectSnapshot=>({schema:PES_SCHEMA,groups:[]});
 const live=new Set(['starting','running','stopping']);
 export const pesRunActive=(group:PesGroup,nodeId?:string)=>Object.values(group.runs).some(run=>(!nodeId||run.nodeId===nodeId)&&live.has(run.status));
@@ -56,14 +58,32 @@ export function currentPesRegistryGeometry(entry:WorkspaceDocumentEntry,geometry
   const current=entry.store.getSnapshot();
   return {...geometry,documentId:entry.id,revision:current.revision,label:entry.label,structure:projected?geometry.structure:current.draft.structure};
 }
+export function pesLiveElectronicStore(registry:WorkspaceRegistry,group:PesGroup,geometry:PesGeometry){
+  const node=pesEditableElectronicNode(group,geometry);
+  if(!node)return;
+  const entry=registry.getSnapshot().documents.find(row=>row.id===geometry.documentId&&row.pesGroup?.groupId===group.id&&row.pesGroup.nodeId===node.id);
+  if(!entry||protectedPesDocument(entry))throw Error('电子态所属模型已切换，请重新读取当前结构。');
+  const model=entry.store.getSnapshot();
+  if(model.revision!==geometry.revision||pesScientificModelKey(model.draft.structure)!==pesScientificModelKey(geometry.structure))
+    throw Error('电子态所属结构已变化，请重新读取。');
+  return {entry,node};
+}
+export function confirmPesLiveElectronicState(registry:WorkspaceRegistry,group:PesGroup,geometry:PesGeometry,values:BaseElectronicStateValues){
+  const target=pesLiveElectronicStore(registry,group,geometry);
+  if(!target)return;
+  const {entry,node}=target;
+  if(entry.store.hasTransaction?.()||entry.store.isRuntimeSessionActive?.()||pesRunActive(group,node.id))
+    throw Error('请先结束该模型的编辑或计算，再确认电子态。');
+  entry.store.execute({type:'set-electronic-state',...values,confirmed:true});
+}
 /** A settled local OPT returns the last usable geometry to its original editable Store. */
-export function adoptPesOptimizationGeometry(registry:WorkspaceRegistry,context:{groupId:string;nodeId:string;source:PesGeometry;geometry:PesGeometry}):Pick<PesGeometry,'revision'|'structure'>{
+export function adoptPesOptimizationGeometry(registry:WorkspaceRegistry,context:{groupId:string;nodeId:string;source:PesGeometry;geometry:PesGeometry;bondOrderObservation?:BondOrderObservation}):Pick<PesGeometry,'revision'|'structure'>{
   const {groupId,nodeId,source,geometry}=context;
   const entry=registry.getSnapshot().documents.find(row=>row.pesGroup?.groupId===groupId&&row.pesGroup.nodeId===nodeId);
   if(!entry||protectedPesDocument(entry))throw Error('优化所属编辑页面已关闭，结果未覆盖原结构。');
   const document=entry.store.getSnapshot();
   if(document.id!==source.documentId||document.revision!==source.revision)throw Error('优化期间原结构已变化，结果未覆盖当前结构。');
-  const adopted=entry.store.execute({type:'apply-optimization-geometry',structure:geometry.structure,documentId:source.documentId,expectedRevision:source.revision});
+  const adopted=entry.store.execute({type:'apply-optimization-geometry',structure:geometry.structure,documentId:source.documentId,expectedRevision:source.revision,bondOrderObservation:context.bondOrderObservation});
   return {revision:adopted.revision,structure:adopted.draft.structure};
 }
 /** Old OPT views become editable without discarding the last displayed geometry. */
@@ -152,10 +172,10 @@ export function applyPesConstraints(entry:WorkspaceDocumentEntry,constraints:Sha
   })};
 }
 
-export async function settlePesWorkspaceRuns(controller:PesController,groupId:string,nodeId?:string){
+export async function settlePesWorkspaceRuns(controller:PesController,groupId:string,nodeId?:string,runIds?:ReadonlySet<string>){
   const read=()=>controller.getSnapshot().groups.find(group=>group.id===groupId);
   const group=read();if(!group)throw Error('势能面任务组已关闭。');
-  const runs=Object.values(group.runs).filter(run=>(!nodeId||run.nodeId===nodeId)&&live.has(run.status));
+  const runs=Object.values(group.runs).filter(run=>(!nodeId||run.nodeId===nodeId)&&(!runIds||runIds.has(run.request.id))&&live.has(run.status));
   if(!runs.length)return;
   let unsubscribe=()=>{};
   const settled=new Promise<void>(resolve=>{
@@ -350,7 +370,8 @@ export async function closeWorkspaceDocumentForMcp<TImpact extends { documents: 
   }
 }
 
-export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(error:string)=>void,mayFollow:()=>boolean){
+export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(error:string)=>void,mayFollow:()=>boolean,
+  projectCalculationLevel?: NonNullable<ConstructorParameters<typeof PesController>[2]>['projectCalculationLevel']){
   const [controller,setController]=useState<PesController|null>(null);
   const [revision,bump]=useState(0),[loaded,bumpLoad]=useState(0);
   const persistentRevision=useRef(0);
@@ -367,7 +388,8 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
     const current=owner.current;
     if(!current)throw Error('势能面工作台尚未就绪。');
     initialOwner.current=existing;
-    try{return current.createGroup(initial,undefined,{constraints,initialName:existing?.labelOrigin==='manual'?existing.label:undefined});}
+    try{return current.createGroup(initial,undefined,{constraints,initialName:existing?.labelOrigin==='manual'?existing.label:undefined,
+      electronicConfirmed:existing?.store.getSnapshot().electronicStateConfirmed===true});}
     finally{initialOwner.current=undefined;}
   }
 
@@ -412,24 +434,31 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
       if(!link||protectedPesDocument(entry))continue;
       // Registry publications replace the entry wrapper, while its Store owns the document history.
       const model=entry.store.getSnapshot(),previous=observed.current.get(entry.store);
-      if(previous && previous.revision===model.revision &&
+      if(previous && previous.revision===model.revision && previous.electronicStateConfirmed===model.electronicStateConfirmed &&
         previous.draft.structure.charge===model.draft.structure.charge && previous.draft.structure.multiplicity===model.draft.structure.multiplicity)continue;
       const group=current.getSnapshot().groups.find(row=>row.id===link.groupId),node=group?.nodes.find(row=>row.id===link.nodeId);
       if(!group||!node)continue;
       observed.current.set(entry.store,model);
-      if(!previous)continue;
-      const previousStructure=previous.draft.structure,structure=model.draft.structure;
-      if(pesScientificModelKey(previousStructure)!==pesScientificModelKey(structure)){
+      const previousStructure=previous?.draft.structure??node.geometry.structure,structure=model.draft.structure;
+      const membershipChanged=JSON.stringify(previousStructure.atoms.map(atom=>[atom.id,atom.element]))!==JSON.stringify(structure.atoms.map(atom=>[atom.id,atom.element]));
+      const liveKey=pesElectronicSourceKey(group,{...node.geometry,source:{groupId:group.id,nodeId:node.id},inputSnapshotId:undefined});
+      const confirmationChanged=previous ? previous.electronicStateConfirmed!==model.electronicStateConfirmed
+        : model.electronicStateConfirmed===true&&!group.electronic.drafts?.[liveKey];
+      const electronicChanged=confirmationChanged || previousStructure.id!==structure.id ||
+        electronicInventorySignature(previousStructure)!==electronicInventorySignature(structure) ||
+        previousStructure.charge!==structure.charge||previousStructure.multiplicity!==structure.multiplicity;
+      const geometryChanged=pesScientificModelKey({...previousStructure,charge:structure.charge,multiplicity:structure.multiplicity})!==pesScientificModelKey(structure);
+      if(electronicChanged||geometryChanged||node.geometry.documentId!==entry.id||node.geometry.revision!==model.revision){
         const ids=new Set(structure.atoms.map(atom=>atom.id));
         current.updateNodeGeometry(group.id,node.id,{...node.geometry,documentId:entry.id,revision:model.revision,structure},{
           removedAtomIds:previousStructure.atoms.flatMap(atom=>atom.id&&!ids.has(atom.id)?[atom.id]:[]),
-          electronicChanged:previousStructure.charge!==structure.charge||previousStructure.multiplicity!==structure.multiplicity,
+          electronicChanged,geometryChanged,
           electronicConfirmed:model.electronicStateConfirmed===true,
         });
       }
+      if(!previous)continue;
       // A structural edit prunes the authoritative initial separately. A peer's
       // dropped IDs are its local membership, not a global unfreeze command.
-      const membershipChanged=JSON.stringify(previousStructure.atoms.map(atom=>[atom.id,atom.element]))!==JSON.stringify(structure.atoms.map(atom=>[atom.id,atom.element]));
       if(membershipChanged&&link.kind!=='initial')continue;
       if(active===entry.id&&!constraintProjection.current&&model.sharedConstraints&&model.sharedConstraints!==previous.sharedConstraints){
         const liveGroup=current.getSnapshot().groups.find(row=>row.id===link.groupId);
@@ -460,15 +489,21 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
     const bridge=desktop?.startPes&&desktop.stopPes&&desktop.onPesEvent?{startPes:desktop.startPes.bind(desktop),stopPes:desktop.stopPes.bind(desktop),onPesEvent:desktop.onPesEvent.bind(desktop),
       readPesPathRecord:desktop.readPesPathRecord?.bind(desktop),releasePesPathRecords:desktop.releasePesPathRecords?.bind(desktop),
       readPesTerminalFrames:desktop.readPesTerminalFrames?.bind(desktop),releasePesTerminalFrames:desktop.releasePesTerminalFrames?.bind(desktop),
+      closePesRecovery:desktop.closePesRecovery?.bind(desktop),
       readBinaryAsset:desktop.readBinaryAsset?.bind(desktop),releaseBinaryAsset:desktop.releaseBinaryAsset?.bind(desktop)}:undefined;
-    const current=new PesController(bridge,undefined,{defaultXtbSolvation:()=>{
-      const solvation=readWorkspaceOptimizationPreferences().xtb.solvation;
-      return solvation?.model==='alpb'?{model:'alpb',solvent:solvation.solvent}:undefined;
-    },onPathSourceReleaseError:onError,submittingDocument:()=>JSON.stringify([registry.stamp().documentId,registry.stamp().activationEpoch]),
-    async prepareOptimizationGeometry(geometry,frame,request,signal){
+    const current=new PesController(bridge,undefined,{projectCalculationLevel,onPathSourceReleaseError:onError,submittingDocument:()=>JSON.stringify([registry.stamp().documentId,registry.stamp().activationEpoch]),
+    assertLiveElectronicSource(groupId,geometry){
+      const group=current.getSnapshot().groups.find(row=>row.id===groupId);
+      if(group)pesLiveElectronicStore(registry,group,geometry);
+    },
+    confirmLiveElectronicState(groupId,geometry,values){
+      const group=current.getSnapshot().groups.find(row=>row.id===groupId);
+      if(group)confirmPesLiveElectronicState(registry,group,geometry,values);
+    },
+    async prepareOptimizationBonds(geometry,frame,request,signal,result){
       const entry=registry.getSnapshot().documents.find(row=>row.id===geometry.documentId);
-      if(!entry)return geometry.structure;
-      return rebuildOrdinaryOptimizationBonds(geometry.structure,frame,request,entry.store.stamp(),createChemistryPort(),signal);
+      if(!entry)return {structure:geometry.structure};
+      return prepareOrdinaryOptimizationBonds(geometry.structure,frame,request,entry.store.stamp(),createChemistryPort(),signal,result);
     },
     onOptimizationGeometry(context){return adoptPesOptimizationGeometry(registry,context);},canFollowWorkbench(groupId,nodeId){
       const state=registry.getSnapshot(),id=state.views.find(view=>view.id===state.activeViewId)?.documentId;
@@ -488,17 +523,14 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
       }catch(cause){onError(cause instanceof Error?cause.message:String(cause));}
     });
     return()=>{persistent();documents();current.dispose();if(owner.current===current)owner.current=null;};
-  },[registry,onError]);
+  },[registry,onError,projectCalculationLevel]);
 
-  function restore(asset:WorkspacePesAsset|undefined,read:PendingPes['read'],bindings:unknown){
+  function restore(asset:WorkspacePesAsset|undefined,read:PendingPes['read'],bindings:unknown,beforeImport?:PendingPes['beforeImport']){
     restoring.current=true;
     try{
-      pending.current=asset?{asset,read}:null;retained.current=asset;
+      pending.current=asset?{asset,read,beforeImport}:null;retained.current=asset;
       owner.current?.importSnapshot(empty());observed.current=new WeakMap();lastConstraintProjection.current=new WeakMap();
       if(asset)for(const binding of Object.values(restoredPesBindings(bindings,registry.getSnapshot().documents)))registry.bindPesDocument(binding.documentId,binding);
-      for(const entry of registry.getSnapshot().documents){
-        if(entry.pesGroup&&!protectedPesDocument(entry))observed.current.set(entry.store,entry.store.getSnapshot());
-      }
       bumpLoad(value=>value+1);
     }finally{restoring.current=false;}
   }
@@ -512,6 +544,7 @@ export function usePesWorkspaceIntegration(registry:WorkspaceRegistry,onError:(e
       if(pending.current!==target||owner.current!==current)throw Error('项目已切换，未恢复旧势能面数据。');
       restoring.current=true;
       try{
+        target.beforeImport?.(snapshot);
         if(snapshot){
           for(const binding of Object.values(pesWorkspaceBindings(registry.getSnapshot().documents))){
             if(!snapshot.groups.some(group=>group.id===binding.groupId&&group.nodes.some(node=>node.id===binding.nodeId&&node.kind===binding.kind)))throw Error('势能面标签和来源资产身份不一致。');

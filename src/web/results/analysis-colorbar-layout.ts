@@ -29,7 +29,7 @@ export const ANALYSIS_COLORBAR_LIMITS = {
 };
 
 export const DEFAULT_ANALYSIS_COLORBAR_LAYOUT: Readonly<NormalizedColorbarLayout> = Object.freeze({
-  x: .82, y: .9, length: .22, orientation: 'horizontal', thickness: 10, fontFamily: 'system', fontSize: 12, ink: '#153846',
+  x: .82, y: .9, length: .22, orientation: 'horizontal', thickness: 10, fontFamily: 'arial', fontSize: 12, ink: '#000000',
 });
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));

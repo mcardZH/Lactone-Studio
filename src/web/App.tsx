@@ -104,7 +104,8 @@ import { projectOrcaImportedNaming, orcaImportSystemStem, type OrcaNamingPolicy 
 import OrcaInputSummary from './orca/OrcaInputSummary';
 import { buildOrcaCommon, createOrcaCommonSettings, type OrcaJobRequest } from '../core/orca';
 import { createOrcaGeneratedDraft, editOrcaGeneratedFile, orcaGeneratedSource } from '../modeling/application/orca-generated-draft';
-import { publishLiveInputVersion, registerLiveInput, type InputDraftConfiguration, type InputDraftView, type LiveInputPort } from './mcp/input-drafts';
+import { publishLiveInputVersion, registerLiveInput, type InputDraftConfiguration, type InputDraftView, type InputSettingsPatch, type LiveInputPort } from './mcp/input-drafts';
+import { inputSolventEdit } from './mcp/input-solvents';
 import { changedInputConfiguration, mergeInputPatch, writableInputConfiguration } from './mcp/input-arguments';
 import { toolError } from './mcp/types';
 import { electronicStateInputError } from '../core/elements';
@@ -1178,7 +1179,10 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
   }
   function assertAgentDraft(expected?:string,writing=false){
     const current=inputVersion();
-    if(expected!==undefined&&expected!==current)throw toolError('DRAFT_CONFLICT','输入草稿有新变化，请重新读取后重试。',{draftVersion:current});
+    if(expected!==undefined&&expected!==current){
+      const modelRef=sessionStore.getSnapshot().id;
+      throw toolError('DRAFT_CONFLICT','输入草稿有新变化，请重新读取后重试。',{modelRef,draftVersion:current,recovery:{tool:'input_draft',arguments:{modelRef}}});
+    }
     if(inputRecoveryIssues[engineLive.current])throw Error(inputRecoveryIssues[engineLive.current]?.message);
     if(writing&&(busy||builderDirty||captureIntent.current||modal||generatingInput.current||submittingExternal.current||orcaAgentEditor.current?.busy()||delivery.isBusy()||batchSavingRef.current||sessionStore.hasTransaction?.()))
       throw toolError('INPUT_BUSY','当前有输入操作或模型草稿正在处理。');
@@ -1224,7 +1228,7 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
       if(q!==charge||m!==multiplicity){invalidateElectronicConditions();setFrequencyConfirmed(false);setFiles(previous=>({...previous,compatibilityConfirmed:false}));}
     }
     if(configuration.engine==='gaussian'){
-      const gaussianPatch=patch as Partial<GaussianSettings>|undefined;
+      const gaussianPatch=patch as InputSettingsPatch<GaussianSettings>|undefined;
       if(gaussianPatch?.mixedBasis){
         const next={...settings,basis:gaussianPatch.basis??settings.basis,mixedBasis:mergeInputPatch(settings.mixedBasis??defaultMixedBasis(),gaussianPatch.mixedBasis)};
         const before=captureGaussianBasisState(settings),after=captureGaussianBasisState(next);
@@ -1240,14 +1244,14 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
       }
       if(gaussianPatch?.method!==undefined&&gaussianPatch.method!==settings.method)chooseMethod(gaussianPatch.method);
       if(gaussianPatch){
-        const {taskOptions,...level}=gaussianPatch;
+        const {taskOptions,solvation,...level}=gaussianPatch;
         const keys=(Object.keys(level) as (keyof typeof level)[]).sort((a,b)=>Number(b==='parameterDrafts')-Number(a==='parameterDrafts'));
         for(const key of keys)touched.current.add(key);
+        if(solvation!==undefined)touched.current.add('solvation');
         if(taskOptions)touched.current.add('taskOptions');
         setSettings(previous=>{
           let next=previous;
           for(const key of keys){
-            if(key==='solvation'){next=applyGaussianField(next,key,level.solvation);continue;}
             if(key==='parameterDrafts'&&level.parameterDrafts){
               const effective=gaussianParameterDraftPatch(next,level.parameterDrafts);
               for(const field of Object.keys(effective) as (keyof GaussianSettings)[])next=applyGaussianField(next,field,effective[field]);
@@ -1259,9 +1263,11 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
             }
             const value=mergeInputPatch(base,{[key]:level[key]})[key];next=applyGaussianField(next,key,value);
           }
-          if(level.solvent!==undefined&&level.solvation===undefined)next=applyGaussianField(next,'solvation',undefined);
-          else if(level.solventModel!==undefined&&level.solventModel!==previous.solventModel)
-            next=applyGaussianField(next,'solvation',solventSelectionForModelChange({engine:'gaussian',selection:previous.solvation,currentModel:previous.solventModel,nextModel:level.solventModel}));
+          const solventEdit=inputSolventEdit('gaussian',previous,gaussianPatch);
+          if(solventEdit){
+            if(solventEdit.solvent!==undefined)next=applyGaussianField(next,'solvent',solventEdit.solvent);
+            next=applyGaussianField(next,'solvation',solventEdit.solvation);
+          }
           if(taskOptions)next=applyGaussianField(next,'taskOptions',mergeInputPatch(next.taskOptions??defaultTaskOptions(),taskOptions));
           return next;
         });
@@ -1291,19 +1297,17 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
       if(step===0||step===1)setStep(2);
       return;
     }
-    const current=orcaLive.current,orcaPatch=patch as Partial<OrcaJobRequest['settings']>|undefined;
-    const nextSettings=orcaPatch?mergeInputPatch(current.settings,orcaPatch):current.settings;
+    const current=orcaLive.current,orcaPatch=patch as InputSettingsPatch<OrcaJobRequest['settings']>|undefined;
+    const {solvation,...orcaFields}=orcaPatch??{};
+    const nextSettings=orcaPatch?mergeInputPatch(current.settings,orcaFields):current.settings;
     if(orcaPatch?.parameterDrafts){
       const effective=orcaParameterDraftPatch(current.settings,orcaPatch.parameterDrafts);
       Object.assign(nextSettings,{...effective,...(orcaPatch.scf?{scf:mergeInputPatch(effective.scf??current.settings.scf??{},orcaPatch.scf)}:{}),
         ...(orcaPatch.grid?{grid:orcaPatch.grid}:{})});
     }
     if(orcaPatch?.md&&orcaPatch.md.restartConfirmed===undefined)nextSettings.md={...nextSettings.md,restartConfirmed:false};
-    if(orcaPatch?.solvation!==undefined)nextSettings.solvation=orcaPatch.solvation;
-    else if(orcaPatch?.solvent!==undefined)nextSettings.solvation=undefined;
-    else if(orcaPatch?.solventModel!==undefined&&orcaPatch.solventModel!==current.settings.solventModel)
-      nextSettings.solvation=solventSelectionForModelChange({engine:'orca',version:'common',selection:current.settings.solvation,currentModel:current.settings.solventModel,nextModel:orcaPatch.solventModel});
-    const scientific=!!orcaPatch&&['version','method','basis','solvent','solventModel','unrestricted'].some(key=>key in orcaPatch);
+    if(orcaPatch)Object.assign(nextSettings,inputSolventEdit('orca',current.settings,{...orcaFields,solvation}));
+    const scientific=!!orcaPatch&&['version','method','basis','solvent','solvation','solventModel','unrestricted'].some(key=>key in orcaPatch);
     if(configuration.name!==undefined)orcaNamingPolicy.current={...orcaNamingPolicy.current,outputNameTouched:true};
     const next:OrcaJobRequest={...current,settings:nextSettings,
       name:configuration.name??(orcaNamingPolicy.current.outputNameTouched?current.name:orcaTaskStem(current.systemName??orcaImportSystemStem(sourceName),nextSettings)),
@@ -1395,12 +1399,16 @@ const builderAssignments=useMemo(()=>{const base=(desktopMode?captureDesktopAssi
       const current=orcaLive.current;
       if(engineLive.current!=='orca'||current.settings.task!=='neb')throw Error('请选择 ORCA NEB 输入任务。');
       const sources=workspaceLive.current?.getCurrentSources()??[];
-      const exact=(binding:typeof endpoints.reactant)=>{
+      const exact=(binding:typeof endpoints.reactant,role:'reactant'|'product'|'tsGuess')=>{
         const source=sources.find(item=>item.documentId===binding.modelRef&&item.revision===binding.revision);
-        if(!source)throw toolError('SOURCE_CHANGED','端点没有匹配的当前模型版本。',{modelRef:binding.modelRef,revision:binding.revision});
+        if(!source)throw toolError('SOURCE_CHANGED','端点没有匹配的当前模型版本。',{role,modelRef:binding.modelRef,revision:binding.revision});
+        if(endpoints.confirm===true&&!source.confirmed)throw toolError('ENDPOINT_ELECTRONIC_STATE_REQUIRED','所指定的端点尚未确认电荷和多重度。',{
+          role,modelRef:source.documentId,revision:source.revision,electronicState:{charge:source.charge,multiplicity:source.multiplicity,confirmed:false},
+          recovery:{tool:'input_draft',arguments:{modelRef:source.documentId}}
+        });
         return source;
       };
-      const reactant=exact(endpoints.reactant),product=exact(endpoints.product),guess=endpoints.tsGuess?exact(endpoints.tsGuess):null;
+      const reactant=exact(endpoints.reactant,'reactant'),product=exact(endpoints.product,'product'),guess=endpoints.tsGuess?exact(endpoints.tsGuess,'tsGuess'):null;
       const neb:OrcaJobRequest['settings']['neb']={...current.settings.neb,reactantSource:reactant,productSource:product,product:product.structure,
         tsGuessSource:guess,tsGuess:guess?.structure??null,mapping:[],mappingConfirmed:endpoints.confirm===true,tsGuessMapping:[],
         tsGuessMappingConfirmed:endpoints.confirm===true&&!!guess,productOrderContext:undefined,tsGuessOrderContext:undefined};

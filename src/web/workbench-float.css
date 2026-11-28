@@ -15,8 +15,8 @@ body.es-workbench-float-window {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
-  min-height: 36px;
+  padding: 4px 10px;
+  min-height: 38px;
   border-bottom: 1px solid var(--ui-surface-border);
   background: var(--ui-sidebar-bg);
   color: var(--ui-section-ink);
@@ -29,6 +29,7 @@ body.es-workbench-float-window {
   align-items: center;
   gap: 6px;
   min-width: 0;
+  font-weight: 600;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -43,13 +44,14 @@ body.es-workbench-float-window {
   gap: 4px;
   min-width: 27px;
   min-height: 27px;
-  padding: 3px 5px;
+  padding: 3px 6px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--ui-control-radius);
   font: inherit;
-  color: inherit;
+  color: var(--ui-control-muted);
   background: transparent;
   cursor: pointer;
+  transition: var(--ui-transition);
 }
-.es-workbench-float-header button:hover { background: var(--ui-control-selected-bg); }
+.es-workbench-float-header button:hover { background: var(--ui-control-hover-bg); color: var(--ui-control-ink); }
 .es-workbench-float-header button:focus-visible { outline: 2px solid var(--ui-control-focus); }

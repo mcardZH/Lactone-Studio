@@ -17,6 +17,8 @@ export interface AssistantProfile extends AssistantCapabilities {
   model: string;
   reasoningEffort?: string;
   baseUrl: string;
+  address?: string;
+  defaultBaseUrl?: string;
   protocol: AssistantProtocol;
   keyRequired: boolean;
   hasKey: boolean;
@@ -58,7 +60,7 @@ export interface AgentPanelBridge {
   terminalStop(id: string): Promise<void>;
   onTerminalEvent(listener: (event: TerminalEvent) => void): () => void;
   assistantSettings(): Promise<AssistantSettings>;
-  assistantModels(request: AssistantConnection): Promise<{ models: AssistantModel[]; warning?: string }>;
+  assistantModels(request: AssistantConnection): Promise<{ models: AssistantModel[]; address?: string; warning?: string }>;
   assistantConfigure(request: AssistantConnection & { model: string; remember: boolean; forget?: boolean; reasoningEffort?: string }): Promise<AssistantSettings>;
   assistantSend(message: string | AssistantMessage): Promise<AssistantTurnReceipt>;
   assistantContinue(): Promise<AssistantTurnReceipt>;
@@ -82,6 +84,7 @@ export interface ExternalConnectionBridge {
   onState(listener: (state: ExternalConnectionState) => void): () => void;
   disconnect(sessionId: string): Promise<unknown>;
   forget(id: string): Promise<unknown>;
+  savePublicSkill?(): Promise<{ cancelled: true } | { cancelled: false; path: string }>;
 }
 
 export function readAgentPanelBridge() {

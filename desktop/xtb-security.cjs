@@ -15,11 +15,12 @@ const SOLVATION_SOLVENTS=Object.freeze(Object.fromEntries(['alpb','gbsa'].map(mo
 // was tested with real B/A/D and coupled fixtures; acceptance still measures
 // every native result, since a stronger harmonic potential is not exact fixing.
 const INTERNAL_CONSTRAINT_POLICY = Object.freeze({ forceConstant: 20, forceConstantUnit: 'hartree/bohr^2', bondToleranceAngstrom: 0.001, angleToleranceDegree: 0.1 });
+const NATIVE_RF_PRESETS = Object.freeze({ loose: 'loose', medium: 'normal', tight: 'tight' });
 const ELEMENTS = 'H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og'.split(' ');
 function sessionIdentity(value) { assert(string(value,100) && /^[A-Za-z0-9_-]+$/.test(value),'Invalid xTB session identity'); return value; }
 function validateStart(value, cpuResources = cpuResourceSnapshot()) {
   boundedJSON(value);assert(plain(value),'Invalid xTB request');
-  const keys=['stamp','structure','method','calculation','charge','uhf','frozenAtomIds','constraints','internalConstraintsConfirmed','maxSteps','optimizationStepPolicy','maxSccIterations','maxWallTimeSeconds','threads','memoryBudgetBytes','empiricalBondParameters','electronicProperties','runIdentity','solvation','optimizationPool','ffModel'];
+  const keys=['stamp','structure','method','calculation','charge','uhf','frozenAtomIds','constraints','internalConstraintsConfirmed','maxSteps','optimizationStepPolicy','nativeOptimizationPreset','maxSccIterations','maxWallTimeSeconds','threads','memoryBudgetBytes','empiricalBondParameters','electronicProperties','runIdentity','solvation','optimizationPool','ffModel'];
   assert(Object.keys(value).every(key=>keys.includes(key)),'Unknown xTB request field');assert(METHODS.includes(value.method),'Invalid xTB method');
   assert(value.memoryBudgetBytes===undefined||Number.isSafeInteger(value.memoryBudgetBytes)&&value.memoryBudgetBytes>0,'Invalid xTB soft memory budget');
   if(value.empiricalBondParameters!==undefined)validateEmpiricalBondParameters(value.empiricalBondParameters);
@@ -34,6 +35,7 @@ function validateStart(value, cpuResources = cpuResourceSnapshot()) {
   assert(value.structure.periodicSource?.completeness!=='partial','xTB requires a complete cell, not partial translation vectors');
   if(value.structure.cell!==undefined){const cell=value.structure.cell;assert(plain(cell)&&Array.isArray(cell.pbc)&&cell.pbc.length===3&&cell.pbc.every(flag=>typeof flag==='boolean')&&Array.isArray(cell.vectors)&&cell.vectors.length===3&&cell.vectors.every(vector=>Array.isArray(vector)&&vector.length===3&&vector.every(number=>Number.isFinite(number)&&Math.abs(number)<=1e6)),'xTB requires a finite complete cell');assert(cell.origin===undefined||Array.isArray(cell.origin)&&cell.origin.length===3&&cell.origin.every(Number.isFinite),'Invalid box origin');const [a,b,c]=cell.vectors,det=a[0]*(b[1]*c[2]-b[2]*c[1])-a[1]*(b[0]*c[2]-b[2]*c[0])+a[2]*(b[0]*c[1]-b[1]*c[0]);assert(!cell.pbc.some(Boolean)||Number.isFinite(det)&&Math.abs(det)>1e-8,'xTB requires a nonsingular periodic cell');}
   const periodic=isPeriodic(value);assert(periodic||!value.structure.bonds?.some(bond=>bond.image?.some(number=>number!==0)),'Image bonds require a periodic cell');
+  assert(value.nativeOptimizationPreset===undefined||calculation==='optimize'&&!periodic&&value.optimizationPool&&Object.values(NATIVE_RF_PRESETS).includes(value.nativeOptimizationPreset),'Explicit native RF preset requires an isolated managed conformer optimization');
   if(value.solvation!==undefined){const solvation=value.solvation;assert(plain(solvation)&&Object.keys(solvation).length===2&&Object.keys(solvation).every(key=>['model','solvent'].includes(key))&&solvation.model==='alpb'&&typeof solvation.solvent==='string','Invalid xTB solvation request');assert(!periodic,'Implicit solvation is restricted to isolated structures');assert(supportsXtbAlpb(value.method,solvation.solvent,periodic),'Solvation model/solvent is not parametrized for the selected xTB method');}
   assert(value.electronicProperties===undefined||typeof value.electronicProperties==='boolean','Invalid xTB electronic properties option');
   assert(!value.electronicProperties||calculation==='singlepoint'&&['gfn2','gxtb'].includes(value.method)&&!periodic,'Electronic properties require an isolated GFN2 or g-xTB singlepoint');
@@ -90,8 +92,12 @@ function invocation(request){
   const sp=request.calculation==='singlepoint', periodic=nativePeriodicOptimization(request), gxtb=request.method==='gxtb';
   const method=gxtb?['--gxtb']:request.method==='gfnff'?['--gfnff']:['--gfn',request.method.slice(3)];
   const gfnScc=['gfn1','gfn2'].includes(request.method);
+  // An explicit --acc disables the native RF optimizer's adaptive SCC
+  // accuracy. Normal uses the legacy xTB behavior with a base accuracy of 1.
+  const preset=request.nativeOptimizationPreset;
+  const nativeOpt=preset?['--opt',preset,...(preset==='normal'?[]:['--acc','1.0'])]:['--opt'];
   return [periodic?'input.coord':'input.xyz',...method,...(periodic&&gfnScc?['--tblite']:[]),
-    ...(periodic?['--opt','extreme','--acc','0.01','--nocellopt','--verbose']:sp?(gxtb?[]:['--scc']):['--opt']),
+    ...(periodic?['--opt','extreme','--acc','0.01','--nocellopt','--verbose']:sp?(gxtb?[]:['--scc']):nativeOpt),
     ...(gfnScc||gxtb?['--iterations',String(sccIterationLimit(request))]:[]),'--chrg',String(request.charge),
     ...(request.method==='gfnff'||gxtb&&request.uhf===0?[]:['--uhf',String(request.uhf)]),
     ...(sp?[]:['--input','xcontrol.inp']),...(request.electronicProperties?['--molden']:[]),...(sp&&gxtb?['--acc','0.1']:[]),
@@ -125,9 +131,10 @@ function optimizedCoordinates(text,request){
     const valid=xyz.every(value=>Number.isFinite(value)&&Math.abs(value)<=1e6);
     if(!valid&&request.optimizationPool)throw Object.assign(Error('Native candidate returned nonfinite or unsafe optimized coordinates'),{code:'XTB_CANDIDATE_RESULT'});
     assert(valid,'Nonfinite or unsafe optimized coordinate');
-    if(fixed.has(atom.id)&&!request.optimizationPool){
-      assert(xyz.every((value,i)=>Math.abs(value-atom[['x','y','z'][i]])<=1e-7),'Strictly fixed atom moved in xTB output');
-      return{id:atom.id,element:atom.element,x:atom.x,y:atom.y,z:atom.z};
+    if(fixed.has(atom.id)&&(!request.optimizationPool||request.nativeOptimizationPreset)){
+      const unchanged=xyz.every((value,i)=>Math.abs(value-atom[['x','y','z'][i]])<=1e-7);
+      assert(unchanged,'Strictly fixed atom moved in xTB output');
+      if(!request.nativeOptimizationPreset)return{id:atom.id,element:atom.element,x:atom.x,y:atom.y,z:atom.z};
     }
     return{id:atom.id,element:atom.element,x:xyz[0],y:xyz[1],z:xyz[2]};
   });
@@ -155,12 +162,13 @@ function validateNativeConstraints(stdout,request){
   if(!request.constraints.length)return;
   const constant=/^\s*(?:->\s+)?force constant\s*=\s*([-+\d.eEdD]+)\s*$/mi.exec(stdout);
   assert(constant&&Number(constant[1].replace(/[dD]/,'e'))===INTERNAL_CONSTRAINT_POLICY.forceConstant&&/total constraint energy\/grad norm:/i.test(stdout),'Native xTB constraint setup was not confirmed');
-  const rows=[...stdout.matchAll(/^\s*constraining (bond|angle)\s+([\d\t ]+?)\s+to\s+([-+\d.eEdD]+)\s*(?:Å|°),\s*actual value:/gmi)];
+  const rows=[...stdout.matchAll(/^\s*constraining (bond|angle|dihedral|torsion)\s+([\d\t ]+?)\s+to\s+([-+\d.eEdD]+)\s*(?:Å|°),\s*actual value:/gmi)];
   const atomIndices=new Map(request.structure.atoms.map((atom,i)=>[atom.id,i+1]));
   assert(rows.length===request.constraints.length&&request.constraints.every((row,i)=>{
     const [,kind,indices,value]=rows[i], target=Number(value.replace(/[dD]/,'e'));
     const difference=target-row.value;
-    return kind.toLowerCase()===(row.type==='B'?'bond':'angle')&&indices.trim().split(/\s+/).map(Number).join(',')===row.atomIds.map(id=>atomIndices.get(id)).join(',')
+    const allowedKinds={B:['bond'],A:['angle'],D:['angle','dihedral','torsion']}[row.type];
+    return allowedKinds.includes(kind.toLowerCase())&&indices.trim().split(/\s+/).map(Number).join(',')===row.atomIds.map(id=>atomIndices.get(id)).join(',')
       &&Number.isFinite(target)&&Math.abs(row.type==='D'?((difference+180)%360+360)%360-180:difference)<=1e-6;
   }),'Native xTB consumed different B/A/D restraints from the request');
 }
@@ -181,6 +189,14 @@ function convergence(stdout,request){
   const [record,terminal,count,counterUnit]=matches[0], optimizer=optimizerFor(request), periodic=optimizer==='inertial';
   assert(counterUnit.toUpperCase()===(periodic?'CYCLES':'ITERATIONS'),'Native convergence counter must match its selected optimizer');
   assert(periodic?/Fast Inertial Relaxation Engine/i.test(stdout):/RF solver/.test(stdout),'Actual selected native optimizer setup missing');
+  const nativeOptimizationPreset=request.nativeOptimizationPreset;
+  if(nativeOptimizationPreset){
+    const call=/^[ \t]*program call\s*:\s*([^\r\n]+)$/mi.exec(stdout)?.[1];
+    const level=/^[ \t]*:\s*optimization level\s+(\w+)\s*:/mi.exec(stdout)?.[1];
+    const accuracyMatches=call&&(nativeOptimizationPreset==='normal'? !/\s--acc(?=\s|=|$)/.test(call):/\s--acc\s+1\.0(?=\s|$)/.test(call));
+    assert(level===nativeOptimizationPreset&&call&&/\s--opt\s+(loose|normal|tight)(?=\s|$)/.exec(call)?.[1]===level
+      &&accuracyMatches,'Actual native RF preset or accuracy does not match the request');
+  }
   const iterations=Number(count), converged=/^GEOMETRY OPTIMIZATION CONVERGED/i.test(terminal);
   let maxSteps=request.maxSteps;
   if(request.optimizationStepPolicy==='native-default'){
@@ -208,7 +224,7 @@ function convergence(stdout,request){
     assert(Number.isFinite(movableGradientNormHartreePerBohr)&&movableGradientNormHartreePerBohr>=0,'Native FIRE movable gradient is missing');
   }
   return {calculation:'optimize',optimizer,iterations,maxSteps,...(stepLimitExceeded?{stepLimitExceeded:true}:{}),convergenceCounterUnit:counterUnit.toLowerCase(),energyHartree,energyUnit:'hartree',coordinateUnit:'angstrom',converged,
-    convergenceStatus:converged?'converged':'step-limit',...(periodic?{movableGradientNormHartreePerBohr,gradientTargetHartreePerBohr:FIRE_GRADIENT_LIMIT,gradientTargetMet:movableGradientNormHartreePerBohr<=FIRE_GRADIENT_LIMIT}:{})};
+    convergenceStatus:converged?'converged':'step-limit',...(nativeOptimizationPreset?{nativeOptimizationPreset,electronicAccuracy:1}:{}),...(periodic?{movableGradientNormHartreePerBohr,gradientTargetHartreePerBohr:FIRE_GRADIENT_LIMIT,gradientTargetMet:movableGradientNormHartreePerBohr<=FIRE_GRADIENT_LIMIT}:{})};
 }
 function singlepointConvergence(stdout,request){
   assert(['gfn2','gxtb'].includes(request.method)&&request.calculation==='singlepoint','Supported xTB singlepoint request required');assert(!/FAILED TO CONVERGE|convergence criteria cannot be satisfied|ABNORMAL TERMINATION|\[ERROR\]|FATAL ERROR/i.test(stdout),'xTB reported a failed singlepoint');assert(!/GEOMETRY OPTIMIZATION|Fast Inertial Relaxation Engine|RF solver/.test(stdout),'Singlepoint must not execute a geometry optimizer');
@@ -250,4 +266,4 @@ function nativeBondOrders(text,request){
   }
   const result={definition:'mayer-ao',sourceField:'wbo',threshold:.1,entries};boundedJSON(result);return result;
 }
-module.exports={METHODS,LIMITS,SOLVATION_SOLVENTS,INTERNAL_CONSTRAINT_POLICY,sessionIdentity,validateStart,xyzInput,xcontrolInput,invocation,nativeSolvation,optimizedCoordinates,convergence,singlepointConvergence,gxtbSpin,nativeBondOrders,sccIterationLimit,measure,constraintResiduals,validateNativeConstraints,nativeOptimizationFailure,optimizerFor,createTrajectoryParser,isPeriodic};
+module.exports={METHODS,LIMITS,SOLVATION_SOLVENTS,INTERNAL_CONSTRAINT_POLICY,NATIVE_RF_PRESETS,sessionIdentity,validateStart,xyzInput,xcontrolInput,invocation,nativeSolvation,optimizedCoordinates,convergence,singlepointConvergence,gxtbSpin,nativeBondOrders,sccIterationLimit,measure,constraintResiduals,validateNativeConstraints,nativeOptimizationFailure,optimizerFor,createTrajectoryParser,isPeriodic};

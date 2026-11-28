@@ -12,8 +12,10 @@ import { XTB_METHOD_IDS, XTB_METHOD_LABELS, usesXtbSccIterations, xtbSolvents, t
 
 import { XTB_INTERNAL_CONSTRAINT_POLICY, xtbPreoptimizationSolvationIssue, type XtbPreoptimizationSolvation } from '../../modeling/xtb/accept-result';
 import {OPT_CONVERGENCE_PRESETS} from '../../modeling/pes/defaults';
-import {isPesTrainedStateNetMethod} from '../../modeling/pes/contracts';
-import {availableOrdinaryOptimizer,netMethods,ordinaryOptimizers,resolveOrdinaryOptimizer,validCustomOptimizationLimits,workspaceOptimizationMethodAvailable,type GeometryLimits,type OptimizationSettings,type OrdinaryOptimizer} from './tool-session';
+import {isPesNetMethod,isPesTrainedStateNetMethod} from '../../modeling/pes/contracts';
+import {validXtbResourceOverride,type XtbResourceOverrides} from '../../modeling/resource-preferences';
+import {XtbResourceOverrideField} from '../TaskResourceFields';
+import {availableOrdinaryOptimizer,netMethods,ordinaryOptimizers,ORDINARY_OPTIMIZATION_DEFAULT_MAX_STEPS,ORDINARY_OPTIMIZATION_DEFAULT_OPTIMIZER,resolveOrdinaryOptimizer,validCustomOptimizationLimits,workspaceOptimizationMethodAvailable,type GeometryLimits,type OptimizationSettings,type OrdinaryOptimizer} from './tool-session';
 import './xtb-optimization.css';
 
 export { xtbPreoptimizationSolvationIssue };
@@ -26,6 +28,7 @@ export interface XtbPanelOptions extends OptimizationSettings {
   multiplicity: number;
   rebuildBonds: boolean;
   threads?: number;
+  resourceOverrides?: Pick<XtbResourceOverrides,'xtbSingleTaskThreads'>;
   maxSccIterations?:number;
   scope?:XtbOptimizationScope;
   solvation?:XtbPreoptimizationSolvation;
@@ -46,6 +49,8 @@ interface XtbOptimizationPanelProps extends Pick<XtbChargeMultiplicityProps,'cha
   onRebuildBondsChange(rebuild:boolean): void;
   runtimeSettings: OrdinaryRunSettings;
   onRuntimeSettingsChange(settings:OrdinaryRunSettings): void;
+  xtbSingleTaskThreads?: number;
+  onXtbSingleTaskThreadsChange?(threads:number|undefined): void;
   selectionCount: number;
   atomCount: number;
   requireMultiplicity?: boolean;
@@ -119,10 +124,13 @@ export function xtbPanelSubmission(draft: XtbPanelOptions,periodic=false): XtbPa
   if (!Number.isSafeInteger(draft.charge) || draft.method !== 'gfnff' && (!Number.isSafeInteger(draft.multiplicity) || draft.multiplicity < 1)) return null;
   if (draft.method!=='mcgfnff'&&xtbPreoptimizationSolvationIssue(draft.method,draft.solvation,periodic)) return null;
   if (!validConvergence(draft))return null;
+  const xtbSingleTaskThreads=draft.resourceOverrides?.xtbSingleTaskThreads;
+  if(!validXtbResourceOverride(xtbSingleTaskThreads))return null;
   const maxSccIterations=validStepSetting(draft.maxSccIterations)?draft.maxSccIterations??250:250;if(usesScc(draft.method)&&!validStepSetting(draft.maxSccIterations))return null;
-  const maxSteps=draft.maxSteps??(periodic?1000:500);if(!Number.isSafeInteger(maxSteps)||maxSteps<1)return null;
+  const maxSteps=draft.maxSteps??ORDINARY_OPTIMIZATION_DEFAULT_MAX_STEPS;if(!Number.isSafeInteger(maxSteps)||maxSteps<1)return null;
   const scope=draft.scope??'all';if(!['all','selection','unselected'].includes(scope))return null;
   return { method:draft.method, charge:draft.charge, multiplicity:draft.multiplicity, rebuildBonds:draft.rebuildBonds,scope,maxSteps,
+    ...(xtbSingleTaskThreads===undefined?{}:{resourceOverrides:{xtbSingleTaskThreads}}),
     ...(usesScc(draft.method)?{maxSccIterations}:{}),
     ...(draft.optimizer?{optimizer:draft.optimizer}:{}),...(draft.convergencePreset?{convergencePreset:draft.convergencePreset}:{}),...(draft.convergenceLimits?{convergenceLimits:draft.convergenceLimits}:{}),
     ...(draft.method!=='mcgfnff'&&draft.solvation?{solvation:{...draft.solvation}}:{}) };
@@ -199,7 +207,7 @@ export default function XtbOptimizationPanel(props:XtbOptimizationPanelProps) {
     </InputSettingsLayout>
     {trainedState&&<small className="muted-note">模型使用训练态，电荷和多重度用于记录结构来源。</small>}
     <div className="xtb-optimization-actions">
-      <label className="xtb-rebuild-bonds" title={!periodic&&method==='gfn2'?'优先使用末帧的 MBO，缺少时按经验距离更新':'用末帧坐标按经验距离更新'}>
+      <label className="xtb-rebuild-bonds" title={method==='gfn2'?'优化正常结束后优先使用最后有效帧的 MBO 更新成键':'优化收敛后用最后有效帧的坐标按经验距离更新'}>
         <input type="checkbox" aria-label="优化后更新成键" checked={props.rebuildBonds} disabled={block||!methodAvailable} onChange={event=>props.onRebuildBondsChange(event.target.checked)}/>
         <span>优化后更新成键</span>
       </label>
@@ -217,7 +225,9 @@ export default function XtbOptimizationPanel(props:XtbOptimizationPanelProps) {
       <div className="xtb-run-settings-fields optimization-limit-row">
         <ConvergenceField settings={settings} disabled={block||!methodAvailable} onChange={props.onRuntimeSettingsChange}/>
         <label><span>最大优化步数</span><NumericInput aria-label="最大优化步数" aria-invalid={!validStepSetting(settings.maxSteps)||undefined}
-          min="1" step="1" stepper value={shown(settings.maxSteps??(periodic?1000:500))} disabled={block||!methodAvailable} onChange={event=>props.onRuntimeSettingsChange({maxSteps:edited(event.target.value)})}/></label>
+          min="1" step="1" stepper value={shown(settings.maxSteps??ORDINARY_OPTIMIZATION_DEFAULT_MAX_STEPS)} disabled={block||!methodAvailable} onChange={event=>props.onRuntimeSettingsChange({maxSteps:edited(event.target.value)})}/></label>
+        {!isPesNetMethod(method)&&props.onXtbSingleTaskThreadsChange&&<XtbResourceOverrideField label="本任务 xTB 线程"
+          disabled={block||!methodAvailable} value={props.xtbSingleTaskThreads} onChange={props.onXtbSingleTaskThreadsChange}/>}
         {hasScc&&<label><span>SCC迭代上限</span><NumericInput aria-label="SCC迭代上限" aria-invalid={!validStepSetting(settings.maxSccIterations)||undefined}
           min="1" step="1" stepper value={shown(settings.maxSccIterations??250)} disabled={block} onChange={event=>props.onRuntimeSettingsChange({maxSccIterations:edited(event.target.value)})}/></label>}
       </div>
@@ -247,6 +257,6 @@ export default function XtbOptimizationPanel(props:XtbOptimizationPanelProps) {
 }
 
 const usesScc=usesXtbSccIterations;
-const supportsXtbPanelOptimization=(method:XtbPanelMethod,periodic:boolean,optimizer:OrdinaryOptimizer='lbfgs')=>
+const supportsXtbPanelOptimization=(method:XtbPanelMethod,periodic:boolean,optimizer:OrdinaryOptimizer=ORDINARY_OPTIMIZATION_DEFAULT_OPTIMIZER)=>
   method!=='mcgfnff'&&workspaceOptimizationMethodAvailable(method,periodic)&&availableOrdinaryOptimizer(method,periodic,optimizer);
 const validStepSetting=(value:number|undefined)=>value===undefined||Number.isSafeInteger(value)&&value>0;

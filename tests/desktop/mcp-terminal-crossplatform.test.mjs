@@ -453,4 +453,47 @@ describe('Cross-platform AgentTerminal without node-pty dependency', () => {
 
     assert.throws(() => process.kill(childPid, 0), { code: 'ESRCH' }, `Expected PTY child process ${childPid} to be killed by helper SIGKILL escalation`);
   });
+
+  it('invokes trackWorker and aborts startup if trackWorker rejects the worker', async () => {
+    if (process.platform === 'win32') return;
+
+    const dir = makeTempDir();
+    const trackedWorkers = [];
+    const trackedHost = createTerminalHost({
+      userDataPath: path.join(dir, 'tracked'),
+      trackWorker(worker) {
+        trackedWorkers.push(worker);
+      }
+    });
+    terminalHosts.push(trackedHost);
+
+    const sessionId = randomUUID();
+    let exitResolve;
+    const exitPromise = new Promise(resolve => { exitResolve = resolve; });
+    await trackedHost.start(21, { id: sessionId, cols: 80, rows: 24, client: 'shell' }, {
+      connectionConfig: null,
+      projectIndexPath: path.join(dir, 'proj.es'),
+      publish(ev) {
+        if (ev.type === 'exit') exitResolve(ev);
+      }
+    });
+    assert.equal(trackedWorkers.length, 1);
+    trackedHost.write(21, sessionId, 'exit\n');
+    await exitPromise;
+
+    const rejectedHost = createTerminalHost({
+      userDataPath: path.join(dir, 'rejected'),
+      trackWorker() {
+        throw new Error('shutdown in progress');
+      }
+    });
+    await assert.rejects(
+      () => rejectedHost.start(22, { id: randomUUID(), cols: 80, rows: 24, client: 'shell' }, {
+        connectionConfig: null,
+        projectIndexPath: path.join(dir, 'proj.es'),
+        publish() {}
+      }),
+      /shutdown in progress/
+    );
+  });
 });

@@ -14,6 +14,7 @@ const {
 	GAUSSIAN_WINDOWS_SERIALIZATION
 } = require("../../../../desktop/task-system/platform/process-identity.cjs");
 const { createTaskSystemComposition } = require("../../../../desktop/task-system-composition.cjs");
+const { createStorageOwnerIdentity, ownerState } = require("../../../../desktop/storage-owner-identity.cjs");
 
 test("validateArgumentSerialization validates Gaussian Windows command serialization", () => {
 	assert.equal(validateArgumentSerialization({ executable: "C:\\g16w\\g16w.exe", cwd: "C:\\work", args: [] }), null);
@@ -425,3 +426,64 @@ if (process.platform === "darwin") {
 		}
 	});
 }
+
+test("darwin and linux providers support inspectWriterOwners and integrate with storageOwnerIdentity", async () => {
+	const darwinProvider = createProcessIdentityProvider({
+		platform: "darwin",
+		hostname: "Mac-Studio.local",
+		execFile(file, args, _opts, cb) {
+			if (file === "/usr/sbin/sysctl") return cb(null, "BOOT-DARWIN-1\n", "");
+			if (file === "/usr/sbin/ioreg") return cb(null, '"IOPlatformUUID" = "HOST-DARWIN-1"\n', "");
+			if (file === "/bin/ps") {
+				const pid = Number(args[2]);
+				if (pid === process.pid) {
+					return cb(null, ` ${pid} 501 S Sun Nov 28 02:00:00 2026 Electron\n`, "");
+				}
+				if (pid === 9999) {
+					return cb(null, " 9999 501 Z Sun Nov 28 02:00:00 2026 <defunct>\n", "");
+				}
+				return cb(Object.assign(new Error("exit 1"), { code: 1 }), "", "");
+			}
+			cb(Object.assign(new Error("unexpected"), { code: "ENOENT" }), "", "");
+		}
+	});
+
+	const ownerHelper = createStorageOwnerIdentity((pids) => darwinProvider.inspectWriterOwners(pids));
+	const current = await ownerHelper.current();
+	assert.ok(current);
+	assert.match(current.hostId, /^[a-f0-9]{64}$/);
+	assert.equal(current.bootId, "BOOT-DARWIN-1");
+	assert.match(current.creationFileTime, /^\d+$/);
+
+	const snap = await ownerHelper.snapshot([process.pid, 9999, 88888]);
+	assert.equal(ownerState({ pid: process.pid, ownerIdentity: current }, snap), "alive");
+	assert.equal(ownerState({ pid: 9999, ownerIdentity: current }, snap), "dead");
+	assert.equal(ownerState({ pid: 88888, ownerIdentity: current }, snap), "dead");
+	assert.equal(ownerState({ pid: process.pid, ownerIdentity: { ...current, hostId: "other-host" } }, snap), "foreign");
+	assert.equal(ownerState({ pid: process.pid, ownerIdentity: { ...current, bootId: "OLD-BOOT" } }, snap), "dead");
+
+	const linuxProvider = createProcessIdentityProvider({
+		platform: "linux",
+		hostname: "hpc-node-01",
+		fs: {
+			async readFile(target) {
+				if (target === "/proc/sys/kernel/random/boot_id") return "boot-linux-xyz\n";
+				if (target === "/etc/machine-id") return "machine-linux-xyz\n";
+				throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+			}
+		},
+		execFile(file, args, _opts, cb) {
+			if (file === "ps") {
+				const pid = Number(args[2]);
+				if (pid === 5001) return cb(null, " 5001 1000 S Mon Nov  9 10:20:30 2026 node\n", "");
+				return cb(Object.assign(new Error("exit 1"), { code: 1 }), "", "");
+			}
+			cb(Object.assign(new Error("unexpected"), { code: "ENOENT" }), "", "");
+		}
+	});
+	const linuxOwners = await linuxProvider.inspectWriterOwners([5001, 5002]);
+	assert.match(linuxOwners.hostId, /^[a-f0-9]{64}$/);
+	assert.equal(linuxOwners.bootId, "boot-linux-xyz");
+	assert.equal(linuxOwners.processes[0].status, "alive");
+	assert.equal(linuxOwners.processes[1].status, "dead");
+});

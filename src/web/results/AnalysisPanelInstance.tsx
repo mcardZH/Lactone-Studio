@@ -35,9 +35,16 @@ export function AnalysisPanelInstance(p:{id:string;kind:AnalysisPage;document:Po
  const metadata=p.document.wavefunction?.source.metadata??null,parent=p.document.wavefunction?.nativeSessionId;
  const generated=p.document.wavefunction?.source.generatedXtb;
  const derivedAllowed=(kind:string,method:string)=>!!metadata&&generatedXtbMethodAllowed(metadata.analysisPolicy,metadata.sourceRevision,kind,method);
+ const requiresChildSession=Boolean(metadata&&(generated?
+  p.kind==='orbitals'&&!generatedXtbAnalysisReason(generated,p.kind)||p.kind==='charges'&&derivedAllowed('charges','mulliken')||p.kind==='bonds'&&['mayer','laplacian'].some(method=>derivedAllowed('bond-orders',method)):
+  ['charges','bonds','orbitals'].includes(p.kind)));
+ const sessionSourceKey=JSON.stringify([p.id,p.kind,parent,metadata?.sourceId,metadata?.sourceRevision,metadata?.format,metadata?.analysisPolicy]);
  const currentIndex=p.currentIndex??0,projection=useMemo(()=>projectPostprocessFrame(p.document,currentIndex),[p.document,currentIndex]);
  const waveFrame=postprocessWavefunctionFrame(p.document);
- const [session,setSession]=useState<{id:string;metadata:WavefunctionMetadata}|null>(null),[error,setError]=useState('');
+ const [session,setSession]=useState<{id:string;metadata:WavefunctionMetadata;sourceKey:string}|null>(null);
+ const [sessionIssue,setSessionIssue]=useState<{sourceKey:string;message:string}|null>(null);
+ const error=sessionIssue?.sourceKey===sessionSourceKey?sessionIssue.message:'';
+ const currentSession=session?.sourceKey===sessionSourceKey?session:null;
  const [selectedKey,setSelectedKey]=useState<string|null>(null),[field,setField]=useState<OrbitalField|null>(null),[layer,setLayer]=useState<OrbitalLayerSettings>(()=>({...DEFAULT_ORBITAL_LAYER}));
  const [dipoleVisible,setDipoleVisible]=useState(false),[charge,setCharge]=useState<AnalysisProjection['charge']>({result:null,display:{color:false,labels:false,spin:false}}),[bond,setBond]=useState<AnalysisProjection['bond']>({result:null,display:{color:false,labels:false,spin:false}});
  const [highlights,setHighlights]=useState<AnalysisProjection['highlights']>({ids:[]}),[pairs,setPairs]=useState<[string,string][]>([]);
@@ -49,11 +56,11 @@ export function AnalysisPanelInstance(p:{id:string;kind:AnalysisPage;document:Po
  useAnalysisProjectSnapshot(`analysis-panel:${JSON.stringify([p.document.id,p.id,p.kind,p.document.result.source.id,metadata?.sourceRevision])}`,
   ()=>({selectedKey,layer,dipoleVisible,charge,bond,orbitalDecimals,excitationDecimals,sourceChargeDisplay}),
   saved=>{setSelectedKey(saved.selectedKey);setLayer(saved.layer);setDipoleVisible(saved.dipoleVisible);setCharge(saved.charge);setBond(saved.bond);setOrbitalDecimals(saved.orbitalDecimals);setExcitationDecimals(saved.excitationDecimals);setSourceChargeDisplay(saved.sourceChargeDisplay);},p.onError,()=>({charge,bond}));
- const sourceContext=useMemo<ProfessionalSourceContext>(()=>({result:projection.result,structure:p.structure,frameIndex:currentIndex,wavefunctionAvailable:projection.wavefunctionAvailable&&(!generated||derivedAllowed('charges','mulliken')),generatedXtb:!!generated,nativeAtomIds:session?.metadata.structure.atoms.map(atom=>atom.id!)}),[projection,p.structure,currentIndex,session?.metadata,generated,metadata?.analysisPolicy]);
- useEffect(()=>{let alive=true,owned:string|null=null;const bridge=window.sciyueDesktop;setSession(null);setError('');
+ const sourceContext=useMemo<ProfessionalSourceContext>(()=>({result:projection.result,structure:p.structure,frameIndex:currentIndex,wavefunctionAvailable:projection.wavefunctionAvailable&&(!generated||derivedAllowed('charges','mulliken')),generatedXtb:!!generated,nativeAtomIds:currentSession?.metadata.structure.atoms.map(atom=>atom.id!)}),[projection,p.structure,currentIndex,currentSession?.metadata,generated,metadata?.analysisPolicy]);
+ useEffect(()=>{let alive=true,owned:string|null=null;const bridge=window.sciyueDesktop;setSession(null);setSessionIssue(null);
   const close=(id:string)=>{void bridge?.closeOrbitalSession?.(id).catch(()=>{});};
   // Effect replays must not share a native session that an older cleanup can close.
-  if((generated?p.kind==='orbitals'&&!generatedXtbAnalysisReason(generated,p.kind)||p.kind==='charges'&&derivedAllowed('charges','mulliken')||p.kind==='bonds'&&['mayer','laplacian'].some(method=>derivedAllowed('bond-orders',method)):['charges','bonds','orbitals'].includes(p.kind))&&metadata){
+  if(requiresChildSession&&metadata){
    void (async()=>{
     if(parent){if(!bridge?.forkOrbitalSession)throw new Error('当前环境缺少独立分析会话接口。');const value=await bridge.forkOrbitalSession(parent,`analysis-lifetime-${crypto.randomUUID()}`);owned=value.sessionId;return value;}
     const attachment=p.document.wavefunction;
@@ -65,15 +72,18 @@ export function AnalysisPanelInstance(p:{id:string;kind:AnalysisPage;document:Po
      if(parsed.sourceRevision!==metadata.sourceRevision||parsed.sourceId!==metadata.sourceId)throw new Error('项目波函数只读解析后的内容身份不一致。');
      return{sessionId:owned,metadata:{...parsed,structure:metadata.structure,...(metadata.analysisPolicy?{analysisPolicy:metadata.analysisPolicy}:{})}};
     }catch(reason){close(owned);owned=null;throw reason;}
-   })().then(value=>{if(value){if(alive)setSession({id:value.sessionId,metadata:value.metadata});else close(value.sessionId);}}).catch(reason=>{if(alive)setError(String(reason instanceof Error?reason.message:reason));});
+   })().then(value=>{if(value){if(alive)setSession({id:value.sessionId,metadata:value.metadata,sourceKey:sessionSourceKey});else close(value.sessionId);}})
+    .catch(reason=>{if(alive)setSessionIssue({sourceKey:sessionSourceKey,message:String(reason instanceof Error?reason.message:reason)});});
   }
   return()=>{alive=false;if(owned)close(owned);};
- },[p.id,p.kind,parent,metadata?.sourceRevision,metadata?.format,metadata?.analysisPolicy,generated]);
- const snapshot=useMemo<AnalysisProjection>(()=>({id:p.id,kind:p.kind,sessionId:session?.id??null,frameIndex:waveFrame,decimals:orbitalDecimals,selectedKey,field,layer,dipoleVisible,charge,bond,highlights,pairs,printedHighlights,vibration,sourceChargeDisplay:sourceChargeDisplay?.identity===professionalSourceIdentity(sourceContext)?sourceChargeDisplay:null}),[p.id,p.kind,session?.id,waveFrame,orbitalDecimals,selectedKey,field,layer,dipoleVisible,charge,bond,highlights,pairs,printedHighlights,vibration,sourceChargeDisplay,sourceContext]);
+ },[sessionSourceKey,requiresChildSession,generated]);
+ const snapshot=useMemo<AnalysisProjection>(()=>({id:p.id,kind:p.kind,sessionId:currentSession?.id??null,frameIndex:waveFrame,decimals:orbitalDecimals,selectedKey,field,layer,dipoleVisible,charge,bond,highlights,pairs,printedHighlights,vibration,sourceChargeDisplay:sourceChargeDisplay?.identity===professionalSourceIdentity(sourceContext)?sourceChargeDisplay:null}),[p.id,p.kind,currentSession?.id,waveFrame,orbitalDecimals,selectedKey,field,layer,dipoleVisible,charge,bond,highlights,pairs,printedHighlights,vibration,sourceChargeDisplay,sourceContext]);
  useEffect(()=>p.onProjection(snapshot),[snapshot,p.onProjection]);
  useEffect(()=>()=>p.onDispose(p.id),[p.id,p.onDispose]);
- const analysis=useMemo(()=>session?{sessionId:session.id,sourceId:session.metadata.sourceId,sourceRevision:session.metadata.sourceRevision,sourceName:session.metadata.name,format:metadata?.format===session.metadata.format?session.metadata.format:undefined,generatedXtb:!!generated,
-  analysisPolicy:generated?(metadata?.sourceRevision===session.metadata.sourceRevision&&JSON.stringify(metadata.analysisPolicy)===JSON.stringify(session.metadata.analysisPolicy)?session.metadata.analysisPolicy:undefined):session.metadata.analysisPolicy}:undefined,[session,generated,metadata?.sourceRevision,metadata?.format,metadata?.analysisPolicy]);
+ const analysis=useMemo(()=>currentSession?{sessionId:currentSession.id,sourceId:currentSession.metadata.sourceId,sourceRevision:currentSession.metadata.sourceRevision,sourceName:currentSession.metadata.name,format:metadata?.format===currentSession.metadata.format?currentSession.metadata.format:undefined,generatedXtb:!!generated,
+  analysisPolicy:generated?(metadata?.sourceRevision===currentSession.metadata.sourceRevision&&JSON.stringify(metadata.analysisPolicy)===JSON.stringify(currentSession.metadata.analysisPolicy)?currentSession.metadata.analysisPolicy:undefined):currentSession.metadata.analysisPolicy}:undefined,[currentSession,generated,metadata?.sourceRevision,metadata?.format,metadata?.analysisPolicy]);
+ const analysisSessionStatus=p.active&&p.available!==false&&projection.wavefunctionAvailable&&requiresChildSession&&!currentSession?
+  {preparing:!error,error:error||undefined}:undefined;
  const dipole=postprocessDipole(projection.scientific,currentIndex);
  const energyPort=p.kind==='energy'?<ResultsMcpPortRegistration kind="runs" id={p.active&&p.available!==false?p.id:null} port={{
   sourceRevision:JSON.stringify([projection.result.id,projection.result.source.sha256,currentIndex,dipoleVisible]),
@@ -89,11 +99,11 @@ export function AnalysisPanelInstance(p:{id:string;kind:AnalysisPage;document:Po
   <PostprocessDisplayPanel result={projection.result} structure={p.structure} currentIndex={currentIndex} analysisPage={p.kind} hideEntries active={p.active&&p.available!==false} cancelOnInactive={p.available===false} wavefunctionAvailable={projection.wavefunctionAvailable} trajectoryControls={p.trajectoryControls} surfaceControls={p.surfaceControls} interactionControls={p.interactionControls} excitationControls={p.excitationControls?.(excitationDecimals,setExcitationDecimals)} reactivityControls={p.reactivityControls} sourceContext={sourceContext} onProfessionalCharges={setSourceChargeDisplay}
    unavailableReason={page=>generatedXtbAnalysisReason(generated,page)} atomicDisplay={{property:null,color:false,labels:false}} onAtomicDisplay={()=>{}}
    vibrationControls={{onProjection:setVibration,onExtractStructure:p.onExtractStructure,onExportGif:p.onExportGif,onError:p.onError}}
-   analysis={analysis} analysisOwnerId={p.id} onColorbarLayoutReady={p.onColorbarLayoutReady} onChargeAnalysis={(result,display,comparisons)=>setCharge({result,display,comparisons})} onBondAnalysis={(result,display,comparisons)=>setBond({result,display,comparisons})}
+   analysis={analysis} analysisSessionStatus={analysisSessionStatus} analysisOwnerId={p.id} onColorbarLayoutReady={p.onColorbarLayoutReady} onChargeAnalysis={(result,display,comparisons)=>setCharge({result,display,comparisons})} onBondAnalysis={(result,display,comparisons)=>setBond({result,display,comparisons})}
    onAtomHighlight={(ids,values)=>setHighlights({ids,values})} onBondsHighlight={setPairs}
    onPrintedAtomHighlight={(ids,values)=>setPrintedHighlights({sourceId:p.document.result.source.id,frameIndex:currentIndex,ids,values})}
    getBondLength={ids=>metadata&&projection.wavefunctionAvailable?analysisBondLength(ids,metadata,p.structure):undefined}
    dipoleAvailable={!!dipole} dipoleVisible={dipoleVisible} onDipoleVisible={setDipoleVisible}
-   onOpenPlot={p.onOpenPlot} orbitalControls={<OrbitalControls ownerId={p.kind==='orbitals'?p.id:undefined} metadata={session?.metadata??null} nativeSessionId={session?.id??null} sourceResult={projection.result} sourceFrameIndex={currentIndex} sourcePair={p.document.pair} sourceDocument={p.document} wavefunctionAvailable={projection.wavefunctionAvailable} onDecimalsChange={setOrbitalDecimals} selectedKey={selectedKey} onSelectedKey={setSelectedKey} onField={setField} onLayerSettings={setLayer} active={p.active&&p.available!==false} cancelOnInactive={p.available===false} analysis={analysis} onAtomHighlight={(ids,values)=>setHighlights({ids,values})} onError={p.onError} onExportImage={p.active&&p.available!==false&&projection.wavefunctionAvailable?p.onExport:undefined}/>}/>
+   onOpenPlot={p.onOpenPlot} orbitalControls={<OrbitalControls ownerId={p.kind==='orbitals'?p.id:undefined} metadata={currentSession?.metadata??null} nativeSessionId={currentSession?.id??null} sourceResult={projection.result} sourceFrameIndex={currentIndex} sourcePair={p.document.pair} sourceDocument={p.document} wavefunctionAvailable={projection.wavefunctionAvailable} onDecimalsChange={setOrbitalDecimals} selectedKey={selectedKey} onSelectedKey={setSelectedKey} onField={setField} onLayerSettings={setLayer} active={p.active&&p.available!==false} cancelOnInactive={p.available===false} analysis={analysis} onAtomHighlight={(ids,values)=>setHighlights({ids,values})} onError={p.onError} onExportImage={p.active&&p.available!==false&&projection.wavefunctionAvailable?p.onExport:undefined}/>}/>
  </div></>;
 }

@@ -122,7 +122,7 @@ function distinctIds(rows, label) {
 
 function validateStart(raw) {
   keys(raw, ['schema', 'id', 'runIdentity', 'sourceDocumentId', 'operation', 'algorithm', 'method', 'structure', 'charge', 'uhf',
-    'solvation', 'constraints', 'coordinates', 'parameters', 'threads', 'memoryBudgetBytes', 'ffModel'], 'Invalid PES request fields');
+    'solvation', 'constraints', 'coordinates', 'parameters', 'threads', 'memoryBudgetBytes', 'ffModel', 'resourceOverrides'], 'Invalid PES request fields');
   assert(raw.schema === SCHEMA && ALGORITHMS.get(raw.operation)?.has(raw.algorithm), 'PES method is unavailable in this version');
   sessionIdentity(raw.id);
   validateIdentity(raw.runIdentity);
@@ -147,6 +147,11 @@ function validateStart(raw) {
   else assert(raw.ffModel === undefined, 'Unexpected PES force-field model');
   assert((raw.threads === undefined || integer(raw.threads, 1))
     && (raw.memoryBudgetBytes === undefined || integer(raw.memoryBudgetBytes, 1)), 'Invalid requested PES resources');
+  if (raw.resourceOverrides !== undefined) {
+    keys(raw.resourceOverrides, ['xtbSingleTaskThreads', 'xtbBatchParallelism'], 'Invalid PES resource overrides');
+    assert(Object.values(raw.resourceOverrides).every(value => value === undefined || integer(value, 1)),
+      'Invalid PES resource override thread count');
+  }
   if (raw.solvation !== undefined) {
     keys(raw.solvation, ['model', 'solvent'], 'Invalid PES solvation');
     assert(!raw.structure.cell?.pbc.some(Boolean) && raw.solvation.model === 'alpb' && SOLVATION_SOLVENTS.alpb[raw.method]?.includes(raw.solvation.solvent), 'Unsupported PES method/solvent');
@@ -170,7 +175,8 @@ function validateStart(raw) {
     'Duplicate PES constraint identity');
   distinctIds(raw.coordinates, 'Duplicate PES coordinate identity');
   assert(plain(raw.parameters), 'Invalid PES parameters');
-  assert(raw.parameters.device === undefined, 'This PES method uses its CPU evaluator');
+  assert(raw.parameters.device === undefined && raw.parameters.netGpuBatchLimit === undefined,
+    'This PES method uses its CPU evaluator');
   assert(raw.parameters.executionProfile === undefined || raw.parameters.executionProfile === 'pes-v222', 'Unsupported PES execution profile');
   assert(raw.algorithm !== 'sella-scan' || raw.parameters.executionProfile === 'pes-v222', 'Sella scan requires its PES execution profile');
   // Optional fields are omitted from the JSON request. All user values in

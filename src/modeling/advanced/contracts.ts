@@ -7,7 +7,7 @@ import type { ConformerClusteringPolicy, ConformerClusterSet, ConformerGuessSet,
 import type { AdvancedPathBridge, AdvancedPathRequest, AdvancedPathEvent, AdvancedPathFrameData } from './path-contracts';
 import type { ConformerSamplingBridge, ConformerSamplingRequest, ConformerSamplingEvent, ConformerSamplingFramePayload } from './sampling-contracts';
 import type { AissBridge, AissRequest, AissEvent, AissScreenedPose, AissRefinedCandidate, AissAtomMapping } from './docking-contracts';
-import type { ComputeResourceEvidence, ComputeResourceSnapshot } from '../resource-preferences';
+import type { ComputeResourceEvidence, ComputeResourceSnapshot, NetGpuBatchLimit, XtbResourceOverrides } from '../resource-preferences';
 type WithoutOwner<T> = T extends unknown ? Omit<T, 'schema' | 'stamp' | 'runIdentity' | 'structure' | 'charge' | 'uhf' | 'frozenAtomIds' | 'constraints'> : never;
 export type AdvancedPathTaskOptions = WithoutOwner<AdvancedPathRequest> & { threads: number; maxSteps: number; maxEvaluations: number };
 export type AdvancedSamplingTaskOptions = WithoutOwner<ConformerSamplingRequest> & { threads: number; maxSteps: number; maxEvaluations: number;
@@ -35,9 +35,11 @@ export interface AdvancedXtbOptions {
   internalConstraintsConfirmed: boolean;
   solvation?: XtbSolvation;
   memoryBudgetBytes?: number;
+  resourceOverrides?: XtbResourceOverrides;
 }
+export type ConformerOptimizerAlgorithm = import('../pes/contracts').PesOrdinaryOptimizer | 'native-rf';
 export interface ConformerOptimizerSettings {
-  algorithm: import('../pes/contracts').PesOrdinaryOptimizer;
+  algorithm: ConformerOptimizerAlgorithm;
   convergencePreset: import('../pes/contracts').PesConvergencePreset;
   convergenceLimits?: import('../pes/contracts').PesGeometryLimits;
 }
@@ -45,7 +47,7 @@ export interface ConformerOptimizerSettings {
 export type AdvancedOptimizationMethod =
   | { backend: 'xtb'; options: AdvancedXtbOptions; optimizer?: ConformerOptimizerSettings }
   | { backend: 'net'; options: { method: import('../pes/contracts').PesNetMethod; device: 'cpu' | 'gpu';
-      maxSteps: number; threads: number; internalConstraintsConfirmed?: boolean }; optimizer?: ConformerOptimizerSettings }
+      maxSteps: number; threads: number; internalConstraintsConfirmed?: boolean; netGpuBatchLimit?: NetGpuBatchLimit }; optimizer?: ConformerOptimizerSettings }
   // Saved projects can carry the retired method identity for result history.
   | { backend: 'forcefield'; forcefield: ForcefieldChoice; threads: number; maxSteps?: number; solvent: string; optimizationStepPolicy?: 'native-default' };
 export interface AdvancedOptimizationStageConfig {
@@ -163,6 +165,7 @@ export interface AdvancedClusterCollection {
 }
 export interface AdvancedStageProgress {total:number;completed:number;interrupted:number;failed:number;pending:number;
   succeeded?:number;discarded?:number;running?:number;elapsedMs?:number;etaMs?:number|null;
+  actualGpuBatchWidth?:number;
   baselineSucceeded?:number;baselineDiscarded?:number;startedAt?:number}
 export interface AdvancedDiscardConformerPlan {
   taskId:string;revision:string;scope:'task'|'initial'|'sampling'|'stage';initialIds:string[];collectionIds:string[];stageIds:string[];frameIds:string[];
@@ -206,6 +209,8 @@ export interface AdvancedCalculationResult {
   identity?: ConformerCalculationIdentity; metadata?: XtbMetadata; forcefieldOptimization?: AdvancedForcefieldOptimization;
   sharedOptimization?: import('./conformer-shared-optimization').ConformerSharedOptimizationEvidence;
   error?: string;
+  failureCode?: string;
+  diagnosticWarning?: import('./batch-contracts').ConformerBatchDiagnosticWarning;
   sessionId?: string; electronic?: { artifactId: string; status: 'retained' | 'transferred' | 'release-failed'; error?: string };
   reusedFromRunId?: string;
   /** Original native input, stdout and optimization trajectory remain on disk. */

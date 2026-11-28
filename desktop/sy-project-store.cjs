@@ -5,8 +5,9 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createHash, randomUUID } = require('node:crypto');
 const safe = require('./portable-storage.cjs');
+const { storageOwnerIdentity, ownerState } = require('./storage-owner-identity.cjs');
 const SCHEMA = 'sciyue-project/v1';
-const FORMATS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const FORMATS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 const isProjectIndexPath = file => typeof file === 'string' && path.extname(file).toLowerCase() === '.es';
 const CATEGORIES = new Set(['models', 'sources', 'trajectories', 'results']);
 // JSON/Buffer runtime limits are reported as real resource/format failures;
@@ -77,7 +78,7 @@ async function digestFile(file, expected) {
     return { sha256: hash.digest('hex'), bytes: offset, identity: safe.identity(selected) };
   } finally { await handle.close(); }
 }
-function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_CHUNK } = {}) {
+function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_CHUNK, ownerIdentity = storageOwnerIdentity } = {}) {
   if (!Number.isSafeInteger(maxChunkBytes) || maxChunkBytes < 1 || maxChunkBytes > 16 * 1024 * 1024) fail('SY_INVALID_REQUEST', 'Invalid chunk budget.');
   const sessions = new Map();
   const sessionFor = id => { const s = sessions.get(id); if (!s || s.closed) fail('SY_SESSION_CLOSED', 'Project session is closed.'); return s; };
@@ -103,47 +104,90 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
     if ((!current) !== (!s.expectedIndex) || current && (!current.isFile() || current.isSymbolicLink() || safe.identity(current) !== s.expectedIndex.identity)) fail('SY_WRITE_CONFLICT', 'Project index was changed outside this session.');
   }
   async function takeLock(s) {
-    const lockBytes = Buffer.from(JSON.stringify({ token: randomUUID(), pid: process.pid, projectId: s.projectId }));
-    try {
+    const identity = await ownerIdentity.current();
+    const lockBytes = Buffer.from(JSON.stringify({ token: s.id, pid: process.pid, projectId: s.projectId, ownerIdentity: identity }));
+    const publish = async () => {
       const handle = await fs.open(s.lockPath, 'wx');
       try { await handle.writeFile(lockBytes); await handle.sync(); } finally { await handle.close(); }
-    } catch (error) {
+    };
+    try { await publish(); }
+    catch (error) {
       if (error.code !== 'EEXIST') throw error;
-      const old = await safe.readChecked(s.lockPath, 4096); let record;
-      try { record = JSON.parse(old.bytes.toString('utf8')); } catch { fail('SY_WRITE_CONFLICT', 'Unrecognized project lock; no files were changed.'); }
-      if (!Number.isSafeInteger(record.pid) || record.pid < 1) fail('SY_WRITE_CONFLICT', 'Unrecognized project writer.');
-      let alive = true; try { process.kill(record.pid, 0); } catch (probe) { if (probe.code === 'ESRCH') alive = false; }
-      if (alive) fail('SY_WRITE_CONFLICT', 'This project already has an active writer.');
-      await safe.sameFile(s.lockPath, old, fs, 4096); await fs.unlink(s.lockPath);
-      return takeLock(s);
+      const old = await safe.currentFile(s.lockPath, fs, 4096).catch(failure => {
+        if (!['PORTABLE_INVALID_FILE', 'PORTABLE_PATH_CHANGED', 'EACCES', 'EPERM'].includes(failure.code)) throw failure;
+        fail('SY_WRITE_CONFLICT', '无法核对现有项目写入锁，原文件已保留。');
+      });
+      if (!old) {
+        try { await publish(); }
+        catch (retry) { if (retry.code !== 'EEXIST') throw retry; fail('SY_WRITE_CONFLICT', '另一个窗口已经接管此项目。'); }
+      } else {
+        let record;
+        try { record = JSON.parse(old.bytes.toString('utf8')); } catch { fail('SY_WRITE_CONFLICT', '无法识别已有项目写入锁，原文件已保留。'); }
+        if (!record || record.projectId !== s.projectId || !Number.isSafeInteger(record.pid) || record.pid < 1 || typeof record.token !== 'string')
+          fail('SY_WRITE_CONFLICT', '已有写入锁无法与当前项目核对，原文件已保留。');
+        const state = record.ownerIdentity ? ownerState(record, await ownerIdentity.snapshot([record.pid])) : 'unknown';
+        if (state !== 'dead') fail('SY_WRITE_CONFLICT', state === 'alive' ? '此项目已有写入者。' : '已有写入锁的归属暂时无法确认，原文件已保留。');
+        // Only one attempt may reap these exact lock bytes. A later publisher
+        // must still claim the real lock through exclusive creation.
+        const claimPath = path.join(s.root, `.sy-writer-reap-${old.sha256}`);
+        const claim = await fs.open(claimPath, 'wx').catch(failure => {
+          if (failure.code !== 'EEXIST') throw failure;
+          fail('SY_WRITE_CONFLICT', '已有窗口正在接管此项目的写入锁。');
+        });
+        try {
+          await checkRoot(s);
+          await safe.sameFile(s.lockPath, old, fs, 4096);
+          await fs.unlink(s.lockPath);
+          try { await publish(); }
+          catch (retry) { if (retry.code !== 'EEXIST') throw retry; fail('SY_WRITE_CONFLICT', '另一个窗口已经接管此项目。'); }
+        } finally {
+          const owned = await claim.stat();
+          await claim.close();
+          const current = await exists(claimPath);
+          if (current && !current.isSymbolicLink() && safe.identity(current) === safe.identity(owned))
+            await fs.unlink(claimPath).catch(() => {});
+        }
+      }
     }
-    const lock = await safe.readChecked(s.lockPath, 4096); s.lockHash = lock.sha256; s.lockIdentity = lock.identity;
+    const lock = await safe.readChecked(s.lockPath, 4096);
+    if (!lock.bytes.equals(lockBytes)) fail('SY_WRITE_CONFLICT', '项目写入锁已更换。');
+    s.lockHash = lock.sha256; s.lockIdentity = lock.identity; s.ownerIdentity = identity;
   }
   async function cleanupAbandonedStaging(s) {
     const directory = path.join(s.root, '.sy-staging');
     if (!s.directoryTokens.has('.sy-staging')) return;
     await safe.checkDirectory(directory, s.directoryTokens.get('.sy-staging'));
+    const stagingRecords = [];
     for (const name of await fs.readdir(directory)) {
       if (!/^[a-f0-9-]{36}\.json$/.test(name)) continue;
       const file = path.join(directory, name); const checked = await safe.readChecked(file, MAX_INDEX); let record;
       try { record = JSON.parse(checked.bytes.toString('utf8')); } catch { continue; }
-      if (record.projectId !== s.projectId || !Number.isSafeInteger(record.pid) || record.pid < 1 || !Array.isArray(record.files)) continue;
-      let alive = true; try { process.kill(record.pid, 0); } catch (error) { if (error.code === 'ESRCH') alive = false; }
-      if (alive) continue;
+      if (!record || record.projectId !== s.projectId || !Number.isSafeInteger(record.pid) || record.pid < 1 || !record.ownerIdentity || !Array.isArray(record.files)) continue;
+      stagingRecords.push({name, file, checked, record});
+    }
+    if (!stagingRecords.length) return;
+    const state = await ownerIdentity.snapshot(stagingRecords.map(({record}) => record.pid));
+    for (const {name, file, checked, record} of stagingRecords) {
+      if (ownerState(record, state) !== 'dead') continue;
+      await safe.sameFile(file, checked, fs, MAX_INDEX);
       const transactionId = path.basename(name, '.json'); let unchanged = true;
       for (const entry of record.files) {
         if (typeof entry.name !== 'string' || !entry.name.startsWith(`${transactionId}-`) || !/^[a-zA-Z0-9_-]+\.part$/.test(entry.name) || typeof entry.identity !== 'string') { unchanged = false; break; }
         const assetPath = path.join(directory, entry.name), stat = await exists(assetPath);
         if (!stat) continue;
         if (!stat.isFile() || stat.isSymbolicLink() || `${stat.dev}:${stat.ino}` !== entry.identity) { unchanged = false; continue; }
-        await checkWriter(s); await safe.checkDirectory(directory, s.directoryTokens.get('.sy-staging')); await fs.unlink(assetPath);
+        await checkWriter(s); await safe.checkDirectory(directory, s.directoryTokens.get('.sy-staging'));
+        const fresh = await exists(assetPath);
+        if (!fresh) continue;
+        if (safe.identity(fresh) !== safe.identity(stat)) { unchanged = false; continue; }
+        await fs.unlink(assetPath);
       }
       if (unchanged) { await safe.sameFile(file, checked, fs, MAX_INDEX); await fs.unlink(file); }
     }
   }
   function describe(s, issues = []) {
     const manifest = s.manifest ? clone(s.manifest) : null;
-    return { sessionId: s.id, projectId: s.projectId, indexPath: s.indexPath, manifest, state: manifest?.state ?? null, recovery: { previous: s.previous ? clone(s.previous) : null, auto: s.auto ? clone(s.auto) : null }, ...(s.writeProtection ? { writeProtection: clone(s.writeProtection) } : {}), issues };
+    return { sessionId: s.id, projectId: s.projectId, indexPath: s.indexPath, manifest, state: manifest?.state ?? null, recovery: { previous: s.previous ? clone(s.previous) : null, auto: s.auto ? clone(s.auto) : null }, ...(s.writeProtection ? { writeProtection: clone(s.writeProtection) } : {}), ...(s.readOnly ? { readOnly: true } : {}), issues };
   }
   // Recheck recovery points at save/GC boundaries. Their observed identities do
   // not replace the pinned CAS identities used to publish over these files.
@@ -215,9 +259,9 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
     for (const manifest of [s.manifest, s.manual, previous, auto]) Object.assign(s.knownAssets, manifest?.assets || {});
     // Pin known directories at open. A later replacement cannot redirect reads/writes.
     for (const category of [...CATEGORIES, 'recovery', '.sy-staging']) if (await exists(path.join(root, category))) s.directoryTokens.set(category, await safe.directoryIdentity(path.join(root, category)));
-    // Read-only sessions also hold an ownership lease so another process cannot
-    // collect assets while that session still references an older generation.
-    await takeLock(s);
+    // A conflict fallback may read verified committed assets. It never acquires
+    // or retires another writer's lease, recovers staging, or collects assets.
+    if (!readOnly) await takeLock(s);
     sessions.set(s.id, s);
     if (!readOnly && !s.writeProtection) {
       try { await cleanupAbandonedStaging(s); } catch (error) { issues.push({ kind: 'staging', code: error.code || 'SY_STAGING_RETAINED' }); }
@@ -247,7 +291,7 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
   }
   async function persistStaging(s, t) {
     const files = [...t.uploads.values()].filter(upload => !upload.done).map(upload => ({ name: path.basename(upload.file), identity: upload.identity.split(':').slice(0, 2).join(':') }));
-    const bytes = Buffer.from(JSON.stringify({ projectId: s.projectId, pid: process.pid, files }));
+    const bytes = Buffer.from(JSON.stringify({ projectId: s.projectId, pid: process.pid, ownerIdentity: s.ownerIdentity, files }));
     t.stagingFile = await safe.atomicWrite(path.join(t.staging, `${t.id}.json`), bytes, t.stagingFile, s.directoryTokens.get('.sy-staging'), fs, MAX_INDEX);
   }
   async function clearStagingRecord(s, t) {
@@ -536,7 +580,11 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
     const s = sessionFor(sessionId); return enqueue(s, async () => {
       if (s.readers.size) fail('SY_READ_IN_PROGRESS', 'Wait for project reads before closing.');
       await abortInner(s);
-      await checkRoot(s); const current = await safe.readChecked(s.lockPath, 4096); if (current.sha256 !== s.lockHash || current.identity !== s.lockIdentity) fail('SY_WRITE_CONFLICT', 'Project lock changed; it was retained.'); await fs.unlink(s.lockPath);
+      if (!s.readOnly) {
+        await checkRoot(s); const current = await safe.readChecked(s.lockPath, 4096);
+        if (current.sha256 !== s.lockHash || current.identity !== s.lockIdentity) fail('SY_WRITE_CONFLICT', 'Project lock changed; it was retained.');
+        await fs.unlink(s.lockPath);
+      }
       s.closed = true; s.leases.clear(); sessions.delete(sessionId);
     });
   }
@@ -555,14 +603,17 @@ function createSyProjectStore({ appVersion = 'unknown', maxChunkBytes = DEFAULT_
     return enqueue(s, async () => {
       if (s.transaction) fail('SY_TRANSACTION_ACTIVE', '项目正在保存，请在提交完成后重新打开。');
       await checkRoot(s);
-      const lock = await safe.readChecked(s.lockPath, 4096);
-      if (lock.sha256 !== s.lockHash || lock.identity !== s.lockIdentity) fail('SY_WRITE_CONFLICT', 'Project owner changed; the existing window was retained.');
+      if (!s.readOnly) {
+        const lock = await safe.readChecked(s.lockPath, 4096);
+        if (lock.sha256 !== s.lockHash || lock.identity !== s.lockIdentity) fail('SY_WRITE_CONFLICT', 'Project owner changed; the existing window was retained.');
+      }
       const point = await readManifest(s.indexPath);
       if (!point) fail('SY_INDEX_MISSING', '项目保存索引不存在。');
-      if (!s.expectedIndex || point.current.sha256 !== s.expectedIndex.sha256 || point.current.identity !== s.expectedIndex.identity ||
+      if ((!s.readOnly && (!s.expectedIndex || point.current.sha256 !== s.expectedIndex.sha256 || point.current.identity !== s.expectedIndex.identity)) ||
           point.manifest.projectId !== s.projectId) fail('SY_WRITE_CONFLICT', '项目索引已从外部更改，原窗口和保存点已保留。');
       await safe.sameFile(s.indexPath, point.current, fs, MAX_INDEX);
       await checkRoot(s);
+      if (s.readOnly) Object.assign(s.knownAssets, point.manifest.assets);
       return describe({ ...s, manifest: point.manifest });
     });
   }

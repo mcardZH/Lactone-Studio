@@ -104,7 +104,15 @@ export function frameBondTargetCurrent(state:FrameBondEditingState|undefined,pro
  return Boolean(state&&target.frameKey===state.frameKey&&Number.isSafeInteger(target.projectionSerial)&&target.projectionSerial>=0&&target.projectionSerial===projectionSerial);
 }
 type CameraRequest = NonNullable<ModelViewportProps['cameraRequest']>;
+export type ModelCameraGesture = {kind:'pan';dxPx:number;dyPx:number}|{kind:'rotate';axis:'screen-x'|'screen-y';degrees:number};
+export type ModelCameraGestureReceipt = {previousView:number[];view:number[]};
 export type ModelCameraCommand = {kind:'reset'}|{kind:'view';view:number[]}|{kind:'zoom';factor:number}|Omit<CameraRequest,'serial'>;
+export type ModelTransformRequest = StructureTransformEdit | PeriodicModelingRequest | CellEditorRequest;
+export interface PreparedModelTransform {
+  candidate: import('../../core/modeling/contracts').StructureTransformCandidate;
+  source: ModelDocument;
+  crystal?: import('../../modeling/crystal-contracts').CrystalResult;
+}
 export interface ModelBondPerceptionRequest {
   method?:'empirical'|'gfn2';
   mode:'supplement'|'rebuild';
@@ -122,8 +130,10 @@ export interface WorkspaceModelCommandPort {
   history(expectedRevision:number,direction:'undo'|'redo'):boolean;
   source(expectedRevision:number):ModelDocument;
   camera(expectedRevision:number,command:ModelCameraCommand):CameraZoomReceipt|void;
+  cameraGesture?(expectedRevision:number,command:ModelCameraGesture):ModelCameraGestureReceipt;
   inspectCrystal(expectedRevision:number,request:PeriodicInspectRequest):Promise<unknown>;
-  transform(expectedRevision:number,request:StructureTransformEdit|PeriodicModelingRequest|CellEditorRequest,derive:boolean):Promise<void>;
+  prepareTransform(expectedRevision:number,request:ModelTransformRequest):Promise<PreparedModelTransform>;
+  commitTransform(expectedRevision:number,prepared:PreparedModelTransform,options:{derive:boolean;signal?:AbortSignal;dataCell?:boolean;allowInactive?:boolean}):Promise<string|undefined>;
   perceiveBonds(expectedRevision:number,request:ModelBondPerceptionRequest,signal?:AbortSignal):Promise<unknown>;
 }
 /** The workspace owner supplies this locally after authenticating the detached window. */
